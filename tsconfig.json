@@ -1,0 +1,16 @@
+{
+  "compilerOptions": {
+    "strictNullChecks": true,
+    "noImplicitReturns": true,
+    "noImplicitThis": true,
+    "noImplicitAny": true,
+    "baseUrl": ".",
+    "declaration": true,
+    "forceConsistentCasingInFileNames": true,
+    "moduleResolution": "node",
+    "module": "esnext",
+    "target": "es6"
+  },
+  "include": ["**/src/**/*"],
+  "exclude": ["node_modules"]
+}
