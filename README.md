@@ -4,7 +4,7 @@ NestJS modules for Lido Finance projects.
 
 ## Packages
 
-TODO
+- [@lido-nestjs/logger](/packages/logger/README.md)
 
 ## Install
 
@@ -17,4 +17,3 @@ TODO
 - `yarn lint` — Run eslint across packages
 - `yarn test` — Run tests across packages
 - `yarn test:watch` — Run tests in watch mode
-- `yarn typechain` — Generate types
