@@ -2884,15 +2884,16 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@lido-nestjs/logger@workspace:packages/logger"
   dependencies:
-    "@nestjs/common": ^8.0.0
-    "@nestjs/core": ^8.0.0
+    "@nestjs/common": ^8.2.5
+    "@nestjs/core": ^8.2.5
+    "@nestjs/testing": ^8.2.5
     nest-winston: ^1.6.2
     reflect-metadata: ^0.1.13
     rxjs: ^7.5.2
     winston: ^3.4.0
   peerDependencies:
-    "@nestjs/common": ^8.0.0
-    "@nestjs/core": ^8.0.0
+    "@nestjs/common": ^8.2.5
+    "@nestjs/core": ^8.2.5
     reflect-metadata: ^0.1.13
     rxjs: ^7.5.2
   languageName: unknown
@@ -2964,7 +2965,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@nestjs/common@npm:^8.0.0":
+"@nestjs/common@npm:^8.2.5":
   version: 8.2.5
   resolution: "@nestjs/common@npm:8.2.5"
   dependencies:
@@ -2989,7 +2990,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@nestjs/core@npm:^8.0.0":
+"@nestjs/core@npm:^8.2.5":
   version: 8.2.5
   resolution: "@nestjs/core@npm:8.2.5"
   dependencies:
@@ -3015,6 +3016,26 @@ __metadata:
     "@nestjs/websockets":
       optional: true
   checksum: 53d5c9745e840b50489056ac3641b468ca6db94a9d39e994e8fc0631faf41dabb585fd4a013b4351b83afddfa52f00d109b7f7e89260aa9cd4ca20a5771cacb1
+  languageName: node
+  linkType: hard
+
+"@nestjs/testing@npm:^8.2.5":
+  version: 8.2.5
+  resolution: "@nestjs/testing@npm:8.2.5"
+  dependencies:
+    optional: 0.1.4
+    tslib: 2.3.1
+  peerDependencies:
+    "@nestjs/common": ^8.0.0
+    "@nestjs/core": ^8.0.0
+    "@nestjs/microservices": ^8.0.0
+    "@nestjs/platform-express": ^8.0.0
+  peerDependenciesMeta:
+    "@nestjs/microservices":
+      optional: true
+    "@nestjs/platform-express":
+      optional: true
+  checksum: 0f49ad3b22706668f0f6472896f6a1a2cd40dd4dbb1e58a930e33fa53f042bd00bf739da125ce1c4f647edf455a305ccb4718e29fe1678e083b069a5e72a83d4
   languageName: node
   linkType: hard
 
@@ -12147,6 +12168,13 @@ __metadata:
   bin:
     opener: bin/opener-bin.js
   checksum: 33b620c0d53d5b883f2abc6687dd1c5fd394d270dbe33a6356f2d71e0a2ec85b100d5bac94694198ccf5c30d592da863b2292c5539009c715a9c80c697b4f6cc
+  languageName: node
+  linkType: hard
+
+"optional@npm:0.1.4":
+  version: 0.1.4
+  resolution: "optional@npm:0.1.4"
+  checksum: 81fd9884eac9c13b3624821f99aa825b71d46ffd547cd3f8cf9e1dfb0165e531448005288455895550f804bdd66459e4e7ae6e753805b8bf11a5983050d5b7c4
   languageName: node
   linkType: hard
 

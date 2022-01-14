@@ -13,5 +13,5 @@ module.exports = {
   transform: {
     '^.+\\.[t|j]s?$': 'babel-jest',
   },
-  testEnvironment: 'jest-environment-jsdom',
+  testEnvironment: 'node',
 };

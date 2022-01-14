@@ -12,7 +12,7 @@ import resolve from '@rollup/plugin-node-resolve';
 
 const excludedWorkspaces = ['.'];
 const extensions = ['.ts', '.d.ts'];
-const commonExternal = ['react/jsx-runtime'];
+const commonExternal = [];
 
 export default async () => {
   const packages = await listWorkspaces();
