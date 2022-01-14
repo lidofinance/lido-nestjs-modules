@@ -1,9 +1,10 @@
 import * as winston from 'winston';
+import { LoggerCleanSecretsOptions } from '../interfaces';
 
 export const SECRET_REPLACER = '<removed>';
 
 export const cleanSecrets = winston.format(
-  (info, opts: { secrets?: string[] }) => {
+  (info, opts: LoggerCleanSecretsOptions) => {
     const secrets = opts.secrets ?? [];
 
     info.message = replace(secrets, info.message);

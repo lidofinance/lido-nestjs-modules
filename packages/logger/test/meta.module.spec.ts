@@ -53,7 +53,7 @@ describe('Logger. Meta fields', () => {
   });
 
   describe('SImple transport', () => {
-    const transports = simpleTransport([], { baz: 'blue' });
+    const transports = simpleTransport({ fieldColors: { baz: 'blue' } });
 
     beforeEach(async () => {
       const moduleRef = await Test.createTestingModule({

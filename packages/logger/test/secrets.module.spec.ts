@@ -21,7 +21,7 @@ describe('Logger. Hide secrets', () => {
       const secrets = ['hidden-address-1', 'hidden-address-2', emptyString];
       const replacer = SECRET_REPLACER;
       const level = 'debug';
-      const transports = transport(secrets);
+      const transports = transport({ secrets });
 
       let loggerService: LoggerService;
 

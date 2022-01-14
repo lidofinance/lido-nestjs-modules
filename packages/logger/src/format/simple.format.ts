@@ -1,5 +1,6 @@
 import * as winston from 'winston';
 import { cleanSecrets } from './secrets.format';
+import { LoggerSimpleFormatOptions } from '../interfaces';
 
 const colorizer = winston.format.colorize();
 
@@ -18,9 +19,9 @@ const getMeta = (
 };
 
 export const simple = (
-  secrets?: string[],
-  fieldColors: winston.config.AbstractConfigSetColors = {},
+  options: LoggerSimpleFormatOptions = {},
 ): winston.Logform.Format => {
+  const { secrets, fieldColors = {} } = options;
   winston.addColors(fieldColors);
 
   return winston.format.combine(
