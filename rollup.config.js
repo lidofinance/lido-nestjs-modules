@@ -2,7 +2,10 @@ import path from 'path';
 import fs from 'fs';
 import tslib from 'tslib';
 import ts from 'typescript';
-import { topologicallySort, listWorkspaces } from 'yarn-workspaces-list';
+import {
+  topologicallySort,
+  listWorkspaces,
+} from '@lidofinance/yarn-workspaces-list';
 import typescript from 'rollup-plugin-typescript2';
 import del from 'rollup-plugin-delete';
 import resolve from '@rollup/plugin-node-resolve';
@@ -30,7 +33,6 @@ export default async () => {
     ];
 
     const cjsDir = path.join(packageDir, path.dirname(packageJson.main));
-    const esmDir = path.join(packageDir, path.dirname(packageJson.module));
 
     return {
       input: path.join(packageDir, 'src/index'),
@@ -40,13 +42,6 @@ export default async () => {
           preserveModulesRoot: path.join(packageDir, 'src'),
           preserveModules: true,
           format: 'cjs',
-          exports: 'named',
-        },
-        {
-          dir: esmDir,
-          preserveModulesRoot: path.join(packageDir, 'src'),
-          preserveModules: true,
-          format: 'es',
           exports: 'named',
         },
       ],

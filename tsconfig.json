@@ -1,5 +1,8 @@
 {
   "compilerOptions": {
+    "strict": true,
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
     "strictNullChecks": true,
     "noImplicitReturns": true,
     "noImplicitThis": true,
@@ -9,7 +12,7 @@
     "forceConsistentCasingInFileNames": true,
     "moduleResolution": "node",
     "module": "esnext",
-    "target": "es6"
+    "target": "es2017"
   },
   "include": ["**/src/**/*"],
   "exclude": ["node_modules"]
