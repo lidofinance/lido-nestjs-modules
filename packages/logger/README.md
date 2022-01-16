@@ -3,7 +3,7 @@
 NestJS Logger for Lido Finance projects.
 Part of [Lido NestJS Modules](https://github.com/lidofinance/lido-nestjs-modules/#readme)
 
-The logger is based on [nest-winston](https://www.npmjs.com/package/nest-winston), [winston](https://github.com/winstonjs/winston)
+The logger is based on [winston logger](https://github.com/winstonjs/winston) and [nest-winston](https://www.npmjs.com/package/nest-winston) package.
 
 ## Install
 
@@ -54,15 +54,15 @@ export class AppModule {}
 
 ## Transports
 
-The logger provides console transports in `json` and `simple` formats. Transports can be imported from `@lido-nestjs/logger`:
+The logger provides preconfigured console transports in `json` and `simple` formats. The transports can be imported from `@lido-nestjs/logger`:
 
 ```ts
 import { simpleTransport, jsonTransport } from '@lido-nestjs/logger';
 ```
 
-### Secrets
+### Secrets cleaner
 
-To remove secret strings from logs, pass an array of strings to the transport options:
+Preconfigured transports have formatter for clean secrets from logs. To use it, pass an array of secret strings to the transport options:
 
 ```ts
 import { Module } from '@nestjs/common';
@@ -84,9 +84,24 @@ export class AppModule {}
 
 Secrets will be replaced with text `<removed>`.
 
+If you want to use this formatter in your custom transport, import the `cleanSecrets` from `@lido-nestjs/logger`:
+
+```ts
+import { cleanSecrets } from '@lido-nestjs/logger';
+
+const myFormatter = winston.format.combine(
+  cleanSecrets({ secrets: ['some-secret'] }),
+  winston.format.json(),
+);
+
+const myTransport = new winston.transports.Console({
+  format: myFormatter,
+});
+```
+
 ### Meta fields
 
-To add meta fields, pass a `defaultMeta` to logger options:
+Meta fields can be useful for adding additional fields to logs, such as `blockNumber` in Ethereum bots. To add meta fields, pass a `defaultMeta` to logger options:
 
 ```ts
 import { Module } from '@nestjs/common';
@@ -113,7 +128,7 @@ export class AppModule {}
 In this case you will see extra fields in the logs:
 
 ```ts
-logger.log('some message'); // `{ foo: 'bar', baz: 2, message: 'some message', ... }`
+logger.log('some message'); // { foo: 'bar', baz: 2, message: 'some message', ... }
 ```
 
 ### Colorize
@@ -145,7 +160,7 @@ export class AppModule {}
 In this case you will see blue value of `block` field in the logs:
 
 ```ts
-logger.log('some message'); // `yyyy-mm-dd hh:mm:ss [1000] info: some message`
+logger.log('some message'); // yyyy-mm-dd hh:mm:ss [1000] info: some message
 ```
 
-Possible color values can be found in the [winston docs](https://github.com/winstonjs/winston#using-custom-logging-levels)
+Possible color values can be found in the [winston docs](https://github.com/winstonjs/winston#using-custom-logging-levels).
