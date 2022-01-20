@@ -402,6 +402,19 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@babel/plugin-proposal-decorators@npm:^7.16.7":
+  version: 7.16.7
+  resolution: "@babel/plugin-proposal-decorators@npm:7.16.7"
+  dependencies:
+    "@babel/helper-create-class-features-plugin": ^7.16.7
+    "@babel/helper-plugin-utils": ^7.16.7
+    "@babel/plugin-syntax-decorators": ^7.16.7
+  peerDependencies:
+    "@babel/core": ^7.0.0-0
+  checksum: 1c1a658ad70f71c542f2b770849eaebaff0a12e1f12b9b4a994a2d26440cb44b7bd8b88987bc0252ea669d1cbf253d2da134975607e362cf14d5e3f2d11c966a
+  languageName: node
+  linkType: hard
+
 "@babel/plugin-proposal-dynamic-import@npm:^7.16.7":
   version: 7.16.7
   resolution: "@babel/plugin-proposal-dynamic-import@npm:7.16.7"
@@ -593,6 +606,17 @@ __metadata:
   peerDependencies:
     "@babel/core": ^7.0.0-0
   checksum: 3e80814b5b6d4fe17826093918680a351c2d34398a914ce6e55d8083d72a9bdde4fbaf6a2dcea0e23a03de26dc2917ae3efd603d27099e2b98380345703bf948
+  languageName: node
+  linkType: hard
+
+"@babel/plugin-syntax-decorators@npm:^7.16.7":
+  version: 7.16.7
+  resolution: "@babel/plugin-syntax-decorators@npm:7.16.7"
+  dependencies:
+    "@babel/helper-plugin-utils": ^7.16.7
+  peerDependencies:
+    "@babel/core": ^7.0.0-0
+  checksum: 4c8dacd8b612d24638394bc86df7f89f92f8a21e5c450be983f754003ffe72d70aebdb81456232df5ec2fc7ff4f7415489bc1f577a28c072c336fc4f9114b82a
   languageName: node
   linkType: hard
 
@@ -10539,6 +10563,7 @@ __metadata:
   resolution: "lido-nestjs-modules@workspace:."
   dependencies:
     "@babel/core": ^7.16.7
+    "@babel/plugin-proposal-decorators": ^7.16.7
     "@babel/preset-env": ^7.16.8
     "@babel/preset-typescript": ^7.16.7
     "@commitlint/cli": ^16.0.2
