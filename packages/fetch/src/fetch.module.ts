@@ -1,5 +1,8 @@
 import { DynamicModule, Module } from '@nestjs/common';
-import { FETCH_GLOBAL_URL_PREFIX_TOKEN } from './fetch.constants';
+import {
+  FETCH_GLOBAL_URL_PREFIX_TOKEN,
+  FETCH_GLOBAL_RETRY_POLICY_TOKEN,
+} from './fetch.constants';
 import { FetchService } from './fetch.service';
 import { FetchModuleOptions } from './interfaces';
 
@@ -8,7 +11,11 @@ const getFetchModuleProviders = (options: FetchModuleOptions) => {
     FetchService,
     {
       provide: FETCH_GLOBAL_URL_PREFIX_TOKEN,
-      useValue: options.globalPrefix,
+      useValue: options.baseUrl,
+    },
+    {
+      provide: FETCH_GLOBAL_RETRY_POLICY_TOKEN,
+      useValue: options.retryPolicy,
     },
   ];
 };
