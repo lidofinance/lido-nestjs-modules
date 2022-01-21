@@ -12,21 +12,15 @@ import { RequestInfo, RequestInit, RequestRetryPolicy } from './interfaces';
 export class FetchService {
   constructor(
     @Inject(FETCH_GLOBAL_URL_PREFIX_TOKEN)
-    private readonly baseUrl: string | undefined,
+    private baseUrl: string | null,
 
     @Inject(FETCH_GLOBAL_RETRY_POLICY_TOKEN)
-    private readonly retryPolicy: RequestRetryPolicy | undefined,
+    private retryPolicy: RequestRetryPolicy | null,
   ) {}
 
   public async fetchJson<T>(url: RequestInfo, init?: RequestInit): Promise<T> {
     const response = await this.request(url, init);
-    const result = await response.json();
-
-    if (!response.ok) {
-      throw new HttpException(result, response.status);
-    }
-
-    return result;
+    return await response.json();
   }
 
   public async fetchText(
@@ -34,13 +28,7 @@ export class FetchService {
     init?: RequestInit,
   ): Promise<string> {
     const response = await this.request(url, init);
-    const result = await response.text();
-
-    if (!response.ok) {
-      throw new HttpException(result, response.status);
-    }
-
-    return result;
+    return await response.text();
   }
 
   protected async request(
@@ -53,16 +41,29 @@ export class FetchService {
     try {
       const baseUrl = this.getBaseUrl(attempt, init);
       const fullUrl = this.getUrl(baseUrl, url);
+      const response = await fetch(fullUrl, init);
 
-      return await fetch(fullUrl, init);
-    } catch (error) {
-      const possibleAttempt = this.getRetryCount();
-
-      if (attempt <= possibleAttempt) {
-        return this.request(url, init, attempt);
+      if (!response.ok) {
+        const errorBody = await this.extractErrorBody(response);
+        throw new HttpException(errorBody, response.status);
       }
 
-      throw error;
+      return response;
+    } catch (error) {
+      const possibleAttempt = this.getRetryCount(init);
+      if (attempt > possibleAttempt) throw error;
+
+      return await this.request(url, init, attempt);
+    }
+  }
+
+  protected async extractErrorBody(
+    response: Response,
+  ): Promise<string | Record<string, unknown>> {
+    try {
+      return await response.json();
+    } catch (error) {
+      return response.statusText;
     }
   }
 
@@ -87,7 +88,7 @@ export class FetchService {
   protected getBaseUrl(attempt: number, init?: RequestInit) {
     const fallbackUrls = this.getFallbackBaseUrls(init);
     const baseUrls = [this.baseUrl, ...fallbackUrls].filter((v) => v != null);
-    if (!baseUrls.length) return;
+    if (!baseUrls.length) return null;
 
     if (attempt < 1) throw new Error('attempt should be >= 1');
 
@@ -95,7 +96,7 @@ export class FetchService {
     return baseUrls[index];
   }
 
-  protected getUrl(baseUrl: string | undefined, url: RequestInfo): RequestInfo {
+  protected getUrl(baseUrl: string | null, url: RequestInfo): RequestInfo {
     if (baseUrl != null) return url;
     if (typeof url !== 'string') return url;
     if (this.isAbsoluteUrl(url)) return url;
