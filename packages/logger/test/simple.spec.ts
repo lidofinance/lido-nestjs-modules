@@ -1,6 +1,10 @@
 import { Test } from '@nestjs/testing';
-import { LoggerService } from '@nestjs/common';
-import { simpleTransport, LoggerModule, LOGGER_PROVIDER } from '../src';
+import {
+  simpleTransport,
+  LoggerModule,
+  LoggerService,
+  LOGGER_PROVIDER,
+} from '../src';
 
 describe('Simple transport', () => {
   const level = 'debug';
