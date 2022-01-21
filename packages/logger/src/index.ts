@@ -6,4 +6,5 @@ export * from './interfaces';
 export { WINSTON_MODULE_NEST_PROVIDER as LOGGER_PROVIDER } from 'nest-winston';
 export { WINSTON_MODULE_OPTIONS as LOGGER_OPTIONS } from 'nest-winston';
 
+export { LoggerService } from '@nestjs/common';
 export { LoggerOptions } from 'winston';

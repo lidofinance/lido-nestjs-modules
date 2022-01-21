@@ -1983,6 +1983,25 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@lido-nestjs/fetch@workspace:packages/fetch":
+  version: 0.0.0-use.local
+  resolution: "@lido-nestjs/fetch@workspace:packages/fetch"
+  dependencies:
+    "@nestjs/common": ^8.2.5
+    "@nestjs/core": ^8.2.5
+    "@nestjs/testing": ^8.2.5
+    "@types/node-fetch": ^2.5.12
+    node-fetch: ^2.6.7
+    reflect-metadata: ^0.1.13
+    rxjs: ^7.5.2
+  peerDependencies:
+    "@nestjs/common": ^8.2.5
+    "@nestjs/core": ^8.2.5
+    reflect-metadata: ^0.1.13
+    rxjs: ^7.5.2
+  languageName: unknown
+  linkType: soft
+
 "@lido-nestjs/logger@workspace:packages/logger":
   version: 0.0.0-use.local
   resolution: "@lido-nestjs/logger@workspace:packages/logger"
@@ -3058,6 +3077,16 @@ __metadata:
   dependencies:
     "@types/node": "*"
   checksum: 6637967de37019690c0047c7876a776d5fd40a181719a9c4f3a7a3a064e18b76956e3f8a943e3f63b9bc144e1cee9539f7cb7ca5d148bc58194e4deae2e5b348
+  languageName: node
+  linkType: hard
+
+"@types/node-fetch@npm:^2.5.12":
+  version: 2.5.12
+  resolution: "@types/node-fetch@npm:2.5.12"
+  dependencies:
+    "@types/node": "*"
+    form-data: ^3.0.0
+  checksum: ad63c85ba6a9477b8e057ec8682257738130d98e8ece4e31141789bd99df9d9147985cc8bc0cb5c8983ed5aa6bb95d46df23d1e055f4ad5cf8b82fc69cf626c7
   languageName: node
   linkType: hard
 
@@ -10596,6 +10625,20 @@ __metadata:
   dependencies:
     whatwg-url: ^5.0.0
   checksum: ee8290626bdb73629c59722b75dcf4b9b6a67c1ed7eb9102e368479c4a13b56a48c2bb3ad71571e378e98c8b2c64c820e11f9cd39e4b8557dd138ad571ef9a42
+  languageName: node
+  linkType: hard
+
+"node-fetch@npm:^2.6.7":
+  version: 2.6.7
+  resolution: "node-fetch@npm:2.6.7"
+  dependencies:
+    whatwg-url: ^5.0.0
+  peerDependencies:
+    encoding: ^0.1.0
+  peerDependenciesMeta:
+    encoding:
+      optional: true
+  checksum: 8d816ffd1ee22cab8301c7756ef04f3437f18dace86a1dae22cf81db8ef29c0bf6655f3215cb0cdb22b420b6fe141e64b26905e7f33f9377a7fa59135ea3e10b
   languageName: node
   linkType: hard
 
