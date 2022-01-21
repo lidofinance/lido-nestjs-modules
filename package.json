@@ -14,10 +14,6 @@
     "postinstall": "husky install"
   },
   "devDependencies": {
-    "@babel/core": "^7.16.7",
-    "@babel/plugin-proposal-decorators": "^7.16.7",
-    "@babel/preset-env": "^7.16.8",
-    "@babel/preset-typescript": "^7.16.7",
     "@commitlint/cli": "^16.1.0",
     "@commitlint/config-conventional": "^16.0.0",
     "@lidofinance/yarn-workspaces-list": "0.1.1",

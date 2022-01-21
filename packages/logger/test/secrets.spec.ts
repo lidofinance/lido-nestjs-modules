@@ -1,9 +1,9 @@
 import { Test } from '@nestjs/testing';
-import { LoggerService } from '@nestjs/common';
 import {
   simpleTransport,
   jsonTransport,
   LoggerModule,
+  LoggerService,
   LOGGER_PROVIDER,
   SECRET_REPLACER,
 } from '../src';
