@@ -9,9 +9,11 @@ module.exports = {
       statements: 100,
     },
   },
+  moduleFileExtensions: ['js', 'json', 'ts'],
+  testRegex: '.*\\.spec\\.ts$',
   collectCoverageFrom: ['packages/**/src/**/*.ts'],
   transform: {
-    '^.+\\.[t|j]s?$': 'babel-jest',
+    '^.+\\.ts?$': 'ts-jest',
   },
   testEnvironment: 'node',
 };

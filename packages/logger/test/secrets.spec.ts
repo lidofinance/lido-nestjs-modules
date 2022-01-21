@@ -8,7 +8,7 @@ import {
   SECRET_REPLACER,
 } from '../src';
 
-describe('Logger. Hide secrets', () => {
+describe('Hide secrets', () => {
   const transports = {
     simple: simpleTransport,
     json: jsonTransport,
@@ -25,7 +25,7 @@ describe('Logger. Hide secrets', () => {
 
       let loggerService: LoggerService;
 
-      beforeEach(() => write.mockImplementation(() => void 0));
+      beforeEach(() => write.mockImplementation(() => true));
       afterEach(() => write.mockReset());
 
       beforeEach(async () => {
@@ -36,7 +36,7 @@ describe('Logger. Hide secrets', () => {
         loggerService = moduleRef.get(LOGGER_PROVIDER);
       });
 
-      test('single secret in error', () => {
+      test('Single secret in error', () => {
         const message = secrets[0];
         const expected = replacer;
         const error = new Error(message);
@@ -47,7 +47,7 @@ describe('Logger. Hide secrets', () => {
         expect(write).toBeCalledWith(expect.not.stringContaining(message));
       });
 
-      test('two secrets in error', () => {
+      test('Two secrets in error', () => {
         const message = secrets[0] + secrets[1];
         const expected = replacer + replacer;
         const error = new Error(message);
@@ -58,7 +58,7 @@ describe('Logger. Hide secrets', () => {
         expect(write).toBeCalledWith(expect.not.stringContaining(message));
       });
 
-      test('single secret in log', () => {
+      test('Single secret in log', () => {
         const message = secrets[0];
         const expected = replacer;
         loggerService.log(message);
