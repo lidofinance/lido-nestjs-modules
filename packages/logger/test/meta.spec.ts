@@ -7,13 +7,13 @@ import {
   LOGGER_PROVIDER,
 } from '../src';
 
-describe('Logger. Meta fields', () => {
+describe('Meta fields', () => {
   const level = 'debug';
   const defaultMeta = { baz: 'qux' };
   const message = 'foo bar';
   const write = jest.spyOn(process.stdout, 'write');
 
-  beforeEach(() => write.mockImplementation(() => void 0));
+  beforeEach(() => write.mockImplementation(() => true));
   afterEach(() => write.mockReset());
 
   let loggerService: LoggerService;
@@ -29,7 +29,7 @@ describe('Logger. Meta fields', () => {
       loggerService = moduleRef.get(LOGGER_PROVIDER);
     });
 
-    test('meta data in log', async () => {
+    test('Meta data in log', async () => {
       const object = { ...defaultMeta, level: 'info', message };
       loggerService.log(message);
 
@@ -37,7 +37,7 @@ describe('Logger. Meta fields', () => {
       expect(write).toBeCalledWith(JSON.stringify(object) + '\n');
     });
 
-    test('meta data in error', async () => {
+    test('Meta data in error', async () => {
       const error = new Error(message);
       const object = {
         ...defaultMeta,
@@ -52,7 +52,7 @@ describe('Logger. Meta fields', () => {
     });
   });
 
-  describe('SImple transport', () => {
+  describe('Simple transport', () => {
     const transports = simpleTransport({ fieldColors: { baz: 'blue' } });
 
     beforeEach(async () => {
@@ -63,14 +63,14 @@ describe('Logger. Meta fields', () => {
       loggerService = moduleRef.get(LOGGER_PROVIDER);
     });
 
-    test('meta data in log', async () => {
+    test('Meta data in log', async () => {
       loggerService.log(message);
 
       expect(write).toBeCalledTimes(1);
       expect(write).toBeCalledWith(expect.stringContaining(defaultMeta.baz));
     });
 
-    test('meta data in error', async () => {
+    test('Meta data in error', async () => {
       loggerService.log(message);
 
       expect(write).toBeCalledTimes(1);
