@@ -40,6 +40,8 @@ export class MyService {
 }
 ```
 
+The `fetchService` provides 2 methods: `fetchJson` and `fetchText`, which are based on a call to the `fetch` function followed by a call to `.json()` or `.text()`. Method arguments are compatible with the `fetch`.
+
 ### Global module
 
 ```ts
