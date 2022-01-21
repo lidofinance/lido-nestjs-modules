@@ -3,8 +3,9 @@ import { HttpException, Inject, Injectable } from '@nestjs/common';
 import {
   FETCH_GLOBAL_URL_PREFIX_TOKEN,
   FETCH_GLOBAL_RETRY_POLICY_TOKEN,
-  FETCH_GLOBAL_RETRY_DEFAULT_COUNT,
-  FETCH_GLOBAL_RETRY_DEFAULT_FALLBACK_URLS,
+  FETCH_GLOBAL_RETRY_DEFAULT_ATTEMPTS,
+  FETCH_GLOBAL_RETRY_DEFAULT_BASE_URLS,
+  FETCH_GLOBAL_RETRY_DEFAULT_DELAY,
 } from './fetch.constants';
 import { RequestInfo, RequestInit, RequestRetryPolicy } from './interfaces';
 
@@ -12,7 +13,7 @@ import { RequestInfo, RequestInit, RequestRetryPolicy } from './interfaces';
 export class FetchService {
   constructor(
     @Inject(FETCH_GLOBAL_URL_PREFIX_TOKEN)
-    private baseUrl: string | null,
+    private baseUrls: string[],
 
     @Inject(FETCH_GLOBAL_RETRY_POLICY_TOKEN)
     private retryPolicy: RequestRetryPolicy | null,
@@ -39,7 +40,7 @@ export class FetchService {
     attempt++;
 
     try {
-      const baseUrl = this.getBaseUrl(attempt, init);
+      const baseUrl = this.getBaseUrl(attempt);
       const fullUrl = this.getUrl(baseUrl, url);
       const response = await fetch(fullUrl, init);
 
@@ -50,11 +51,18 @@ export class FetchService {
 
       return response;
     } catch (error) {
-      const possibleAttempt = this.getRetryCount(init);
+      const possibleAttempt = this.getRetryAttempts(init);
       if (attempt > possibleAttempt) throw error;
 
+      await this.delay(init);
       return await this.request(url, init, attempt);
     }
+  }
+
+  protected async delay(init?: RequestInit): Promise<void> {
+    const timeout = this.getDelayTimeout(init);
+    if (timeout <= 0) return;
+    return new Promise((resolve) => setTimeout(resolve, timeout));
   }
 
   protected async extractErrorBody(
@@ -67,41 +75,38 @@ export class FetchService {
     }
   }
 
-  protected getRetryCount(init?: RequestInit): number {
-    const localCount = init?.retryPolicy?.count;
-    const globalCount = this.retryPolicy?.count;
+  protected getRetryAttempts(init?: RequestInit): number {
+    const localAttempts = init?.retryPolicy?.attempts;
+    const globalAttempts = this.retryPolicy?.attempts;
 
-    if (localCount != null) return localCount;
-    if (globalCount != null) return globalCount;
-    return FETCH_GLOBAL_RETRY_DEFAULT_COUNT;
+    if (localAttempts != null) return localAttempts;
+    if (globalAttempts != null) return globalAttempts;
+    return FETCH_GLOBAL_RETRY_DEFAULT_ATTEMPTS;
   }
 
-  protected getFallbackBaseUrls(init?: RequestInit): string[] {
-    const localBaseUrls = init?.retryPolicy?.fallbackBaseUrls;
-    const globalBaseUrls = this.retryPolicy?.fallbackBaseUrls;
+  protected getDelayTimeout(init?: RequestInit): number {
+    const localDelay = init?.retryPolicy?.delay;
+    const globalDelay = this.retryPolicy?.delay;
 
-    if (localBaseUrls != null) return localBaseUrls;
-    if (globalBaseUrls != null) return globalBaseUrls;
-    return FETCH_GLOBAL_RETRY_DEFAULT_FALLBACK_URLS;
+    if (localDelay != null) return localDelay;
+    if (globalDelay != null) return globalDelay;
+    return FETCH_GLOBAL_RETRY_DEFAULT_DELAY;
   }
 
-  protected getBaseUrl(attempt: number, init?: RequestInit) {
-    const fallbackUrls = this.getFallbackBaseUrls(init);
-    const baseUrls = [this.baseUrl, ...fallbackUrls].filter((v) => v != null);
+  protected getBaseUrl(attempt: number) {
+    const baseUrls = this.baseUrls ?? FETCH_GLOBAL_RETRY_DEFAULT_BASE_URLS;
     if (!baseUrls.length) return null;
-
-    if (attempt < 1) throw new Error('attempt should be >= 1');
 
     const index = (attempt - 1) % baseUrls.length;
     return baseUrls[index];
   }
 
   protected getUrl(baseUrl: string | null, url: RequestInfo): RequestInfo {
-    if (baseUrl != null) return url;
     if (typeof url !== 'string') return url;
+    if (baseUrl == null) return url;
     if (this.isAbsoluteUrl(url)) return url;
 
-    return `${this.baseUrl}${url}`;
+    return `${baseUrl}${url}`;
   }
 
   protected isAbsoluteUrl(url: string): boolean {

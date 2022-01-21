@@ -16,6 +16,38 @@ describe('Data fetching', () => {
     mockFetch.mockReset();
   });
 
+  describe('Url types', () => {
+    const expected = { foo: 'bar' };
+
+    beforeEach(async () => {
+      const module = { imports: [FetchModule.forFeature()] };
+      const moduleRef = await Test.createTestingModule(module).compile();
+      fetchService = moduleRef.get(FetchService);
+
+      mockFetch.mockImplementation(() =>
+        Promise.resolve(new Response(JSON.stringify(expected))),
+      );
+    });
+
+    test('String', async () => {
+      const url = '/foo';
+      const result = await fetchService.fetchJson(url);
+
+      expect(result).toEqual(expected);
+      expect(mockFetch).toBeCalledTimes(1);
+      expect(mockFetch).toBeCalledWith(url, undefined);
+    });
+
+    test('Object', async () => {
+      const url = { href: '/foo' };
+      const result = await fetchService.fetchJson(url);
+
+      expect(result).toEqual(expected);
+      expect(mockFetch).toBeCalledTimes(1);
+      expect(mockFetch).toBeCalledWith(url, undefined);
+    });
+  });
+
   describe('Success', () => {
     beforeEach(async () => {
       const module = { imports: [FetchModule.forFeature()] };
@@ -23,7 +55,7 @@ describe('Data fetching', () => {
       fetchService = moduleRef.get(FetchService);
     });
 
-    test('should fetch json', async () => {
+    test('JSON', async () => {
       const expected = { foo: 'bar' };
       mockFetch.mockImplementation(() =>
         Promise.resolve(new Response(JSON.stringify(expected))),
@@ -33,7 +65,7 @@ describe('Data fetching', () => {
       expect(result).toEqual(expected);
     });
 
-    test('should fetch text', async () => {
+    test('Text', async () => {
       const expected = 'foo bar';
       mockFetch.mockImplementation(() =>
         Promise.resolve(new Response(expected)),
@@ -51,12 +83,12 @@ describe('Data fetching', () => {
       fetchService = moduleRef.get(FetchService);
     });
 
-    test('should reject on error', async () => {
+    test('Reject on error', async () => {
       mockFetch.mockImplementation(() => Promise.reject(new Error('error')));
       await expect(fetchService.fetchJson(url)).rejects.toThrowError();
     });
 
-    test('should reject with error message', async () => {
+    test('Reject with error message', async () => {
       const expectedStatus = 401;
       const expectedBody = { message: 'Something went wrong' };
       const expectedInit = { status: expectedStatus };
@@ -74,7 +106,7 @@ describe('Data fetching', () => {
       });
     });
 
-    test('should reject with default message', async () => {
+    test('Reject with default message', async () => {
       const expectedStatus = 500;
       const expectedInit = { status: expectedStatus };
 

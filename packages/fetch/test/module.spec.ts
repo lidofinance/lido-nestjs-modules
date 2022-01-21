@@ -2,7 +2,7 @@ import { Test } from '@nestjs/testing';
 import { FetchModule, FetchService } from '../src';
 
 describe('Module initializing', () => {
-  describe('forRoot', () => {
+  describe('For root', () => {
     let fetchService: FetchService;
 
     beforeEach(async () => {
@@ -13,13 +13,13 @@ describe('Module initializing', () => {
       fetchService = moduleRef.get(FetchService);
     });
 
-    test('methods should be defined', async () => {
+    test('Methods should be defined', async () => {
       expect(fetchService.fetchJson).toBeDefined();
       expect(fetchService.fetchText).toBeDefined();
     });
   });
 
-  describe('forFeature', () => {
+  describe('For feature', () => {
     let fetchService: FetchService;
 
     beforeEach(async () => {
@@ -30,7 +30,7 @@ describe('Module initializing', () => {
       fetchService = moduleRef.get(FetchService);
     });
 
-    test('methods should be defined', async () => {
+    test('Methods should be defined', async () => {
       expect(fetchService.fetchJson).toBeDefined();
       expect(fetchService.fetchText).toBeDefined();
     });

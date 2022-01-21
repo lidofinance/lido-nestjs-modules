@@ -11,7 +11,7 @@ const getFetchModuleProviders = (options?: FetchModuleOptions) => {
     FetchService,
     {
       provide: FETCH_GLOBAL_URL_PREFIX_TOKEN,
-      useValue: options?.baseUrl ?? null,
+      useValue: options?.baseUrls ?? null,
     },
     {
       provide: FETCH_GLOBAL_RETRY_POLICY_TOKEN,

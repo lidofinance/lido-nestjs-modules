@@ -2,7 +2,7 @@ import { RequestInit as RequestInitSource } from 'node-fetch';
 export { RequestInfo } from 'node-fetch';
 
 export interface FetchModuleOptions {
-  baseUrl?: string;
+  baseUrls?: string[];
   retryPolicy?: RequestRetryPolicy;
 }
 
@@ -12,6 +12,5 @@ export interface RequestInit extends RequestInitSource {
 
 export interface RequestRetryPolicy {
   delay?: number;
-  count?: number;
-  fallbackBaseUrls?: string[];
+  attempts?: number;
 }
