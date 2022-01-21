@@ -118,14 +118,18 @@ describe('Retries', () => {
       mockFetch.mockImplementation(() => Promise.reject(new Error()));
     });
 
-    test('Default', async () => {
-      const retryPolicy = { attempts: 1 };
-      await initModule(retryPolicy);
+    test(
+      'Default',
+      async () => {
+        const retryPolicy = { attempts: 1 };
+        await initModule(retryPolicy);
 
-      const time = await executionTime(() => fetchService.fetchJson(url));
-      expect(mockFetch).toBeCalledTimes(2);
-      expect(time).toBeGreaterThanOrEqual(FETCH_GLOBAL_RETRY_DEFAULT_DELAY);
-    });
+        const time = await executionTime(() => fetchService.fetchJson(url));
+        expect(mockFetch).toBeCalledTimes(2);
+        expect(time).toBeGreaterThanOrEqual(FETCH_GLOBAL_RETRY_DEFAULT_DELAY);
+      },
+      FETCH_GLOBAL_RETRY_DEFAULT_DELAY + 500,
+    );
 
     test('Global', async () => {
       const retryPolicy = { attempts: 1, delay: 20 };
