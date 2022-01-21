@@ -5,6 +5,7 @@ NestJS modules for Lido Finance projects.
 ## Packages
 
 - [@lido-nestjs/logger](/packages/logger/README.md)
+- [@lido-nestjs/fetch](/packages/fetch/README.md)
 
 ## Install
 
