@@ -28,11 +28,11 @@
     "access": "public"
   },
   "dependencies": {
+    "@lido-nestjs/fetch": "workspace:*",
     "lodash.snakecase": "^4.1.1",
     "node-fetch": "^2.6.7"
   },
   "peerDependencies": {
-    "@lido-nestjs/fetch": "workspace:*",
     "@nestjs/common": "^8.2.5",
     "@nestjs/core": "^8.2.5",
     "reflect-metadata": "^0.1.13",
