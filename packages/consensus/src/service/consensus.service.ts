@@ -3,6 +3,7 @@ import { FetchService } from '@lido-nestjs/fetch';
 import { ConsensusBaseService } from './base.service';
 import { ConsensusBeaconService } from './beacon.service';
 import { ConsensusDebugService } from './debug.service';
+import { ConsensusEventsService } from './events.service';
 import { ConsensusNodeService } from './node.service';
 import { ConsensusConfigService } from './config.service';
 import { ConsensusValidatorService } from './validator.service';
@@ -31,6 +32,7 @@ export interface ConsensusService
   extends ConsensusBaseService,
     ConsensusBeaconService,
     ConsensusDebugService,
+    ConsensusEventsService,
     ConsensusNodeService,
     ConsensusConfigService,
     ConsensusValidatorService {}
@@ -39,6 +41,7 @@ applyMixins(ConsensusService, [
   ConsensusBaseService,
   ConsensusBeaconService,
   ConsensusDebugService,
+  ConsensusEventsService,
   ConsensusNodeService,
   ConsensusConfigService,
   ConsensusValidatorService,
