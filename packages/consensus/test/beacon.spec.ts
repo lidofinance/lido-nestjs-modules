@@ -138,6 +138,13 @@ describe('Beacon endpoints', () => {
     );
   });
 
+  test('getBlockHeaders', async () => {
+    await consensusService.getBlockHeaders();
+
+    expect(mockFetch).toBeCalledTimes(1);
+    expect(mockFetch).toBeCalledWith('/eth/v1/beacon/headers', undefined);
+  });
+
   test('getBlockHeader', async () => {
     await consensusService.getBlockHeader({ blockId: '1' });
 
@@ -189,6 +196,16 @@ describe('Beacon endpoints', () => {
     expect(mockFetch).toBeCalledTimes(1);
     expect(mockFetch).toBeCalledWith(
       '/eth/v1/beacon/pool/attestations?slot=1&committee_index=2',
+      undefined,
+    );
+  });
+
+  test('getPoolAttestations', async () => {
+    await consensusService.getPoolAttestations();
+
+    expect(mockFetch).toBeCalledTimes(1);
+    expect(mockFetch).toBeCalledWith(
+      '/eth/v1/beacon/pool/attestations',
       undefined,
     );
   });

@@ -16,14 +16,14 @@ export class ConsensusNodeService extends ConsensusBaseService {
   ): ConsensusMethodResult<'getPeers'> {
     const { options, state, direction } = args || {};
     const search = this.getSearchString({ state, direction });
-    return await this.fetch(`/eth/v1/node/peers?${search}`, options);
+    return await this.fetch(`/eth/v1/node/peers${search}`, options);
   }
 
   /** Retrieves data about the given peer */
   public async getPeer(
     args: ConsensusMethodArgs<'getPeer'>,
   ): ConsensusMethodResult<'getPeer'> {
-    const { peerId, options } = args || {};
+    const { peerId, options } = args;
     return await this.fetch(`/eth/v1/node/peers/${peerId}`, options);
   }
 

@@ -43,6 +43,13 @@ describe('Node endpoints', () => {
     );
   });
 
+  test('getPeers', async () => {
+    await consensusService.getPeers();
+
+    expect(mockFetch).toBeCalledTimes(1);
+    expect(mockFetch).toBeCalledWith('/eth/v1/node/peers', undefined);
+  });
+
   test('getPeer', async () => {
     await consensusService.getPeer({ peerId: '1' });
 

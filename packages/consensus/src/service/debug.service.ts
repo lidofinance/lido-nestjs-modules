@@ -6,7 +6,7 @@ export class ConsensusDebugService extends ConsensusBaseService {
   public async getState(
     args: ConsensusMethodArgs<'getState'>,
   ): ConsensusMethodResult<'getState'> {
-    const { stateId, options } = args || {};
+    const { stateId, options } = args;
     return await this.fetch(`/eth/v1/debug/beacon/states/${stateId}`, options);
   }
 
@@ -14,7 +14,7 @@ export class ConsensusDebugService extends ConsensusBaseService {
   public async getStateV2(
     args: ConsensusMethodArgs<'getStateV2'>,
   ): ConsensusMethodResult<'getStateV2'> {
-    const { stateId, options } = args || {};
+    const { stateId, options } = args;
     return await this.fetch(`/eth/v2/debug/beacon/states/${stateId}`, options);
   }
 

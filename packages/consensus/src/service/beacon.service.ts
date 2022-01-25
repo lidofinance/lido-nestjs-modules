@@ -47,7 +47,7 @@ export class ConsensusBeaconService extends ConsensusBaseService {
     const { stateId, id, status, options } = args;
     const search = this.getSearchString({ id, status });
     return await this.fetch(
-      `/eth/v1/beacon/states/${stateId}/validators?${search}`,
+      `/eth/v1/beacon/states/${stateId}/validators${search}`,
       options,
     );
   }
@@ -70,7 +70,7 @@ export class ConsensusBeaconService extends ConsensusBaseService {
     const { stateId, id, options } = args;
     const search = this.getSearchString({ id });
     return await this.fetch(
-      `/eth/v1/beacon/states/${stateId}/validator_balances?${search}`,
+      `/eth/v1/beacon/states/${stateId}/validator_balances${search}`,
       options,
     );
   }
@@ -82,7 +82,7 @@ export class ConsensusBeaconService extends ConsensusBaseService {
     const { stateId, epoch, index, slot, options } = args;
     const search = this.getSearchString({ epoch, index, slot });
     return await this.fetch(
-      `/eth/v1/beacon/states/${stateId}/committees?${search}`,
+      `/eth/v1/beacon/states/${stateId}/committees${search}`,
       options,
     );
   }
@@ -94,7 +94,7 @@ export class ConsensusBeaconService extends ConsensusBaseService {
     const { stateId, epoch, options } = args;
     const search = this.getSearchString({ epoch });
     return await this.fetch(
-      `/eth/v1/beacon/states/${stateId}/sync_committees?${search}`,
+      `/eth/v1/beacon/states/${stateId}/sync_committees${search}`,
       options,
     );
   }
@@ -105,7 +105,7 @@ export class ConsensusBeaconService extends ConsensusBaseService {
   ): ConsensusMethodResult<'getBlockHeaders'> {
     const { options, slot, parentRoot } = args || {};
     const search = this.getSearchString({ slot, parentRoot });
-    return await this.fetch(`/eth/v1/beacon/headers?${search}`, options);
+    return await this.fetch(`/eth/v1/beacon/headers${search}`, options);
   }
 
   /** Retrieves block header for given block id. */
@@ -166,7 +166,7 @@ export class ConsensusBeaconService extends ConsensusBaseService {
     const { options, slot, committeeIndex } = args || {};
     const search = this.getSearchString({ slot, committeeIndex });
     return await this.fetch(
-      `/eth/v1/beacon/pool/attestations?${search}`,
+      `/eth/v1/beacon/pool/attestations${search}`,
       options,
     );
   }

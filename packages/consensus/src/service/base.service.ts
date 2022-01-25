@@ -1,7 +1,9 @@
 import snakeCase from 'lodash.snakecase';
 import { RequestInit } from 'node-fetch';
 import { FetchService } from '@lido-nestjs/fetch';
+import { Injectable } from '@nestjs/common';
 
+@Injectable()
 export class ConsensusBaseService {
   constructor(protected fetchService: FetchService) {}
 
@@ -17,6 +19,7 @@ export class ConsensusBaseService {
       if (value == null) return;
       searchParams.append(snakeCase(key), String(value));
     });
-    return searchParams.toString();
+    const searchString = searchParams.toString();
+    return searchString ? `?${searchString}` : '';
   }
 }

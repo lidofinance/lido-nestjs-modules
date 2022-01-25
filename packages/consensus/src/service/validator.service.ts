@@ -11,7 +11,7 @@ export class ConsensusValidatorService extends ConsensusBaseService {
   public async getProposerDuties(
     args: ConsensusMethodArgs<'getProposerDuties'>,
   ): ConsensusMethodResult<'getProposerDuties'> {
-    const { epoch, options } = args || {};
+    const { epoch, options } = args;
     return await this.fetch(
       `/eth/v1/validator/duties/proposer/${epoch}`,
       options,
@@ -27,22 +27,22 @@ export class ConsensusValidatorService extends ConsensusBaseService {
   public async produceBlock(
     args: ConsensusMethodArgs<'produceBlock'>,
   ): ConsensusMethodResult<'produceBlock'> {
-    const { slot, randaoReveal, graffiti, options } = args || {};
+    const { slot, randaoReveal, graffiti, options } = args;
     const search = this.getSearchString({ randaoReveal, graffiti });
     return await this.fetch(
-      `/eth/v1/validator/blocks/${slot}?${search}`,
+      `/eth/v1/validator/blocks/${slot}${search}`,
       options,
     );
   }
 
   /** Requests a beacon node to produce a valid block, which can then be signed by a validator. */
   public async produceBlockV2(
-    args?: ConsensusMethodArgs<'produceBlockV2'>,
+    args: ConsensusMethodArgs<'produceBlockV2'>,
   ): ConsensusMethodResult<'produceBlockV2'> {
-    const { slot, randaoReveal, graffiti, options } = args || {};
+    const { slot, randaoReveal, graffiti, options } = args;
     const search = this.getSearchString({ randaoReveal, graffiti });
     return await this.fetch(
-      `/eth/v2/validator/blocks/${slot}?${search}`,
+      `/eth/v2/validator/blocks/${slot}${search}`,
       options,
     );
   }
@@ -51,10 +51,10 @@ export class ConsensusValidatorService extends ConsensusBaseService {
   public async produceAttestationData(
     args: ConsensusMethodArgs<'produceAttestationData'>,
   ): ConsensusMethodResult<'produceAttestationData'> {
-    const { slot, committeeIndex, options } = args || {};
+    const { slot, committeeIndex, options } = args;
     const search = this.getSearchString({ slot, committeeIndex });
     return await this.fetch(
-      `/eth/v1/validator/attestation_data?${search}`,
+      `/eth/v1/validator/attestation_data${search}`,
       options,
     );
   }
@@ -63,10 +63,10 @@ export class ConsensusValidatorService extends ConsensusBaseService {
   public async getAggregatedAttestation(
     args: ConsensusMethodArgs<'getAggregatedAttestation'>,
   ): ConsensusMethodResult<'getAggregatedAttestation'> {
-    const { slot, attestationDataRoot, options } = args || {};
+    const { slot, attestationDataRoot, options } = args;
     const search = this.getSearchString({ slot, attestationDataRoot });
     return await this.fetch(
-      `/eth/v1/validator/aggregate_attestation?${search}`,
+      `/eth/v1/validator/aggregate_attestation${search}`,
       options,
     );
   }
@@ -91,16 +91,16 @@ export class ConsensusValidatorService extends ConsensusBaseService {
 
   /** Requests that the beacon node produce a sync committee contribution. */
   public async produceSyncCommitteeContribution(
-    args?: ConsensusMethodArgs<'produceSyncCommitteeContribution'>,
+    args: ConsensusMethodArgs<'produceSyncCommitteeContribution'>,
   ): ConsensusMethodResult<'produceSyncCommitteeContribution'> {
-    const { slot, subcommitteeIndex, beaconBlockRoot, options } = args || {};
+    const { slot, subcommitteeIndex, beaconBlockRoot, options } = args;
     const search = this.getSearchString({
       slot,
       subcommitteeIndex,
       beaconBlockRoot,
     });
     return await this.fetch(
-      `/eth/v1/validator/sync_committee_contribution?${search}`,
+      `/eth/v1/validator/sync_committee_contribution${search}`,
       options,
     );
   }
