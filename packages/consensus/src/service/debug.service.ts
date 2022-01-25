@@ -1,23 +1,28 @@
-import { ConsensusMethod } from '../interfaces';
+import { ConsensusMethodArgs, ConsensusMethodResult } from '../interfaces';
 import { ConsensusBaseService } from './base.service';
 
 export class ConsensusDebugService extends ConsensusBaseService {
   /** Returns full BeaconState object for given stateId. */
-  public getState: ConsensusMethod<'getState'> = async function (args) {
+  public async getState(
+    args?: ConsensusMethodArgs<'getState'>,
+  ): ConsensusMethodResult<'getState'> {
     const { stateId, options } = args || {};
     return await this.fetch(`/eth/v1/debug/beacon/states/${stateId}`, options);
-  };
+  }
 
   /** Returns full BeaconState object for given stateId. */
-  public getStateV2: ConsensusMethod<'getStateV2'> = async function (args) {
+  public async getStateV2(
+    args?: ConsensusMethodArgs<'getStateV2'>,
+  ): ConsensusMethodResult<'getStateV2'> {
     const { stateId, options } = args || {};
     return await this.fetch(`/eth/v2/debug/beacon/states/${stateId}`, options);
-  };
+  }
 
   /** Retrieves all possible chain heads (leaves of fork choice tree). */
-  public getDebugChainHeads: ConsensusMethod<'getDebugChainHeads'> =
-    async function (args) {
-      const { options } = args || {};
-      return await this.fetch(`/eth/v2/debug/beacon/heads`, options);
-    };
+  public async getDebugChainHeads(
+    args?: ConsensusMethodArgs<'getDebugChainHeads'>,
+  ): ConsensusMethodResult<'getDebugChainHeads'> {
+    const { options } = args || {};
+    return await this.fetch(`/eth/v2/debug/beacon/heads`, options);
+  }
 }

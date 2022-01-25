@@ -2155,18 +2155,20 @@ export interface operations {
         /** Either hex encoded public key (with 0x prefix) or validator index */
         id?: string[];
         /** [Validator status specification](https://hackmd.io/ofFJ5gOmQpu1jjHilHbdQQ) */
-        status?: ((
-          | 'pending_initialized'
-          | 'pending_queued'
-          | 'active_ongoing'
-          | 'active_exiting'
-          | 'active_slashed'
-          | 'exited_unslashed'
-          | 'exited_slashed'
-          | 'withdrawal_possible'
-          | 'withdrawal_done'
-        ) &
-          ('active' | 'pending' | 'exited' | 'withdrawal'))[];
+        status?: (
+          | (
+              | 'pending_initialized'
+              | 'pending_queued'
+              | 'active_ongoing'
+              | 'active_exiting'
+              | 'active_slashed'
+              | 'exited_unslashed'
+              | 'exited_slashed'
+              | 'withdrawal_possible'
+              | 'withdrawal_done'
+            )
+          | ('active' | 'pending' | 'exited' | 'withdrawal')
+        )[];
       };
     };
     responses: {

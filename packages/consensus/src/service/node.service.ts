@@ -1,50 +1,60 @@
-import { ConsensusMethod } from '../interfaces';
+import { ConsensusMethodArgs, ConsensusMethodResult } from '../interfaces';
 import { ConsensusBaseService } from './base.service';
 
 export class ConsensusNodeService extends ConsensusBaseService {
   /** Retrieves data about the node's network presence */
-  public getNetworkIdentity: ConsensusMethod<'getNetworkIdentity'> =
-    async function (args) {
-      const { options } = args || {};
-      return await this.fetch(`/eth/v1/node/identity`, options);
-    };
+  public async getNetworkIdentity(
+    args?: ConsensusMethodArgs<'getNetworkIdentity'>,
+  ): ConsensusMethodResult<'getNetworkIdentity'> {
+    const { options } = args || {};
+    return await this.fetch(`/eth/v1/node/identity`, options);
+  }
 
   /** Retrieves data about the node's network peers. By default this returns all peers. Multiple query params are combined using AND conditions */
-  public getPeers: ConsensusMethod<'getPeers'> = async function (args) {
+  public async getPeers(
+    args?: ConsensusMethodArgs<'getPeers'>,
+  ): ConsensusMethodResult<'getPeers'> {
     const { options } = args || {};
     return await this.fetch(`/eth/v1/node/peers`, options);
-  };
+  }
 
   /** Retrieves data about the given peer */
-  public getPeer: ConsensusMethod<'getPeer'> = async function (args) {
+  public async getPeer(
+    args?: ConsensusMethodArgs<'getPeer'>,
+  ): ConsensusMethodResult<'getPeer'> {
     const { peerId, options } = args || {};
     return await this.fetch(`/eth/v1/node/peers/${peerId}`, options);
-  };
+  }
 
   /** Retrieves number of known peers. */
-  public getPeerCount: ConsensusMethod<'getPeerCount'> = async function (args) {
+  public async getPeerCount(
+    args?: ConsensusMethodArgs<'getPeerCount'>,
+  ): ConsensusMethodResult<'getPeerCount'> {
     const { options } = args || {};
     return await this.fetch(`/eth/v1/node/peer_count`, options);
-  };
+  }
 
   /** Requests that the beacon node identify information about its implementation in a format similar to a [HTTP User-Agent](https://tools.ietf.org/html/rfc7231#section-5.5.3) field. */
-  public getNodeVersion: ConsensusMethod<'getNodeVersion'> = async function (
-    args,
-  ) {
+  public async getNodeVersion(
+    args?: ConsensusMethodArgs<'getNodeVersion'>,
+  ): ConsensusMethodResult<'getNodeVersion'> {
     const { options } = args || {};
     return await this.fetch(`/eth/v1/node/version`, options);
-  };
+  }
 
   /** Requests the beacon node to describe if it's currently syncing or not, and if it is, what block it is up to. */
-  public getSyncingStatus: ConsensusMethod<'getSyncingStatus'> =
-    async function (args) {
-      const { options } = args || {};
-      return await this.fetch(`/eth/v1/node/syncing`, options);
-    };
+  public async getSyncingStatus(
+    args?: ConsensusMethodArgs<'getSyncingStatus'>,
+  ): ConsensusMethodResult<'getSyncingStatus'> {
+    const { options } = args || {};
+    return await this.fetch(`/eth/v1/node/syncing`, options);
+  }
 
   /** Returns node health status in http status codes. Useful for load balancers. */
-  public getHealth: ConsensusMethod<'getHealth'> = async function (args) {
+  public async getHealth(
+    args?: ConsensusMethodArgs<'getHealth'>,
+  ): ConsensusMethodResult<'getHealth'> {
     const { options } = args || {};
     return await this.fetch(`/eth/v1/node/health`, options);
-  };
+  }
 }

@@ -1,8 +1,8 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/ban-types */
 
 import { RequestInit } from 'node-fetch';
 import { operations } from './generated.interface';
-import { ConsensusService } from '../service';
 
 type CamelCase<S extends string> =
   S extends `${infer P1}_${infer P2}${infer P3}`
@@ -10,8 +10,10 @@ type CamelCase<S extends string> =
     : Lowercase<S>;
 
 type KeysToCamelCase<T> = {
-  [K in keyof T as CamelCase<string & K>]: T[K] extends {}
-    ? KeysToCamelCase<T[K]>
+  [K in keyof T as CamelCase<string & K>]: T[K] extends Object
+    ? T[K] extends Array<any>
+      ? T[K]
+      : KeysToCamelCase<T[K]>
     : T[K];
 };
 
@@ -27,9 +29,10 @@ type ExtractResult<T> = T extends {
   ? R
   : unknown;
 
-export interface ConsensusMethod<T extends keyof operations> {
-  (
-    this: ConsensusService,
-    args?: ExtractArgs<operations[T]> & { options?: RequestInit },
-  ): Promise<ExtractResult<operations[T]>>;
-}
+export type ConsensusMethodArgs<T extends keyof operations> = ExtractArgs<
+  operations[T]
+> & { options?: RequestInit };
+
+export type ConsensusMethodResult<T extends keyof operations> = Promise<
+  ExtractResult<operations[T]>
+>;

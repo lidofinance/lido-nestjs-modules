@@ -1,4 +1,6 @@
 import { Injectable } from '@nestjs/common';
+import { FetchService } from '@lido-nestjs/fetch';
+import { ConsensusBaseService } from './base.service';
 import { ConsensusBeaconService } from './beacon.service';
 import { ConsensusDebugService } from './debug.service';
 import { ConsensusNodeService } from './node.service';
@@ -20,15 +22,20 @@ function applyMixins(derivedCtor: any, constructors: any[]) {
 }
 
 @Injectable()
-export class ConsensusService {}
+export class ConsensusService {
+  constructor(protected fetchService: FetchService) {}
+}
+
 export interface ConsensusService
-  extends ConsensusBeaconService,
+  extends ConsensusBaseService,
+    ConsensusBeaconService,
     ConsensusDebugService,
     ConsensusNodeService,
     ConsensusConfigService,
     ConsensusValidatorService {}
 
 applyMixins(ConsensusService, [
+  ConsensusBaseService,
   ConsensusBeaconService,
   ConsensusDebugService,
   ConsensusNodeService,
