@@ -1,52 +1,60 @@
 import { DynamicModule, Module } from '@nestjs/common';
 import { MiddlewareModule } from '@lido-nestjs/middleware';
-import {
-  FETCH_GLOBAL_URL_PREFIX_TOKEN,
-  FETCH_GLOBAL_RETRY_POLICY_TOKEN,
-} from './fetch.constants';
+import { FETCH_GLOBAL_OPTIONS_TOKEN } from './fetch.constants';
 import { FetchService } from './fetch.service';
-import { FetchModuleOptions } from './interfaces/fetch.interface';
+import {
+  FetchModuleOptions,
+  FetchModuleAsyncOptions,
+} from './interfaces/fetch.interface';
 
-const getFetchModuleProviders = (options?: FetchModuleOptions) => {
-  return [
-    FetchService,
-    {
-      provide: FETCH_GLOBAL_URL_PREFIX_TOKEN,
-      useValue: options?.baseUrls ?? null,
-    },
-    {
-      provide: FETCH_GLOBAL_RETRY_POLICY_TOKEN,
-      useValue: options?.retryPolicy ?? null,
-    },
-  ];
-};
-
-const getFetchModuleImports = (options?: FetchModuleOptions) => {
-  return [
-    MiddlewareModule.forFeature({
-      middlewares: options?.middlewares,
-    }),
-  ];
-};
-
-@Module({})
+@Module({
+  imports: [MiddlewareModule],
+  providers: [FetchService],
+  exports: [FetchService],
+})
 export class FetchModule {
   static forRoot(options?: FetchModuleOptions): DynamicModule {
     return {
-      module: FetchModule,
       global: true,
-      imports: getFetchModuleImports(options),
-      providers: getFetchModuleProviders(options),
-      exports: [FetchService],
+      ...this.forFeature(options),
+    };
+  }
+
+  public static forRootAsync(options: FetchModuleAsyncOptions) {
+    return {
+      global: true,
+      ...this.forFeatureAsync(options),
     };
   }
 
   static forFeature(options?: FetchModuleOptions): DynamicModule {
     return {
       module: FetchModule,
-      imports: getFetchModuleImports(options),
-      providers: getFetchModuleProviders(options),
-      exports: [FetchService],
+      providers: [this.createOptionsProvider(options)],
+    };
+  }
+
+  public static forFeatureAsync(options: FetchModuleAsyncOptions) {
+    return {
+      module: FetchModule,
+      imports: options.imports || [],
+      providers: [this.createAsyncOptionsProvider(options)],
+    };
+  }
+
+  private static createOptionsProvider(options?: FetchModuleOptions) {
+    return {
+      provide: FETCH_GLOBAL_OPTIONS_TOKEN,
+      useValue: options ?? null,
+    };
+  }
+
+  private static createAsyncOptionsProvider(options: FetchModuleAsyncOptions) {
+    return {
+      provide: FETCH_GLOBAL_OPTIONS_TOKEN,
+      useFactory: async (...args: unknown[]) =>
+        await options.useFactory(...args),
+      inject: options.inject,
     };
   }
 }

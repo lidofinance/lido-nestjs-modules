@@ -106,7 +106,7 @@ describe('Module initializing', () => {
   });
 
   describe('For feature async', () => {
-    test('Config service', async () => {
+    test('Test service', async () => {
       const moduleRef = await Test.createTestingModule({
         imports: [
           MiddlewareModule.forFeatureAsync({

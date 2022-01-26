@@ -1,1 +1,1 @@
-export const MIDDLEWARE_OPTIONS = Symbol('middlewareOptions');
+export const MIDDLEWARE_OPTIONS_TOKEN = Symbol('middlewareOptions');

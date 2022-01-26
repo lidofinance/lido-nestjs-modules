@@ -4,12 +4,12 @@ import {
   MiddlewareCallback,
   MiddlewareNext,
 } from './interfaces/middleware.interface';
-import { MIDDLEWARE_OPTIONS } from './middleware.constants';
+import { MIDDLEWARE_OPTIONS_TOKEN } from './middleware.constants';
 
 @Injectable({ scope: Scope.TRANSIENT })
 export class MiddlewareService<T> {
   constructor(
-    @Inject(MIDDLEWARE_OPTIONS)
+    @Inject(MIDDLEWARE_OPTIONS_TOKEN)
     private options: MiddlewareModuleOptions<T> | undefined,
   ) {
     this.options?.middlewares?.forEach((middleware) => {

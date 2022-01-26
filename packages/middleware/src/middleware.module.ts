@@ -3,11 +3,17 @@ import {
   MiddlewareModuleOptions,
   MiddlewareModuleAsyncOptions,
 } from './interfaces/middleware.interface';
-import { MIDDLEWARE_OPTIONS } from './middleware.constants';
+import { MIDDLEWARE_OPTIONS_TOKEN } from './middleware.constants';
 import { MiddlewareService } from './middleware.service';
 
 @Module({
-  providers: [MiddlewareService],
+  providers: [
+    MiddlewareService,
+    {
+      provide: MIDDLEWARE_OPTIONS_TOKEN,
+      useValue: null,
+    },
+  ],
   exports: [MiddlewareService],
 })
 export class MiddlewareModule {
@@ -15,10 +21,8 @@ export class MiddlewareModule {
     options?: MiddlewareModuleOptions<T>,
   ): DynamicModule {
     return {
-      module: MiddlewareModule,
       global: true,
-      providers: [MiddlewareService, this.createOptionsProvider(options)],
-      exports: [MiddlewareService],
+      ...this.forFeature(options),
     };
   }
 
@@ -26,11 +30,8 @@ export class MiddlewareModule {
     options: MiddlewareModuleAsyncOptions<T>,
   ) {
     return {
-      module: MiddlewareModule,
       global: true,
-      imports: options.imports,
-      providers: [MiddlewareService, this.createAsyncOptionsProvider(options)],
-      exports: [MiddlewareService],
+      ...this.forFeatureAsync(options),
     };
   }
 
@@ -39,8 +40,7 @@ export class MiddlewareModule {
   ): DynamicModule {
     return {
       module: MiddlewareModule,
-      providers: [MiddlewareService, this.createOptionsProvider(options)],
-      exports: [MiddlewareService],
+      providers: [this.createOptionsProvider(options)],
     };
   }
 
@@ -50,8 +50,7 @@ export class MiddlewareModule {
     return {
       module: MiddlewareModule,
       imports: options.imports,
-      providers: [MiddlewareService, this.createAsyncOptionsProvider(options)],
-      exports: [MiddlewareService],
+      providers: [this.createAsyncOptionsProvider(options)],
     };
   }
 
@@ -59,7 +58,7 @@ export class MiddlewareModule {
     options?: MiddlewareModuleOptions<T>,
   ) {
     return {
-      provide: MIDDLEWARE_OPTIONS,
+      provide: MIDDLEWARE_OPTIONS_TOKEN,
       useValue: options ?? null,
     };
   }
@@ -68,7 +67,7 @@ export class MiddlewareModule {
     options: MiddlewareModuleAsyncOptions<T>,
   ) {
     return {
-      provide: MIDDLEWARE_OPTIONS,
+      provide: MIDDLEWARE_OPTIONS_TOKEN,
       useFactory: async (...args: unknown[]) =>
         await options.useFactory(...args),
       inject: options.inject,
