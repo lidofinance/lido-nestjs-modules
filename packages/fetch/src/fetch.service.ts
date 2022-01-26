@@ -1,5 +1,6 @@
 import fetch, { Response } from 'node-fetch';
 import { HttpException, Inject, Injectable } from '@nestjs/common';
+import { MiddlewareService } from '@lido-nestjs/middleware';
 import {
   FETCH_GLOBAL_URL_PREFIX_TOKEN,
   FETCH_GLOBAL_RETRY_POLICY_TOKEN,
@@ -7,7 +8,11 @@ import {
   FETCH_GLOBAL_RETRY_DEFAULT_BASE_URLS,
   FETCH_GLOBAL_RETRY_DEFAULT_DELAY,
 } from './fetch.constants';
-import { RequestInfo, RequestInit, RequestRetryPolicy } from './interfaces';
+import {
+  RequestInfo,
+  RequestInit,
+  RequestRetryPolicy,
+} from './interfaces/fetch.interface';
 
 @Injectable()
 export class FetchService {
@@ -17,10 +22,12 @@ export class FetchService {
 
     @Inject(FETCH_GLOBAL_RETRY_POLICY_TOKEN)
     private retryPolicy: RequestRetryPolicy | null,
+
+    private middlewareService: MiddlewareService<Promise<Response>>,
   ) {}
 
   public async fetchJson<T>(url: RequestInfo, init?: RequestInit): Promise<T> {
-    const response = await this.request(url, init);
+    const response = await this.wrappedRequest(url, init);
     return await response.json();
   }
 
@@ -28,8 +35,15 @@ export class FetchService {
     url: RequestInfo,
     init?: RequestInit,
   ): Promise<string> {
-    const response = await this.request(url, init);
+    const response = await this.wrappedRequest(url, init);
     return await response.text();
+  }
+
+  protected async wrappedRequest(
+    url: RequestInfo,
+    init?: RequestInit,
+  ): Promise<Response> {
+    return await this.middlewareService.go(() => this.request(url, init));
   }
 
   protected async request(
