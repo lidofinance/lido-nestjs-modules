@@ -49,3 +49,52 @@ export class MyService {
   }
 }
 ```
+
+### Async usage
+
+```ts
+// Import
+import { Module } from '@nestjs/common';
+import { LoggerModule } from '@lido-nestjs/logger';
+import { MiddlewareModule } from '@lido-nestjs/middleware';
+import { MyService } from './my.service';
+
+@Module({
+  imports: [
+    LoggerModule,
+    MiddlewareModule.forFeatureAsync({
+      imports: [LoggerModule],
+      async useFactory(loggerService: LoggerService) {
+        return {
+          middlewares: [
+            (next) => {
+              loggerService.log(1);
+              next();
+            },
+          ],
+        };
+      },
+      inject: [LoggerService],
+    }),
+  ],
+  providers: [MyService],
+  exports: [MyService],
+})
+export class MyModule {}
+
+// Usage
+import { MiddlewareService } from '@lido-nestjs/middleware';
+
+export class MyService {
+  constructor(
+    private middlewareService: MiddlewareService,
+    private loggerService: LoggerService,
+  ) {}
+
+  async myMethod() {
+    return await this.middlewareService.go(() => {
+      loggerService.log(2);
+    });
+  }
+}
+```

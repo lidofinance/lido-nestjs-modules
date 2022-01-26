@@ -1,1 +1,1 @@
-export const MIDDLEWARE_INITIAL = 'middlewareInitial';
+export const MIDDLEWARE_OPTIONS = Symbol('middlewareOptions');
