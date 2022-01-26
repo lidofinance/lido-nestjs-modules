@@ -6,6 +6,7 @@ NestJS modules for Lido Finance projects.
 
 - [@lido-nestjs/logger](/packages/logger/README.md)
 - [@lido-nestjs/fetch](/packages/fetch/README.md)
+- [@lido-nestjs/consensus](/packages/consensus/README.md)
 
 ## Install
 
