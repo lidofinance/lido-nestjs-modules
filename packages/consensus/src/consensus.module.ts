@@ -5,8 +5,8 @@ import { ConsensusModuleOptions } from './interfaces';
 import { ConsensusService } from './service';
 
 const getConsensusModuleImports = (options?: ConsensusModuleOptions) => {
-  const { baseUrls, retryPolicy } = options || {};
-  return [FetchModule.forFeature({ baseUrls, retryPolicy })];
+  const { baseUrls, retryPolicy, middlewares } = options || {};
+  return [FetchModule.forFeature({ baseUrls, retryPolicy, middlewares })];
 };
 
 @Module({})
