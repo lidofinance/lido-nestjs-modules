@@ -1,4 +1,6 @@
+export * from './consensus.constants';
 export * from './consensus.module';
-export * from './service';
+export * from './service/consensus.service';
 
-export * from './interfaces';
+export * from './interfaces/consensus.interface';
+export * from './interfaces/module.interface';

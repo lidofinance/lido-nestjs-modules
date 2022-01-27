@@ -1,17 +1,18 @@
 import { Inject, Injectable, Scope } from '@nestjs/common';
 import {
+  MiddlewareModuleOptions,
   MiddlewareCallback,
   MiddlewareNext,
 } from './interfaces/middleware.interface';
-import { MIDDLEWARE_INITIAL } from './middleware.constants';
+import { MIDDLEWARE_OPTIONS_TOKEN } from './middleware.constants';
 
 @Injectable({ scope: Scope.TRANSIENT })
 export class MiddlewareService<T> {
   constructor(
-    @Inject(MIDDLEWARE_INITIAL)
-    private initial: MiddlewareCallback<T>[] | undefined,
+    @Inject(MIDDLEWARE_OPTIONS_TOKEN)
+    private options: MiddlewareModuleOptions<T> | undefined,
   ) {
-    this.initial?.forEach((middleware) => {
+    this.options?.middlewares?.forEach((middleware) => {
       this.use(middleware);
     });
   }
