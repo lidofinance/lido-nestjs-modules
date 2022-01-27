@@ -59,5 +59,11 @@ describe('Base service', () => {
         '?foo=1%2C2',
       );
     });
+
+    test('Snake case', async () => {
+      expect(baseService.getSearchString({ fooBar: 'baz' })).toBe(
+        '?foo_bar=baz',
+      );
+    });
   });
 });
