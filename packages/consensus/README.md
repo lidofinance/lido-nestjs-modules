@@ -19,14 +19,17 @@ The types used in the API methods are based on [Eth2Spec](https://ethereum.githu
 
 ## Usage
 
+This module depends on `FetchModule` from `@lido-nestjs/fetch`, so you need to provide it as a global module or import it into `ConsensusModule`.
+
 ```ts
 // Import
 import { Module } from '@nestjs/common';
 import { ConsensusModule } from '@lido-nestjs/consensus';
+import { FetchModule } from '@lido-nestjs/fetch';
 import { MyService } from './my.service';
 
 @Module({
-  imports: [ConsensusModule.forFeature()],
+  imports: [ConsensusModule.forFeature({ imports: [FetchModule] })],
   providers: [MyService],
   exports: [MyService],
 })
@@ -44,14 +47,38 @@ export class MyService {
 }
 ```
 
-### Global module
+### Global usage
 
 ```ts
 import { Module } from '@nestjs/common';
 import { ConsensusModule } from '@lido-nestjs/consensus';
+import { FetchModule } from '@lido-nestjs/fetch';
 
 @Module({
-  imports: [ConsensusModule.forRoot()],
+  imports: [FetchModule.forRoot(), ConsensusModule.forRoot()],
+})
+export class MyModule {}
+```
+
+### Async usage
+
+```ts
+import { Module } from '@nestjs/common';
+import { ConsensusModule } from '@lido-nestjs/consensus';
+import { FetchModule } from '@lido-nestjs/fetch';
+import { ConfigModule, ConfigService } from './my.service';
+
+@Module({
+  imports: [
+    ConfigModule.forRoot(),
+    FetchModule.forRoot(),
+    ConsensusModule.forRootAsync({
+      async useFactory(configService: ConfigService) {
+        return { poolInterval: configService.poolInterval };
+      },
+      inject: [ConfigService],
+    }),
+  ],
 })
 export class MyModule {}
 ```
