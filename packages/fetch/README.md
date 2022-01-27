@@ -42,7 +42,7 @@ export class MyService {
 
 The `fetchService` provides 2 methods: `fetchJson` and `fetchText`, which are based on a call to the `fetch` function followed by a call to `.json()` or `.text()`. Method arguments are compatible with the `fetch`.
 
-### Global module
+### Global usage
 
 ```ts
 import { Module } from '@nestjs/common';
@@ -50,6 +50,27 @@ import { FetchModule } from '@lido-nestjs/fetch';
 
 @Module({
   imports: [FetchModule.forRoot()],
+})
+export class MyModule {}
+```
+
+### Async usage
+
+```ts
+import { Module } from '@nestjs/common';
+import { FetchModule } from '@lido-nestjs/fetch';
+import { ConfigModule, ConfigService } from './my.service';
+
+@Module({
+  imports: [
+    ConfigModule,
+    FetchModule.forRootAsync({
+      async useFactory(configService: ConfigService) {
+        return { baseUrls: configService.baseUrls };
+      },
+      inject: [ConfigService],
+    }),
+  ],
 })
 export class MyModule {}
 ```

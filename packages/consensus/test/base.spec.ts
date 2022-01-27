@@ -1,8 +1,7 @@
-jest.mock('node-fetch');
-
 import { Test } from '@nestjs/testing';
 import { FetchModule, FetchService } from '@lido-nestjs/fetch';
 import { ConsensusBaseService } from '../src/service/base.service';
+import { CONSENSUS_OPTIONS_TOKEN } from '../src';
 
 describe('Base service', () => {
   let baseService: ConsensusBaseService;
@@ -15,7 +14,13 @@ describe('Base service', () => {
   beforeEach(async () => {
     const moduleRef = await Test.createTestingModule({
       imports: [FetchModule.forRoot()],
-      providers: [ConsensusBaseService],
+      providers: [
+        ConsensusBaseService,
+        {
+          provide: CONSENSUS_OPTIONS_TOKEN,
+          useValue: null,
+        },
+      ],
     }).compile();
     baseService = moduleRef.get(ConsensusBaseService);
     fetchService = moduleRef.get(FetchService);
@@ -57,6 +62,12 @@ describe('Base service', () => {
     test('Array', async () => {
       expect(baseService.getSearchString({ foo: ['1', '2'] })).toBe(
         '?foo=1%2C2',
+      );
+    });
+
+    test('Snake case', async () => {
+      expect(baseService.getSearchString({ fooBar: 'baz' })).toBe(
+        '?foo_bar=baz',
       );
     });
   });

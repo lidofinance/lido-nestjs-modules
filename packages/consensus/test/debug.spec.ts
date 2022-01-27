@@ -1,7 +1,5 @@
-jest.mock('node-fetch');
-
 import { Test } from '@nestjs/testing';
-import { FetchService } from '@lido-nestjs/fetch';
+import { FetchModule, FetchService } from '@lido-nestjs/fetch';
 import { ConsensusModule, ConsensusService } from '../src';
 
 describe('Debug endpoints', () => {
@@ -13,7 +11,9 @@ describe('Debug endpoints', () => {
   >;
 
   beforeEach(async () => {
-    const module = { imports: [ConsensusModule.forFeature()] };
+    const module = {
+      imports: [ConsensusModule.forFeature({ imports: [FetchModule] })],
+    };
     const moduleRef = await Test.createTestingModule(module).compile();
     consensusService = moduleRef.get(ConsensusService);
     fetchService = moduleRef.get(FetchService);
