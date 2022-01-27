@@ -1,5 +1,4 @@
 import { DynamicModule, Module } from '@nestjs/common';
-import { FetchModule } from '@lido-nestjs/fetch';
 import {
   ConsensusModuleSyncOptions,
   ConsensusModuleAsyncOptions,
@@ -8,9 +7,7 @@ import { ConsensusService } from './service/consensus.service';
 import { CONSENSUS_OPTIONS_TOKEN } from './consensus.constants';
 
 @Module({
-  imports: FetchModule.defaultImports,
   providers: [
-    ...FetchModule.defaultProviders,
     ConsensusService,
     {
       provide: CONSENSUS_OPTIONS_TOKEN,

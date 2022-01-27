@@ -1,5 +1,3 @@
-jest.mock('node-fetch');
-
 import { Test } from '@nestjs/testing';
 import { FetchModule, FetchService } from '@lido-nestjs/fetch';
 import { ConsensusBaseService } from '../src/service/base.service';

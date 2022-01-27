@@ -44,6 +44,8 @@ describe('Sync module initializing', () => {
       ConsensusModule.forRoot(options),
       FetchModule.forRoot(),
     ]);
+
+    await testModules([ConsensusModule.forRoot(), FetchModule.forRoot()]);
   });
 
   test('forFeature', async () => {
@@ -65,6 +67,8 @@ describe('Sync module initializing', () => {
       ConsensusModule.forFeature(options),
       FetchModule.forRoot(),
     ]);
+
+    await testModules([ConsensusModule.forFeature(), FetchModule.forRoot()]);
   });
 
   test('Module', async () => {
