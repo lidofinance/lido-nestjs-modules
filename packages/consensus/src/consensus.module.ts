@@ -1,32 +1,65 @@
 import { DynamicModule, Module } from '@nestjs/common';
 import { FetchModule } from '@lido-nestjs/fetch';
+import {
+  ConsensusModuleSyncOptions,
+  ConsensusModuleAsyncOptions,
+} from './interfaces/module.interface';
+import { ConsensusService } from './service/consensus.service';
+import { CONSENSUS_OPTIONS_TOKEN } from './consensus.constants';
 
-import { ConsensusModuleOptions } from './interfaces';
-import { ConsensusService } from './service';
-
-const getConsensusModuleImports = (options?: ConsensusModuleOptions) => {
-  const { baseUrls, retryPolicy, middlewares } = options || {};
-  return [FetchModule.forFeature({ baseUrls, retryPolicy, middlewares })];
-};
-
-@Module({})
+@Module({
+  imports: FetchModule.defaultImports,
+  providers: [
+    ...FetchModule.defaultProviders,
+    ConsensusService,
+    {
+      provide: CONSENSUS_OPTIONS_TOKEN,
+      useValue: null,
+    },
+  ],
+  exports: [ConsensusService],
+})
 export class ConsensusModule {
-  static forRoot(options?: ConsensusModuleOptions): DynamicModule {
+  static forRoot(options?: ConsensusModuleSyncOptions): DynamicModule {
     return {
       global: true,
-      module: ConsensusModule,
-      imports: getConsensusModuleImports(options),
-      providers: [ConsensusService],
-      exports: [ConsensusService],
+      ...this.forFeature(options),
     };
   }
 
-  static forFeature(options?: ConsensusModuleOptions): DynamicModule {
+  static forRootAsync(options: ConsensusModuleAsyncOptions): DynamicModule {
+    return {
+      global: true,
+      ...this.forFeatureAsync(options),
+    };
+  }
+
+  static forFeature(options?: ConsensusModuleSyncOptions): DynamicModule {
+    const { imports, ...serviceOptions } = options || {};
+
     return {
       module: ConsensusModule,
-      imports: getConsensusModuleImports(options),
-      providers: [ConsensusService],
-      exports: [ConsensusService],
+      imports,
+      providers: [
+        {
+          provide: CONSENSUS_OPTIONS_TOKEN,
+          useValue: serviceOptions,
+        },
+      ],
+    };
+  }
+
+  public static forFeatureAsync(options: ConsensusModuleAsyncOptions) {
+    return {
+      module: ConsensusModule,
+      imports: options.imports,
+      providers: [
+        {
+          provide: CONSENSUS_OPTIONS_TOKEN,
+          useFactory: options.useFactory,
+          inject: options.inject,
+        },
+      ],
     };
   }
 }

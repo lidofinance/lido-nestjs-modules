@@ -1,11 +1,18 @@
 import snakeCase from 'lodash.snakecase';
 import { RequestInit } from 'node-fetch';
 import { FetchService } from '@lido-nestjs/fetch';
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
+import { CONSENSUS_OPTIONS_TOKEN } from '../consensus.constants';
+import { ConsensusModuleOptions } from '../interfaces/module.interface';
 
 @Injectable()
 export class ConsensusBaseService {
-  constructor(protected fetchService: FetchService) {}
+  constructor(
+    @Inject(CONSENSUS_OPTIONS_TOKEN)
+    public options: ConsensusModuleOptions | null,
+
+    protected fetchService: FetchService,
+  ) {}
 
   public async fetch<T>(path: string, init?: RequestInit): Promise<T> {
     return await this.fetchService.fetchJson(path, init);

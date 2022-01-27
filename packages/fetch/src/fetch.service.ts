@@ -17,7 +17,7 @@ import {
 export class FetchService {
   constructor(
     @Inject(FETCH_GLOBAL_OPTIONS_TOKEN)
-    private options: FetchModuleOptions | null,
+    public options: FetchModuleOptions | null,
 
     private middlewareService: MiddlewareService<Promise<Response>>,
   ) {

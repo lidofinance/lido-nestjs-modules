@@ -9,7 +9,13 @@ import {
 
 @Module({
   imports: [MiddlewareModule],
-  providers: [FetchService],
+  providers: [
+    FetchService,
+    {
+      provide: FETCH_GLOBAL_OPTIONS_TOKEN,
+      useValue: null,
+    },
+  ],
   exports: [FetchService],
 })
 export class FetchModule {
@@ -30,31 +36,34 @@ export class FetchModule {
   static forFeature(options?: FetchModuleOptions): DynamicModule {
     return {
       module: FetchModule,
-      providers: [this.createOptionsProvider(options)],
+      providers: [
+        {
+          provide: FETCH_GLOBAL_OPTIONS_TOKEN,
+          useValue: options ?? null,
+        },
+      ],
     };
   }
 
   public static forFeatureAsync(options: FetchModuleAsyncOptions) {
     return {
       module: FetchModule,
-      imports: options.imports || [],
-      providers: [this.createAsyncOptionsProvider(options)],
+      imports: options.imports,
+      providers: [
+        {
+          provide: FETCH_GLOBAL_OPTIONS_TOKEN,
+          useFactory: options.useFactory,
+          inject: options.inject,
+        },
+      ],
     };
   }
 
-  private static createOptionsProvider(options?: FetchModuleOptions) {
-    return {
-      provide: FETCH_GLOBAL_OPTIONS_TOKEN,
-      useValue: options ?? null,
-    };
+  public static get defaultProviders() {
+    return Reflect.getMetadata('providers', this);
   }
 
-  private static createAsyncOptionsProvider(options: FetchModuleAsyncOptions) {
-    return {
-      provide: FETCH_GLOBAL_OPTIONS_TOKEN,
-      useFactory: async (...args: unknown[]) =>
-        await options.useFactory(...args),
-      inject: options.inject,
-    };
+  public static get defaultImports() {
+    return Reflect.getMetadata('imports', this);
   }
 }

@@ -40,7 +40,12 @@ export class MiddlewareModule {
   ): DynamicModule {
     return {
       module: MiddlewareModule,
-      providers: [this.createOptionsProvider(options)],
+      providers: [
+        {
+          provide: MIDDLEWARE_OPTIONS_TOKEN,
+          useValue: options ?? null,
+        },
+      ],
     };
   }
 
@@ -50,27 +55,13 @@ export class MiddlewareModule {
     return {
       module: MiddlewareModule,
       imports: options.imports,
-      providers: [this.createAsyncOptionsProvider(options)],
-    };
-  }
-
-  private static createOptionsProvider<T = unknown>(
-    options?: MiddlewareModuleOptions<T>,
-  ) {
-    return {
-      provide: MIDDLEWARE_OPTIONS_TOKEN,
-      useValue: options ?? null,
-    };
-  }
-
-  private static createAsyncOptionsProvider<T = unknown>(
-    options: MiddlewareModuleAsyncOptions<T>,
-  ) {
-    return {
-      provide: MIDDLEWARE_OPTIONS_TOKEN,
-      useFactory: async (...args: unknown[]) =>
-        await options.useFactory(...args),
-      inject: options.inject,
+      providers: [
+        {
+          provide: MIDDLEWARE_OPTIONS_TOKEN,
+          useFactory: options.useFactory,
+          inject: options.inject,
+        },
+      ],
     };
   }
 }

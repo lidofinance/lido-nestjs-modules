@@ -104,14 +104,14 @@ describe('Retries', () => {
 
   describe('Delay', () => {
     const executionTime = async (callback: () => void) => {
-      const startTime = Date.now();
+      const startTime = performance.now();
       try {
         await callback();
       } catch (error) {
         //
       }
-      const endTime = Date.now();
-      return endTime - startTime;
+      const endTime = performance.now();
+      return Math.ceil(endTime - startTime);
     };
 
     beforeEach(async () => {

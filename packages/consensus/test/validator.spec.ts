@@ -13,7 +13,9 @@ describe('Validator endpoints', () => {
   >;
 
   beforeEach(async () => {
-    const module = { imports: [ConsensusModule.forFeature()] };
+    const module = {
+      imports: [ConsensusModule.forFeature()],
+    };
     const moduleRef = await Test.createTestingModule(module).compile();
     consensusService = moduleRef.get(ConsensusService);
     fetchService = moduleRef.get(FetchService);
