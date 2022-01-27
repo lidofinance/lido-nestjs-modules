@@ -58,12 +58,4 @@ export class FetchModule {
       ],
     };
   }
-
-  public static get defaultProviders() {
-    return Reflect.getMetadata('providers', this);
-  }
-
-  public static get defaultImports() {
-    return Reflect.getMetadata('imports', this);
-  }
 }
