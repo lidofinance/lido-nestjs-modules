@@ -7,13 +7,7 @@ import { ConsensusService } from './service/consensus.service';
 import { CONSENSUS_OPTIONS_TOKEN } from './consensus.constants';
 
 @Module({
-  providers: [
-    ConsensusService,
-    {
-      provide: CONSENSUS_OPTIONS_TOKEN,
-      useValue: null,
-    },
-  ],
+  providers: [ConsensusService],
   exports: [ConsensusService],
 })
 export class ConsensusModule {
@@ -46,7 +40,9 @@ export class ConsensusModule {
     };
   }
 
-  public static forFeatureAsync(options: ConsensusModuleAsyncOptions) {
+  public static forFeatureAsync(
+    options: ConsensusModuleAsyncOptions,
+  ): DynamicModule {
     return {
       module: ConsensusModule,
       imports: options.imports,

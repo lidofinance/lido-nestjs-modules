@@ -7,13 +7,7 @@ import { MIDDLEWARE_OPTIONS_TOKEN } from './middleware.constants';
 import { MiddlewareService } from './middleware.service';
 
 @Module({
-  providers: [
-    MiddlewareService,
-    {
-      provide: MIDDLEWARE_OPTIONS_TOKEN,
-      useValue: null,
-    },
-  ],
+  providers: [MiddlewareService],
   exports: [MiddlewareService],
 })
 export class MiddlewareModule {
@@ -28,7 +22,7 @@ export class MiddlewareModule {
 
   public static forRootAsync<T = unknown>(
     options: MiddlewareModuleAsyncOptions<T>,
-  ) {
+  ): DynamicModule {
     return {
       global: true,
       ...this.forFeatureAsync(options),
@@ -51,7 +45,7 @@ export class MiddlewareModule {
 
   public static forFeatureAsync<T = unknown>(
     options: MiddlewareModuleAsyncOptions<T>,
-  ) {
+  ): DynamicModule {
     return {
       module: MiddlewareModule,
       imports: options.imports,

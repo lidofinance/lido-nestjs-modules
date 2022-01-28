@@ -1,4 +1,4 @@
-import { Inject, Injectable, Scope } from '@nestjs/common';
+import { Inject, Injectable, Optional, Scope } from '@nestjs/common';
 import {
   MiddlewareModuleOptions,
   MiddlewareCallback,
@@ -9,6 +9,7 @@ import { MIDDLEWARE_OPTIONS_TOKEN } from './middleware.constants';
 @Injectable({ scope: Scope.TRANSIENT })
 export class MiddlewareService<T> {
   constructor(
+    @Optional()
     @Inject(MIDDLEWARE_OPTIONS_TOKEN)
     private options: MiddlewareModuleOptions<T> | undefined,
   ) {

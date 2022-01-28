@@ -9,13 +9,7 @@ import {
 
 @Module({
   imports: [MiddlewareModule],
-  providers: [
-    FetchService,
-    {
-      provide: FETCH_GLOBAL_OPTIONS_TOKEN,
-      useValue: null,
-    },
-  ],
+  providers: [FetchService],
   exports: [FetchService],
 })
 export class FetchModule {
@@ -26,7 +20,7 @@ export class FetchModule {
     };
   }
 
-  public static forRootAsync(options: FetchModuleAsyncOptions) {
+  public static forRootAsync(options: FetchModuleAsyncOptions): DynamicModule {
     return {
       global: true,
       ...this.forFeatureAsync(options),
@@ -39,13 +33,15 @@ export class FetchModule {
       providers: [
         {
           provide: FETCH_GLOBAL_OPTIONS_TOKEN,
-          useValue: options ?? null,
+          useValue: options,
         },
       ],
     };
   }
 
-  public static forFeatureAsync(options: FetchModuleAsyncOptions) {
+  public static forFeatureAsync(
+    options: FetchModuleAsyncOptions,
+  ): DynamicModule {
     return {
       module: FetchModule,
       imports: options.imports,
