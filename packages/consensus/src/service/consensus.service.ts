@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, Optional } from '@nestjs/common';
 import { FetchService } from '@lido-nestjs/fetch';
 import { ConsensusBaseService } from './base.service';
 import { ConsensusBeaconService } from './beacon.service';
@@ -28,6 +28,7 @@ function applyMixins(derivedCtor: any, constructors: any[]) {
 @Injectable()
 export class ConsensusService {
   constructor(
+    @Optional()
     @Inject(CONSENSUS_OPTIONS_TOKEN)
     public options: ConsensusModuleOptions,
 

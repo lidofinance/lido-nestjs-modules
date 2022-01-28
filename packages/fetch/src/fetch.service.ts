@@ -1,5 +1,5 @@
 import fetch, { Response } from 'node-fetch';
-import { HttpException, Inject, Injectable } from '@nestjs/common';
+import { HttpException, Inject, Injectable, Optional } from '@nestjs/common';
 import { MiddlewareService } from '@lido-nestjs/middleware';
 import {
   FETCH_GLOBAL_OPTIONS_TOKEN,
@@ -16,6 +16,7 @@ import {
 @Injectable()
 export class FetchService {
   constructor(
+    @Optional()
     @Inject(FETCH_GLOBAL_OPTIONS_TOKEN)
     public options: FetchModuleOptions | null,
 

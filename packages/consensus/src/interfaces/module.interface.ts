@@ -2,7 +2,7 @@
 import { ModuleMetadata } from '@nestjs/common';
 
 export interface ConsensusModuleOptions {
-  poolInterval?: number;
+  pollingInterval?: number;
 }
 
 export interface ConsensusModuleSyncOptions

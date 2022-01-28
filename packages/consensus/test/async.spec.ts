@@ -42,13 +42,13 @@ describe('Async module initializing', () => {
     const consensusService = await moduleRef.resolve(ConsensusService);
     const testService = await moduleRef.resolve(TestService);
 
-    expect(consensusService.options.poolInterval).toBeDefined();
-    expect(consensusService.options.poolInterval).toBe(testService.interval);
+    expect(consensusService.options.pollingInterval).toBeDefined();
+    expect(consensusService.options.pollingInterval).toBe(testService.interval);
   };
 
   const factory = {
     async useFactory(testService: TestService) {
-      return { poolInterval: testService.interval };
+      return { pollingInterval: testService.interval };
     },
     inject: [TestService],
   };

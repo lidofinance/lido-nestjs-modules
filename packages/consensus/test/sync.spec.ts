@@ -4,7 +4,7 @@ import { ConsensusModule, ConsensusService } from '../src';
 import { ModuleMetadata } from '@nestjs/common';
 
 describe('Sync module initializing', () => {
-  const options = { poolInterval: 123 };
+  const options = { pollingInterval: 123 };
 
   const testModules = async (imports: ModuleMetadata['imports']) => {
     const moduleRef = await Test.createTestingModule({ imports }).compile();

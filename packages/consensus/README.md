@@ -74,7 +74,7 @@ import { ConfigModule, ConfigService } from './my.service';
     FetchModule.forRoot(),
     ConsensusModule.forRootAsync({
       async useFactory(configService: ConfigService) {
-        return { poolInterval: configService.poolInterval };
+        return { pollingInterval: configService.pollingInterval };
       },
       inject: [ConfigService],
     }),
@@ -98,6 +98,39 @@ export class MyService {
     return await this.consensusService.getGenesis({
       options: { headers: { 'x-header-foo': 'bar' } },
     });
+  }
+}
+```
+
+### Subscription
+
+Subscribe to head blocks:
+
+```ts
+import { ConsensusService } from '@lido-nestjs/consensus';
+
+export class MyService {
+  constructor(private consensusService: ConsensusService) {
+    this.consensusService.subscribe((error, data) => {
+      console.log(error, data);
+    });
+  }
+}
+```
+
+Subscribe to finalized blocks:
+
+```ts
+import { ConsensusService } from '@lido-nestjs/consensus';
+
+export class MyService {
+  constructor(private consensusService: ConsensusService) {
+    this.consensusService.subscribe(
+      (error, data) => {
+        console.log(error, data);
+      },
+      { blockId: 'finalized' },
+    );
   }
 }
 ```
