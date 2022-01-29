@@ -1,5 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
+import { ConnectionInfo } from '@ethersproject/web';
+
 interface JsonRpcRequest {
   jsonrpc: '2.0';
   method: string;
@@ -54,3 +56,11 @@ export function fakeJsonRpc(request: JsonRpcRequest): JsonRpcResponse {
       return { jsonrpc: '2.0', id: request.id, result: {} };
   }
 }
+
+export const fakeFetchImpl = async (
+  connection: string | ConnectionInfo,
+  json?: string,
+): Promise<unknown> => {
+  const requests = json ? JSON.parse(json) : {};
+  return requests.map(fakeJsonRpc);
+};

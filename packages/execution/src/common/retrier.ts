@@ -2,14 +2,14 @@ import { LoggerService } from '@nestjs/common/services/logger.service';
 import { sleep } from './sleep';
 
 export const retrier = (
-  logger: LoggerService,
+  logger?: LoggerService,
   defaultMaxRetryCount = 3,
   defaultMinBackoffMs = 1000,
   defaultMaxBackoffMs = 60000,
   defaultLogWarning = false,
 ) => {
   return async <T extends unknown>(
-    callback: () => Promise<T>,
+    callback: () => Promise<T> | T,
     maxRetryCount?: number,
     minBackoffMs?: number,
     maxBackoffMs?: number,
@@ -22,7 +22,7 @@ export const retrier = (
     try {
       return await callback();
     } catch (err) {
-      if (logWarning) {
+      if (logger && logWarning) {
         logger.warn(
           err,
           'Retrying after (%dms). Remaining retries [%d]',
