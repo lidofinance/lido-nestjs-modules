@@ -21,7 +21,7 @@ export default function pLimit(concurrency: number): LimitFunction {
       concurrency > 0
     )
   ) {
-    throw new TypeError('Expected `concurrency` to be a number from 1 and up');
+    throw new TypeError('Expected `concurrency` to be positive integer');
   }
 
   const queue = new Queue<Function>();

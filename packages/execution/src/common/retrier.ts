@@ -2,7 +2,7 @@ import { LoggerService } from '@nestjs/common/services/logger.service';
 import { sleep } from './sleep';
 
 export const retrier = (
-  logger?: LoggerService,
+  logger?: LoggerService | null,
   defaultMaxRetryCount = 3,
   defaultMinBackoffMs = 1000,
   defaultMaxBackoffMs = 60000,

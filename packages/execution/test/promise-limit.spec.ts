@@ -1,24 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-empty-function */
 import pLimit from '../src/common/promise-limit';
-
-const timeMeasurer = () => {
-  const start = process.hrtime.bigint();
-  return () => {
-    const ns = process.hrtime.bigint() - start;
-    return {
-      ns,
-      ms: Number(ns) / 1000000,
-      sec: Number(ns) / 1000000000,
-    };
-  };
-};
-
-const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-
-const randomInt = (min: number, max: number) =>
-  Math.floor(Math.random() * (Math.floor(max) - Math.ceil(min) + 1)) +
-  Math.ceil(min);
+import { randomInt, sleep, timeMeasurer } from './utils';
 
 type ValueDelayTuple = [number, number];
 
@@ -66,14 +49,16 @@ describe('Promise limit. ', () => {
     await Promise.all(input);
   });
 
-  test('non-promise returning function', async () => {
+  test('should support non-promise returning function', async () => {
     await expect(async () => {
       const limit = pLimit(1);
-      await limit(() => null);
+      const result = await limit(() => 42);
+
+      expect(result).toBe(42);
     }).not.toThrowError();
   });
 
-  test('continues execution after throw when concurrency is 1', async () => {
+  test('should continue execution after throw when concurrency is 1, and return all results', async () => {
     const limit = pLimit(1);
     let ran = false;
 
@@ -83,28 +68,40 @@ describe('Promise limit. ', () => {
       }),
       limit(() => {
         ran = true;
+        return 42;
       }),
     ];
 
-    await Promise.all(promises).catch(() => {});
+    const results = await Promise.allSettled(promises);
 
     expect(ran).toBe(true);
+    expect(results.length).toBe(2);
+
+    expect(results[0]).toHaveProperty('status');
+    expect(results[0]).toHaveProperty('reason');
+    expect(results[0].status).toBe('rejected');
+    expect((<PromiseRejectedResult>results[0]).reason).toBeInstanceOf(Error);
+
+    expect(results[1]).toHaveProperty('status');
+    expect(results[1]).toHaveProperty('value');
+    expect(results[1].status).toBe('fulfilled');
+    expect((<PromiseFulfilledResult<number>>results[1]).value).toBe(42);
   });
 
-  test('accepts additional arguments', async () => {
+  test('should accept additional arguments', async () => {
     const limit = pLimit(1);
     const symbol = Symbol('test');
 
     await limit((a) => expect(a).toBe(symbol), symbol);
   });
 
-  test('clearQueue', async () => {
+  test('should do clearQueue', async () => {
     const limit = pLimit(1);
 
     Array.from({ length: 1 }, () => limit(() => sleep(1000)));
     Array.from({ length: 3 }, () => limit(() => sleep(1000)));
 
-    await Promise.resolve();
+    await Promise.resolve(); // forcing microtask execution
     expect(limit.pendingCount).toBe(3);
     limit.clearQueue();
     expect(limit.pendingCount).toBe(0);
@@ -121,7 +118,7 @@ describe('Promise limit. ', () => {
     expect(() => pLimit(<any>[])).toThrow();
   });
 
-  test('activeCount and pendingCount properties', async () => {
+  test('should calculate activeCount and pendingCount properties', async () => {
     const limit = pLimit(5);
     expect(limit.activeCount).toBe(0);
     expect(limit.pendingCount).toBe(0);
@@ -130,7 +127,7 @@ describe('Promise limit. ', () => {
     expect(limit.activeCount).toBe(0);
     expect(limit.pendingCount).toBe(1);
 
-    await Promise.resolve();
+    await Promise.resolve(); // forcing microtasks
     expect(limit.activeCount).toBe(1);
     expect(limit.pendingCount).toBe(0);
 
@@ -145,7 +142,7 @@ describe('Promise limit. ', () => {
       limit(() => sleep(1000)),
     );
 
-    await Promise.resolve();
+    await Promise.resolve(); // forcing microtasks
     expect(limit.activeCount).toBe(5);
     expect(limit.pendingCount).toBe(3);
 
