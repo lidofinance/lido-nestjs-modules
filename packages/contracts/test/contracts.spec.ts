@@ -3,9 +3,24 @@ import { getNetwork } from '@ethersproject/networks';
 import { CHAINS } from '@lido-nestjs/constants';
 import { Test } from '@nestjs/testing';
 import {
+  LdoContractModule,
   LidoContractModule,
+  OracleContractModule,
+  RegistryContractModule,
+  SecurityContractModule,
+  WstethContractModule,
+  LDO_CONTRACT_ADDRESSES,
+  LDO_CONTRACT_TOKEN,
   LIDO_CONTRACT_ADDRESSES,
   LIDO_CONTRACT_TOKEN,
+  ORACLE_CONTRACT_ADDRESSES,
+  ORACLE_CONTRACT_TOKEN,
+  REGISTRY_CONTRACT_ADDRESSES,
+  REGISTRY_CONTRACT_TOKEN,
+  SECURITY_CONTRACT_ADDRESSES,
+  SECURITY_CONTRACT_TOKEN,
+  WSTETH_CONTRACT_ADDRESSES,
+  WSTETH_CONTRACT_TOKEN,
 } from '../src';
 import { ContractModule } from '../src/contract.module';
 
@@ -42,11 +57,51 @@ describe('Chains', () => {
     ).rejects.toThrow();
   });
 
+  test('ldo', async () => {
+    await testAddress(
+      LdoContractModule,
+      LDO_CONTRACT_TOKEN,
+      LDO_CONTRACT_ADDRESSES,
+    );
+  });
+
   test('lido', async () => {
     await testAddress(
       LidoContractModule,
       LIDO_CONTRACT_TOKEN,
       LIDO_CONTRACT_ADDRESSES,
+    );
+  });
+
+  test('oracle', async () => {
+    await testAddress(
+      OracleContractModule,
+      ORACLE_CONTRACT_TOKEN,
+      ORACLE_CONTRACT_ADDRESSES,
+    );
+  });
+
+  test('registry', async () => {
+    await testAddress(
+      RegistryContractModule,
+      REGISTRY_CONTRACT_TOKEN,
+      REGISTRY_CONTRACT_ADDRESSES,
+    );
+  });
+
+  test('security', async () => {
+    await testAddress(
+      SecurityContractModule,
+      SECURITY_CONTRACT_TOKEN,
+      SECURITY_CONTRACT_ADDRESSES,
+    );
+  });
+
+  test('wsteth', async () => {
+    await testAddress(
+      WstethContractModule,
+      WSTETH_CONTRACT_TOKEN,
+      WSTETH_CONTRACT_ADDRESSES,
     );
   });
 });
