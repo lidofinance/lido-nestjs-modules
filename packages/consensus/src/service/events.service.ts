@@ -1,4 +1,4 @@
-import { ConsensusMethodResult } from '../interfaces';
+import { ConsensusMethodResult } from '../interfaces/consensus.interface';
 import { ConsensusBaseService } from './base.service';
 
 export class ConsensusEventsService extends ConsensusBaseService {

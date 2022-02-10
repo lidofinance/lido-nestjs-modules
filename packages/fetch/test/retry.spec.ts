@@ -4,7 +4,7 @@ import { Test } from '@nestjs/testing';
 import {
   FetchModule,
   FetchService,
-  RequestRetryPolicy,
+  FetchModuleOptions,
   FETCH_GLOBAL_RETRY_DEFAULT_DELAY,
 } from '../src';
 import fetch from 'node-fetch';
@@ -15,8 +15,8 @@ describe('Retries', () => {
   const url = '/foo';
   let fetchService: FetchService;
 
-  const initModule = async (retryPolicy?: RequestRetryPolicy) => {
-    const fetchModule = FetchModule.forRoot({ retryPolicy });
+  const initModule = async (options?: FetchModuleOptions) => {
+    const fetchModule = FetchModule.forRoot(options);
     const testModule = { imports: [fetchModule] };
     const moduleRef = await Test.createTestingModule(testModule).compile();
 
@@ -34,7 +34,7 @@ describe('Retries', () => {
 
     test('Without retries', async () => {
       const retryPolicy = { attempts: 0, delay: 0 };
-      await initModule(retryPolicy);
+      await initModule({ retryPolicy });
 
       await expect(fetchService.fetchJson(url)).rejects.toThrow();
       expect(mockFetch).toBeCalledTimes(1);
@@ -42,7 +42,7 @@ describe('Retries', () => {
 
     test('One retry', async () => {
       const retryPolicy = { attempts: 1, delay: 0 };
-      await initModule(retryPolicy);
+      await initModule({ retryPolicy });
 
       await expect(fetchService.fetchJson(url)).rejects.toThrow();
       expect(mockFetch).toBeCalledTimes(2);
@@ -82,7 +82,7 @@ describe('Retries', () => {
     test('Without retries', async () => {
       const globalRetryPolicy = { attempts: 1, delay: 0 };
       const localRetryPolicy = { attempts: 0, delay: 0 };
-      await initModule(globalRetryPolicy);
+      await initModule({ retryPolicy: globalRetryPolicy });
 
       await expect(
         fetchService.fetchJson(url, { retryPolicy: localRetryPolicy }),
@@ -93,7 +93,7 @@ describe('Retries', () => {
     test('Two retries', async () => {
       const globalRetryPolicy = { attempts: 1, delay: 0 };
       const localRetryPolicy = { attempts: 2, delay: 0 };
-      await initModule(globalRetryPolicy);
+      await initModule({ retryPolicy: globalRetryPolicy });
 
       await expect(
         fetchService.fetchJson(url, { retryPolicy: localRetryPolicy }),
@@ -111,7 +111,7 @@ describe('Retries', () => {
         //
       }
       const endTime = performance.now();
-      return endTime - startTime;
+      return Math.ceil(endTime - startTime);
     };
 
     beforeEach(async () => {
@@ -122,7 +122,7 @@ describe('Retries', () => {
       'Default',
       async () => {
         const retryPolicy = { attempts: 1 };
-        await initModule(retryPolicy);
+        await initModule({ retryPolicy });
 
         const time = await executionTime(() => fetchService.fetchJson(url));
         expect(mockFetch).toBeCalledTimes(2);
@@ -133,7 +133,7 @@ describe('Retries', () => {
 
     test('Global', async () => {
       const retryPolicy = { attempts: 1, delay: 20 };
-      await initModule(retryPolicy);
+      await initModule({ retryPolicy });
 
       const time = await executionTime(() => fetchService.fetchJson(url));
       expect(mockFetch).toBeCalledTimes(2);
@@ -154,7 +154,7 @@ describe('Retries', () => {
     test('Global + local', async () => {
       const localRetryPolicy = { attempts: 1, delay: 20 };
       const globalRetryPolicy = { attempts: 1, delay: 500 };
-      await initModule(globalRetryPolicy);
+      await initModule({ retryPolicy: globalRetryPolicy });
 
       const time = await executionTime(() =>
         fetchService.fetchJson(url, { retryPolicy: localRetryPolicy }),

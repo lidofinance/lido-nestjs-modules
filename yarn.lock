@@ -2256,6 +2256,7 @@ __metadata:
     "@nestjs/core": ^8.2.5
     reflect-metadata: ^0.1.13
     rxjs: ^7.5.2
+    tslib: ^2.3.1
   languageName: unknown
   linkType: soft
 
@@ -2281,6 +2282,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@lido-nestjs/fetch@workspace:packages/fetch"
   dependencies:
+    "@lido-nestjs/middleware": "workspace:*"
     "@nestjs/common": ^8.2.5
     "@nestjs/core": ^8.2.5
     "@nestjs/testing": ^8.2.5
@@ -2293,6 +2295,7 @@ __metadata:
     "@nestjs/core": ^8.2.5
     reflect-metadata: ^0.1.13
     rxjs: ^7.5.2
+    tslib: ^2.3.1
   languageName: unknown
   linkType: soft
 
@@ -2312,6 +2315,25 @@ __metadata:
     "@nestjs/core": ^8.2.5
     reflect-metadata: ^0.1.13
     rxjs: ^7.5.2
+    tslib: ^2.3.1
+  languageName: unknown
+  linkType: soft
+
+"@lido-nestjs/middleware@workspace:*, @lido-nestjs/middleware@workspace:packages/middleware":
+  version: 0.0.0-use.local
+  resolution: "@lido-nestjs/middleware@workspace:packages/middleware"
+  dependencies:
+    "@nestjs/common": ^8.2.5
+    "@nestjs/core": ^8.2.5
+    "@nestjs/testing": ^8.2.5
+    reflect-metadata: ^0.1.13
+    rxjs: ^7.5.2
+  peerDependencies:
+    "@nestjs/common": ^8.2.5
+    "@nestjs/core": ^8.2.5
+    reflect-metadata: ^0.1.13
+    rxjs: ^7.5.2
+    tslib: ^2.3.1
   languageName: unknown
   linkType: soft
 

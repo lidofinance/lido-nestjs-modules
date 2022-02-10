@@ -9,6 +9,7 @@
   "scripts": {
     "build": "rollup -c",
     "test": "jest --coverage --verbose",
+    "test:package": "./test.package.sh",
     "test:watch": "jest --watch --coverage --verbose",
     "lint": "eslint --ext ts .",
     "postinstall": "husky install"

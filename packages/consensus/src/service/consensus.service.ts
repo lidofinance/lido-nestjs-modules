@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable, Optional } from '@nestjs/common';
 import { FetchService } from '@lido-nestjs/fetch';
 import { ConsensusBaseService } from './base.service';
 import { ConsensusBeaconService } from './beacon.service';
@@ -7,6 +7,8 @@ import { ConsensusEventsService } from './events.service';
 import { ConsensusNodeService } from './node.service';
 import { ConsensusConfigService } from './config.service';
 import { ConsensusValidatorService } from './validator.service';
+import { CONSENSUS_OPTIONS_TOKEN } from '../consensus.constants';
+import { ConsensusModuleOptions } from '../interfaces/module.interface';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function applyMixins(derivedCtor: any, constructors: any[]) {
@@ -25,7 +27,13 @@ function applyMixins(derivedCtor: any, constructors: any[]) {
 
 @Injectable()
 export class ConsensusService {
-  constructor(protected fetchService: FetchService) {}
+  constructor(
+    @Optional()
+    @Inject(CONSENSUS_OPTIONS_TOKEN)
+    public options: ConsensusModuleOptions,
+
+    protected fetchService: FetchService,
+  ) {}
 }
 
 export interface ConsensusService

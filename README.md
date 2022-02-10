@@ -19,4 +19,5 @@ NestJS modules for Lido Finance projects.
 - `yarn build` — Build all packages
 - `yarn lint` — Run eslint across packages
 - `yarn test` — Run tests across packages
+- `yarn test:package {package name}` — Run tests for one package
 - `yarn test:watch` — Run tests in watch mode

@@ -1,5 +1,5 @@
 {
-  "name": "@lido-nestjs/fetch",
+  "name": "@lido-nestjs/middleware",
   "version": "0.0.0-semantic-release",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -8,7 +8,7 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/lidofinance/lido-nestjs-modules.git",
-    "directory": "packages/fetch"
+    "directory": "packages/middleware"
   },
   "bugs": {
     "url": "https://github.com/lidofinance/lido-nestjs-modules/issues"
@@ -27,10 +27,6 @@
     "registry": "https://registry.npmjs.org/",
     "access": "public"
   },
-  "dependencies": {
-    "@lido-nestjs/middleware": "workspace:*",
-    "node-fetch": "^2.6.7"
-  },
   "peerDependencies": {
     "@nestjs/common": "^8.2.5",
     "@nestjs/core": "^8.2.5",
@@ -42,7 +38,6 @@
     "@nestjs/common": "^8.2.5",
     "@nestjs/core": "^8.2.5",
     "@nestjs/testing": "^8.2.5",
-    "@types/node-fetch": "^2.5.12",
     "reflect-metadata": "^0.1.13",
     "rxjs": "^7.5.2"
   }
