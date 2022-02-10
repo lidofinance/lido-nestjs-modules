@@ -6,6 +6,12 @@ import {
   ExecutionModuleOptionsFactory,
 } from './interfaces/execution.module.options';
 import { EXECUTION_MODULE_OPTIONS } from './constants/constants';
+import { FetchModule } from '@lido-nestjs/fetch/src';
+
+const getModuleImports = (options?: ExecutionModuleOptions) => {
+  const { baseUrls, retryPolicy } = options || {};
+  return [FetchModule.forFeature({ baseUrls, retryPolicy })];
+};
 
 @Module({})
 export class ExecutionModule {
@@ -13,7 +19,7 @@ export class ExecutionModule {
     return {
       module: ExecutionModule,
       global: true,
-      imports: [],
+      imports: getModuleImports(options),
       providers: [
         {
           provide: ExtendedJsonRpcBatchProvider,
@@ -33,7 +39,7 @@ export class ExecutionModule {
   static forFeature(options: ExecutionModuleOptions): DynamicModule {
     return {
       module: ExecutionModule,
-      imports: [],
+      imports: getModuleImports(options),
       providers: [
         {
           provide: ExtendedJsonRpcBatchProvider,

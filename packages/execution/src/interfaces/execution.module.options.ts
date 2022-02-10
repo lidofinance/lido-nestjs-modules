@@ -4,8 +4,9 @@ import { ModuleMetadata, Type } from '@nestjs/common';
 import { RequestPolicy } from '../provider/extended-json-rpc-batch-provider';
 import { ConnectionInfo } from '@ethersproject/web';
 import { Networkish } from '@ethersproject/networks';
+import { FetchModuleOptions } from '@lido-nestjs/fetch/src';
 
-export interface ExecutionModuleOptions {
+export interface ExecutionModuleOptions extends FetchModuleOptions {
   url: ConnectionInfo | string;
   network?: Networkish;
   requestPolicy?: RequestPolicy;
