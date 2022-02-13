@@ -2504,6 +2504,24 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@lido-nestjs/utils@workspace:packages/utils":
+  version: 0.0.0-use.local
+  resolution: "@lido-nestjs/utils@workspace:packages/utils"
+  dependencies:
+    "@nestjs/common": ^8.2.5
+    "@nestjs/core": ^8.2.5
+    "@nestjs/testing": ^8.2.5
+    reflect-metadata: ^0.1.13
+    rxjs: ^7.5.2
+  peerDependencies:
+    "@nestjs/common": ^8.2.5
+    "@nestjs/core": ^8.2.5
+    reflect-metadata: ^0.1.13
+    rxjs: ^7.5.2
+    tslib: ^2.3.1
+  languageName: unknown
+  linkType: soft
+
 "@lidofinance/yarn-workspaces-list@npm:0.1.1":
   version: 0.1.1
   resolution: "@lidofinance/yarn-workspaces-list@npm:0.1.1"
