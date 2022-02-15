@@ -46,7 +46,8 @@ export default function pLimit(concurrency: number): LimitFunction {
     try {
       await result;
     } catch {
-      // TODO think about errors here
+      // should not catch exceptions here
+      // exceptions should be caught in above handlers
     }
 
     next();

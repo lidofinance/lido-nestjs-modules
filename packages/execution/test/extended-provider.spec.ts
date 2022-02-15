@@ -3,6 +3,7 @@ import { ExtendedJsonRpcBatchProvider, ExecutionModule } from '../src';
 import { ConnectionInfo } from '@ethersproject/web';
 import { fakeFetchImpl } from './fixtures/fake-json-rpc';
 import { range } from './utils';
+import { LoggerModule } from '@lido-nestjs/logger';
 
 type MockedExtendedJsonRpcBatchProvider = ExtendedJsonRpcBatchProvider & {
   fetchJson: (
@@ -13,9 +14,9 @@ type MockedExtendedJsonRpcBatchProvider = ExtendedJsonRpcBatchProvider & {
 
 describe('Execution module. ', () => {
   describe('ExtendedJsonRpcBatchProvider', () => {
-    let extendedJsonRpcBatchProvider: MockedExtendedJsonRpcBatchProvider;
-    let mockRpcProviderFetch: jest.SpyInstance;
-    let mockDetectNetwork: jest.SpyInstance;
+    let mockedProvider: MockedExtendedJsonRpcBatchProvider;
+    let mockedProviderFetch: jest.SpyInstance;
+    let mockedDetectNetwork: jest.SpyInstance;
 
     const createMocks = async (
       jsonRpcMaxBatchSize: number,
@@ -24,101 +25,92 @@ describe('Execution module. ', () => {
       const module = {
         imports: [
           ExecutionModule.forFeature({
-            url: 'http://localhost',
+            imports: [LoggerModule.forRoot({})],
+            urls: ['http://localhost'],
             requestPolicy: {
               jsonRpcMaxBatchSize,
               batchAggregationWaitMs: 10,
               maxConcurrentRequests,
             },
+            network: 1,
           }),
         ],
       };
       const moduleRef = await Test.createTestingModule(module).compile();
-      extendedJsonRpcBatchProvider = moduleRef.get(
-        ExtendedJsonRpcBatchProvider,
-      );
+      mockedProvider = moduleRef.get(ExtendedJsonRpcBatchProvider);
 
-      mockRpcProviderFetch = jest
-        .spyOn(extendedJsonRpcBatchProvider, 'fetchJson')
+      mockedProviderFetch = jest
+        .spyOn(mockedProvider, 'fetchJson')
         .mockImplementation(fakeFetchImpl);
 
-      mockDetectNetwork = jest.spyOn(
-        extendedJsonRpcBatchProvider,
-        'detectNetwork',
-      );
+      mockedDetectNetwork = jest.spyOn(mockedProvider, 'detectNetwork');
     };
 
     // beforeEach(async () => {});
 
-    afterEach(async () => mockRpcProviderFetch.mockReset());
+    afterEach(async () => mockedProviderFetch.mockReset());
 
     test('should do network detection only once (detect network is cached)', async () => {
       await createMocks(1, 1);
 
-      expect(mockRpcProviderFetch).toBeCalledTimes(0);
-      expect(mockDetectNetwork).toBeCalledTimes(0);
+      expect(mockedProviderFetch).toBeCalledTimes(0);
+      expect(mockedDetectNetwork).toBeCalledTimes(0);
 
-      await extendedJsonRpcBatchProvider.getNetwork();
-      expect(mockRpcProviderFetch).toBeCalledTimes(1);
-      expect(mockDetectNetwork).toBeCalledTimes(2);
+      await mockedProvider.getNetwork();
+      expect(mockedProviderFetch).toBeCalledTimes(1);
+      expect(mockedDetectNetwork).toBeCalledTimes(2);
 
-      await extendedJsonRpcBatchProvider.getNetwork();
-      expect(mockRpcProviderFetch).toBeCalledTimes(1);
-      expect(mockDetectNetwork).toBeCalledTimes(3);
+      await mockedProvider.getNetwork();
+      expect(mockedProviderFetch).toBeCalledTimes(1);
+      expect(mockedDetectNetwork).toBeCalledTimes(3);
 
-      await extendedJsonRpcBatchProvider.getBlock(10000);
-      expect(mockRpcProviderFetch).toBeCalledTimes(2);
-      expect(mockDetectNetwork).toBeCalledTimes(4);
+      await mockedProvider.getBlock(10000);
+      expect(mockedProviderFetch).toBeCalledTimes(2);
+      expect(mockedDetectNetwork).toBeCalledTimes(4);
     });
 
     test('should do no batching when batch size = 1, total = 1', async () => {
       await createMocks(1, 10);
 
-      await extendedJsonRpcBatchProvider.getNetwork();
-      expect(mockRpcProviderFetch).toBeCalledTimes(1);
+      await mockedProvider.getNetwork();
+      expect(mockedProviderFetch).toBeCalledTimes(1);
 
-      await Promise.all([extendedJsonRpcBatchProvider.getBlock(10000)]);
+      await Promise.all([mockedProvider.getBlock(10000)]);
 
-      expect(mockRpcProviderFetch).toBeCalledTimes(2);
+      expect(mockedProviderFetch).toBeCalledTimes(2);
     });
 
     test('should do no batching when batch size = 1, total = 6', async () => {
       await createMocks(1, 10);
 
-      await extendedJsonRpcBatchProvider.getNetwork();
-      expect(mockRpcProviderFetch).toBeCalledTimes(1);
+      await mockedProvider.getNetwork();
+      expect(mockedProviderFetch).toBeCalledTimes(1);
 
-      await Promise.all(
-        range(0, 6).map(() => extendedJsonRpcBatchProvider.getBlock(10000)),
-      );
+      await Promise.all(range(0, 6).map(() => mockedProvider.getBlock(10000)));
 
-      expect(mockRpcProviderFetch).toBeCalledTimes(7);
+      expect(mockedProviderFetch).toBeCalledTimes(7);
     });
 
     test('should do proper batching when batch size = 3, total = 6', async () => {
       await createMocks(3, 10);
 
-      await extendedJsonRpcBatchProvider.getNetwork();
-      expect(mockRpcProviderFetch).toBeCalledTimes(1);
+      await mockedProvider.getNetwork();
+      expect(mockedProviderFetch).toBeCalledTimes(1);
 
-      await Promise.all(
-        range(0, 6).map(() => extendedJsonRpcBatchProvider.getBlock(10000)),
-      );
+      await Promise.all(range(0, 6).map(() => mockedProvider.getBlock(10000)));
 
-      expect(mockRpcProviderFetch).toBeCalledTimes(3);
+      expect(mockedProviderFetch).toBeCalledTimes(3);
     });
 
     test('should do no batching when batch size = 10, total = 6', async () => {
       await createMocks(10, 10);
 
-      await extendedJsonRpcBatchProvider.getNetwork();
-      expect(mockRpcProviderFetch).toBeCalledTimes(1);
+      await mockedProvider.getNetwork();
+      expect(mockedProviderFetch).toBeCalledTimes(1);
 
-      await Promise.all(
-        range(0, 6).map(() => extendedJsonRpcBatchProvider.getBlock(10000)),
-      );
+      await Promise.all(range(0, 6).map(() => mockedProvider.getBlock(10000)));
 
-      expect(mockRpcProviderFetch).toBeCalledTimes(2);
+      expect(mockedProviderFetch).toBeCalledTimes(2);
     });
   });
 });

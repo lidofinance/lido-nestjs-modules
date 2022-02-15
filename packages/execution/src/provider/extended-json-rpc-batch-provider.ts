@@ -24,6 +24,17 @@ export interface JsonRpcRequest {
   jsonrpc: '2.0';
 }
 
+export interface JsonRpcResponse {
+  jsonrpc: '2.0';
+  id: number;
+  result?: unknown;
+  error?: {
+    code: number;
+    message: string;
+    data?: unknown;
+  };
+}
+
 export interface RequestIntent {
   request: JsonRpcRequest;
   resolve: (result: unknown) => void;
@@ -39,11 +50,11 @@ export class ExtendedJsonRpcBatchProvider extends JsonRpcProvider {
   protected _tickCounter = 0;
 
   public constructor(
-    url?: ConnectionInfo | string,
+    url: ConnectionInfo | string,
     network?: Networkish,
     requestPolicy?: RequestPolicy,
   ) {
-    super(url, network); // TODO multiple urls with fallback
+    super(url, network);
     this._requestPolicy = requestPolicy ?? {
       jsonRpcMaxBatchSize: 200,
       maxConcurrentRequests: 5,
@@ -80,7 +91,7 @@ export class ExtendedJsonRpcBatchProvider extends JsonRpcProvider {
       this._concurrencyLimiter(() =>
         this.fetchJson(this.connection, JSON.stringify(batchRequest)),
       ).then(
-        (batchResult) => {
+        (batchResult: JsonRpcResponse[]) => {
           this.emit('debug', {
             action: 'response',
             request: deepCopy(batchRequest),
@@ -88,10 +99,15 @@ export class ExtendedJsonRpcBatchProvider extends JsonRpcProvider {
             provider: this,
           });
 
+          const resultMap = batchResult.reduce((resultMap, payload) => {
+            resultMap[payload.id] = payload;
+            return resultMap;
+          }, {} as Record<number, JsonRpcResponse>);
+
           // For each batch, feed it to the correct Promise, depending
           // on whether it was a success or error
-          batch.forEach((inflightRequest, index) => {
-            const payload = batchResult[index]; // TODO check json-rpc ids
+          batch.forEach((inflightRequest) => {
+            const payload = resultMap[inflightRequest.request.id];
             if (payload.error) {
               const error = new FetchError(payload.error.message);
               error.code = payload.error.code;

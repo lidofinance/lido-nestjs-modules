@@ -2265,6 +2265,8 @@ __metadata:
   resolution: "@lido-nestjs/execution@workspace:packages/execution"
   dependencies:
     "@ethersproject/providers": ^5.5.2
+    "@lido-nestjs/fetch": "workspace:*"
+    "@lido-nestjs/logger": "workspace:*"
     "@nestjs/common": ^8.2.5
     "@nestjs/core": ^8.2.5
     "@nestjs/testing": ^8.2.5
@@ -2299,7 +2301,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@lido-nestjs/logger@workspace:packages/logger":
+"@lido-nestjs/logger@workspace:*, @lido-nestjs/logger@workspace:packages/logger":
   version: 0.0.0-use.local
   resolution: "@lido-nestjs/logger@workspace:packages/logger"
   dependencies:
