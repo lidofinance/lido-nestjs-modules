@@ -2,8 +2,8 @@ import { Test } from '@nestjs/testing';
 import { ExecutionModule, ExtendedJsonRpcBatchProvider } from '../src';
 import { LoggerModule } from '@lido-nestjs/logger';
 
-describe('Module initializing', () => {
-  describe('For root', () => {
+describe('Module sync initializing', () => {
+  describe('forRoot', () => {
     let extendedJsonRpcBatchProvider: ExtendedJsonRpcBatchProvider;
 
     beforeEach(async () => {
@@ -28,7 +28,7 @@ describe('Module initializing', () => {
     });
   });
 
-  describe('For feature', () => {
+  describe('forFeature', () => {
     let extendedJsonRpcBatchProvider: ExtendedJsonRpcBatchProvider;
 
     beforeEach(async () => {

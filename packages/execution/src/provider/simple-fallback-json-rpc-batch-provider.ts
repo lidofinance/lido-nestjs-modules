@@ -2,10 +2,11 @@ import { BaseProvider } from '@ethersproject/providers';
 import { SimpleFallbackProviderConfig } from '../interfaces/simple-fallback-provider-config';
 import { ExtendedJsonRpcBatchProvider } from './extended-json-rpc-batch-provider';
 import { Network } from '@ethersproject/networks';
-import { LoggerService } from '@nestjs/common';
+import { Injectable, LoggerService } from '@nestjs/common';
 import { retrier } from '../common/retrier';
 import { FallbackProvider } from '../interfaces/fallback-provider';
 
+@Injectable()
 export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
   protected config: SimpleFallbackProviderConfig;
   protected logger: LoggerService;
@@ -42,7 +43,7 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
       throw new Error('No valid URLs or Connections were provided');
     }
 
-    this.fallbackProviders = <[FallbackProvider]>urls.map((url) => {
+    this.fallbackProviders = <[FallbackProvider]>urls.map((url, index) => {
       const provider = new ExtendedJsonRpcBatchProvider(
         url,
         undefined,
@@ -52,6 +53,7 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
         valid: false,
         network: null,
         provider,
+        index,
       };
     });
     this.activeFallbackProviderIndex = 0;
@@ -67,6 +69,11 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
 
     while (!variant.valid || attempt < this.fallbackProviders.length) {
       variant = this.fallbackProviders[this.activeFallbackProviderIndex];
+
+      if (!variant.valid) {
+        this.activeFallbackProviderIndex++;
+      }
+
       attempt++;
     }
 

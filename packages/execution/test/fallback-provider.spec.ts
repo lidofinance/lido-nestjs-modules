@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Test } from '@nestjs/testing';
 import {
   ExtendedJsonRpcBatchProvider,
@@ -7,6 +8,7 @@ import {
 import { fakeFetchImpl } from './fixtures/fake-json-rpc';
 import { LoggerModule } from '@lido-nestjs/logger';
 import { ConnectionInfo } from '@ethersproject/web';
+import { range } from './utils';
 
 export type MockedExtendedJsonRpcBatchProvider =
   ExtendedJsonRpcBatchProvider & {
@@ -31,45 +33,45 @@ describe('Execution module. ', () => {
     const mockedFallbackDetectNetwork: jest.SpyInstance[] = [];
 
     const createMocks = async (
-      jsonRpcMaxBatchSize: number,
-      maxConcurrentRequests: number,
+      fallbackProvidersQty = 2,
+      jsonRpcMaxBatchSize = 1,
+      maxConcurrentRequests = 1,
+      maxRetries = 1,
+      logRetries = false,
     ) => {
       const module = {
         imports: [
           ExecutionModule.forFeature({
             imports: [LoggerModule.forRoot({})],
-            urls: ['http://localhost:10000', 'http://localhost:10001'],
+            urls: <[string]>(
+              range(0, fallbackProvidersQty).map(
+                (i) => `'http://localhost:100${i}'`,
+              )
+            ),
             requestPolicy: {
               jsonRpcMaxBatchSize,
               batchAggregationWaitMs: 10,
               maxConcurrentRequests,
             },
             network: 1,
-            maxRetries: 1,
-            logRetries: false,
+            maxRetries: maxRetries,
+            logRetries: logRetries,
           }),
         ],
       };
       const moduleRef = await Test.createTestingModule(module).compile();
       mockedProvider = moduleRef.get(SimpleFallbackJsonRpcBatchProvider);
 
-      mockedFallbackProviderFetch[0] = jest
-        .spyOn(mockedProvider.fallbackProviders[0].provider, 'fetchJson')
-        .mockImplementation(fakeFetchImpl);
+      range(0, fallbackProvidersQty).forEach((i) => {
+        mockedFallbackProviderFetch[i] = jest
+          .spyOn(mockedProvider.fallbackProviders[i].provider, 'fetchJson')
+          .mockImplementation(fakeFetchImpl);
 
-      mockedFallbackProviderFetch[1] = jest
-        .spyOn(mockedProvider.fallbackProviders[1].provider, 'fetchJson')
-        .mockImplementation(fakeFetchImpl);
-
-      mockedFallbackDetectNetwork[0] = jest.spyOn(
-        mockedProvider.fallbackProviders[0].provider,
-        'detectNetwork',
-      );
-
-      mockedFallbackDetectNetwork[1] = jest.spyOn(
-        mockedProvider.fallbackProviders[1].provider,
-        'detectNetwork',
-      );
+        mockedFallbackDetectNetwork[i] = jest.spyOn(
+          mockedProvider.fallbackProviders[i].provider,
+          'detectNetwork',
+        );
+      });
 
       mockedProviderDetectNetwork = jest.spyOn(mockedProvider, 'detectNetwork');
     };
@@ -81,13 +83,7 @@ describe('Execution module. ', () => {
     });
 
     test('should do no fallback to next provider if first provider is ok', async () => {
-      await createMocks(1, 1);
-
-      expect(mockedProviderDetectNetwork).toBeCalledTimes(0);
-      expect(mockedFallbackProviderFetch[0]).toBeCalledTimes(0);
-      expect(mockedFallbackProviderFetch[1]).toBeCalledTimes(0);
-      expect(mockedFallbackDetectNetwork[0]).toBeCalledTimes(0);
-      expect(mockedFallbackDetectNetwork[1]).toBeCalledTimes(0);
+      await createMocks(2);
 
       // first provider should do both fetches only
       await mockedProvider.getBlock(10000);
@@ -107,7 +103,7 @@ describe('Execution module. ', () => {
     });
 
     test('should do fallback to next provider if first provider throws exception after successfull network detection', async () => {
-      await createMocks(1, 1);
+      await createMocks(2);
 
       let runs = 0;
       const fakeFetchImplThatThrowsOnSecondRun = async (
@@ -125,12 +121,6 @@ describe('Execution module. ', () => {
         fakeFetchImplThatThrowsOnSecondRun,
       );
 
-      expect(mockedProviderDetectNetwork).toBeCalledTimes(0);
-      expect(mockedFallbackProviderFetch[0]).toBeCalledTimes(0);
-      expect(mockedFallbackProviderFetch[1]).toBeCalledTimes(0);
-      expect(mockedFallbackDetectNetwork[0]).toBeCalledTimes(0);
-      expect(mockedFallbackDetectNetwork[1]).toBeCalledTimes(0);
-
       // first provider
       await mockedProvider.getBlock(10000);
       expect(mockedProviderDetectNetwork).toBeCalledTimes(1);
@@ -144,6 +134,33 @@ describe('Execution module. ', () => {
       expect(mockedFallbackProviderFetch[0]).toBeCalledTimes(3);
       expect(mockedFallbackProviderFetch[1]).toBeCalledTimes(2);
       expect(mockedFallbackDetectNetwork[0]).toBeCalledTimes(3);
+      expect(mockedFallbackDetectNetwork[1]).toBeCalledTimes(3);
+    });
+
+    test('should do fallback to next provider if first provider always throws exception', async () => {
+      await createMocks(2);
+
+      const fakeFetchImplThatAlwaysThrows = async (): Promise<never> => {
+        throw new Error('foo');
+      };
+
+      mockedFallbackProviderFetch[0].mockImplementation(
+        fakeFetchImplThatAlwaysThrows,
+      );
+
+      // first provider
+      await mockedProvider.getBlock(10002);
+      expect(mockedProviderDetectNetwork).toBeCalledTimes(1);
+      expect(mockedFallbackProviderFetch[0]).toBeCalledTimes(4);
+      expect(mockedFallbackProviderFetch[1]).toBeCalledTimes(2);
+      expect(mockedFallbackDetectNetwork[0]).toBeCalledTimes(3);
+      expect(mockedFallbackDetectNetwork[1]).toBeCalledTimes(2);
+
+      await mockedProvider.getBlock(10003);
+      expect(mockedProviderDetectNetwork).toBeCalledTimes(2);
+      expect(mockedFallbackProviderFetch[0]).toBeCalledTimes(6);
+      expect(mockedFallbackProviderFetch[1]).toBeCalledTimes(3);
+      expect(mockedFallbackDetectNetwork[0]).toBeCalledTimes(4);
       expect(mockedFallbackDetectNetwork[1]).toBeCalledTimes(3);
     });
   });
