@@ -13,7 +13,38 @@ yarn add @lido-nestjs/execution
 
 ### Basic usage
 
-// TODO
+```ts
+// Import
+import { Injectable, Module } from '@nestjs/common';
+import { ExecutionModule } from '@lido-nestjs/execution';
+import { MyService } from './my.service';
+
+@Module({
+  imports: [
+    LoggerModule.forRoot({}),
+    ExecutionModule.forRoot({
+      imports: [],
+      urls: ['http://localhost:8545', 'http://fallback:8545'],
+      network: 1,
+    }),
+  ],
+  providers: [MyService],
+  exports: [MyService],
+})
+export class MyModule {}
+
+// Usage
+import { SimpleFallbackJsonRpcBatchProvider } from '@lido-nestjs/execution';
+
+@Injectable
+export class MyService {
+  constructor(private provider: SimpleFallbackJsonRpcBatchProvider) {}
+
+  async doSomeWork() {
+    return await this.provider.getBlock(1000);
+  }
+}
+```
 
 ### Async usage
 
