@@ -865,7 +865,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@ethersproject/networks@npm:5.5.2, @ethersproject/networks@npm:^5.5.0":
+"@ethersproject/networks@npm:5.5.2, @ethersproject/networks@npm:^5.5.0, @ethersproject/networks@npm:^5.5.2":
   version: 5.5.2
   resolution: "@ethersproject/networks@npm:5.5.2"
   dependencies:
@@ -893,7 +893,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@ethersproject/providers@npm:5.5.3, @ethersproject/providers@npm:^5.5.2":
+"@ethersproject/providers@npm:5.5.3, @ethersproject/providers@npm:^5.5.3":
   version: 5.5.3
   resolution: "@ethersproject/providers@npm:5.5.3"
   dependencies:
@@ -1041,7 +1041,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@ethersproject/web@npm:5.5.1, @ethersproject/web@npm:^5.5.0":
+"@ethersproject/web@npm:5.5.1, @ethersproject/web@npm:^5.5.0, @ethersproject/web@npm:^5.5.1":
   version: 5.5.1
   resolution: "@ethersproject/web@npm:5.5.1"
   dependencies:
@@ -2490,8 +2490,10 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@lido-nestjs/execution@workspace:packages/execution"
   dependencies:
-    "@ethersproject/providers": ^5.5.2
-    "@lido-nestjs/fetch": "workspace:*"
+    "@ethersproject/networks": ^5.5.2
+    "@ethersproject/properties": ^5.5.0
+    "@ethersproject/providers": ^5.5.3
+    "@ethersproject/web": ^5.5.1
     "@lido-nestjs/logger": "workspace:*"
     "@nestjs/common": ^8.2.5
     "@nestjs/core": ^8.2.5
@@ -2503,6 +2505,7 @@ __metadata:
     "@nestjs/core": ^8.2.5
     reflect-metadata: ^0.1.13
     rxjs: ^7.5.2
+    tslib: ^2.3.1
   languageName: unknown
   linkType: soft
 

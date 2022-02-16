@@ -1,14 +1,17 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { deepCopy } from '@ethersproject/properties';
-import { ConnectionInfo, fetchJson } from '@ethersproject/web';
+import {
+  ConnectionInfo,
+  fetchJson,
+  FetchJsonResponse,
+} from '@ethersproject/web';
 import { JsonRpcProvider } from '@ethersproject/providers';
 import { Network, Networkish } from '@ethersproject/networks';
 import { defineReadOnly } from '@ethersproject/properties';
 import { Queue } from '../common/queue';
 import { FetchError } from '../error/fetch.error';
 import { Injectable } from '@nestjs/common';
-import { FetchJsonResponse } from '@ethersproject/web/src.ts/index';
 import pLimit, { LimitFunction } from '../common/promise-limit';
 
 export interface RequestPolicy {

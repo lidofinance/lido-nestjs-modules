@@ -34,15 +34,18 @@
     "access": "public"
   },
   "dependencies": {
+    "@ethersproject/networks": "^5.5.2",
+    "@ethersproject/properties": "^5.5.0",
     "@ethersproject/providers": "^5.5.3",
-    "@lido-nestjs/fetch": "workspace:*",
+    "@ethersproject/web": "^5.5.1",
     "@lido-nestjs/logger": "workspace:*"
   },
   "peerDependencies": {
     "@nestjs/common": "^8.2.5",
     "@nestjs/core": "^8.2.5",
     "reflect-metadata": "^0.1.13",
-    "rxjs": "^7.5.2"
+    "rxjs": "^7.5.2",
+    "tslib": "^2.3.1"
   },
   "devDependencies": {
     "@nestjs/common": "^8.2.5",
