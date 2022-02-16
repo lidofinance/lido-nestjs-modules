@@ -12,7 +12,8 @@ NestJS modules for Lido Finance projects.
 ## Install
 
 1. `yarn && yarn postinstall`
-2. `yarn build`
+2. `yarn typechain`
+3. `yarn build`
 
 ## Usage
 

@@ -1,5 +1,5 @@
 {
-  "name": "@lido-nestjs/execution",
+  "name": "@lido-nestjs/utils",
   "version": "0.0.0-semantic-release",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -8,7 +8,7 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/lidofinance/lido-nestjs-modules.git",
-    "directory": "packages/provider"
+    "directory": "packages/utils"
   },
   "bugs": {
     "url": "https://github.com/lidofinance/lido-nestjs-modules/issues"
@@ -18,31 +18,21 @@
     "lido",
     "lido-nestjs",
     "lido-nestjs-modules",
-    "lidofinance",
-    "execution",
-    "execution-layer",
-    "provider"
+    "lidofinance"
   ],
   "files": [
     "dist/*"
   ],
-  "scripts": {
-    "lint": "eslint --ext ts ."
-  },
   "publishConfig": {
     "registry": "https://registry.npmjs.org/",
     "access": "public"
-  },
-  "dependencies": {
-    "@ethersproject/providers": "^5.5.3",
-    "@lido-nestjs/fetch": "workspace:*",
-    "@lido-nestjs/logger": "workspace:*"
   },
   "peerDependencies": {
     "@nestjs/common": "^8.2.5",
     "@nestjs/core": "^8.2.5",
     "reflect-metadata": "^0.1.13",
-    "rxjs": "^7.5.2"
+    "rxjs": "^7.5.2",
+    "tslib": "^2.3.1"
   },
   "devDependencies": {
     "@nestjs/common": "^8.2.5",
