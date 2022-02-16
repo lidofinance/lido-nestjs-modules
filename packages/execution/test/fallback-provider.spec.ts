@@ -102,7 +102,7 @@ describe('Execution module. ', () => {
       expect(mockedFallbackDetectNetwork[1]).toBeCalledTimes(3);
     });
 
-    test('should do fallback to next provider if first provider throws exception after successfull network detection', async () => {
+    test('should do fallback to next provider if first provider throws exception after successful network detection', async () => {
       await createMocks(2);
 
       let runs = 0;

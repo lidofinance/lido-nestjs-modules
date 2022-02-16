@@ -4,6 +4,7 @@ import { ConnectionInfo } from '@ethersproject/web';
 import { fakeFetchImpl } from './fixtures/fake-json-rpc';
 import { range } from './utils';
 import { LoggerModule } from '@lido-nestjs/logger';
+import { JsonRpcRequest, JsonRpcResponse } from '../dist';
 
 type MockedExtendedJsonRpcBatchProvider = ExtendedJsonRpcBatchProvider & {
   fetchJson: (
@@ -111,6 +112,36 @@ describe('Execution module. ', () => {
       await Promise.all(range(0, 6).map(() => mockedProvider.getBlock(10000)));
 
       expect(mockedProviderFetch).toBeCalledTimes(2);
+    });
+
+    test('should throw exception on JsonRpc error', async () => {
+      await createMocks(10, 10);
+
+      const fakeFetchImplWithRPCError = async (
+        connection: string | ConnectionInfo,
+        json?: string,
+      ): Promise<JsonRpcResponse> => {
+        const requests = json ? JSON.parse(json) : {};
+
+        return requests.map((request: JsonRpcRequest) => {
+          return {
+            jsonrpc: '2.0',
+            id: request.id,
+            error: {
+              code: 1,
+              message: 'json-rpc-error',
+              data: { foo: 'foo' },
+            },
+          };
+        });
+      };
+
+      mockedProviderFetch.mockImplementation(fakeFetchImplWithRPCError);
+
+      await expect(
+        async () => await mockedProvider.getBlock(1000),
+      ).rejects.toThrow();
+      expect(mockedProviderFetch).toBeCalledTimes(4);
     });
   });
 });

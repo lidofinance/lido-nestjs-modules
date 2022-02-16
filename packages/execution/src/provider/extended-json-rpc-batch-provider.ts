@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { deepCopy } from '@ethersproject/properties';
 import {
   ConnectionInfo,
@@ -40,8 +40,8 @@ export interface JsonRpcResponse {
 
 export interface RequestIntent {
   request: JsonRpcRequest;
-  resolve: (result: unknown) => void;
-  reject: (error: Error) => void;
+  resolve?: (result: unknown) => void;
+  reject?: (error: Error) => void;
 }
 
 @Injectable()
@@ -115,9 +115,9 @@ export class ExtendedJsonRpcBatchProvider extends JsonRpcProvider {
               const error = new FetchError(payload.error.message);
               error.code = payload.error.code;
               error.data = payload.error.data;
-              inflightRequest.reject(error);
+              inflightRequest.reject!(error);
             } else {
-              inflightRequest.resolve(payload.result);
+              inflightRequest.resolve!(payload.result);
             }
           });
         },
@@ -130,7 +130,7 @@ export class ExtendedJsonRpcBatchProvider extends JsonRpcProvider {
           });
 
           batch.forEach((inflightRequest) => {
-            inflightRequest.reject(error);
+            inflightRequest.reject!(error);
           });
         },
       );
@@ -166,8 +166,6 @@ export class ExtendedJsonRpcBatchProvider extends JsonRpcProvider {
 
     const currentRequest: RequestIntent = {
       request,
-      resolve: () => void 0,
-      reject: () => void 0,
     };
 
     const promise = new Promise((resolve, reject) => {
@@ -205,10 +203,6 @@ export class ExtendedJsonRpcBatchProvider extends JsonRpcProvider {
     json?: string,
     processFunc?: (value: any, response: FetchJsonResponse) => any,
   ) {
-    const result = await fetchJson(connection, json, processFunc);
-
-    console.log(json, JSON.stringify(result));
-
-    return result;
+    return await fetchJson(connection, json, processFunc);
   }
 }
