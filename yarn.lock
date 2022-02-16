@@ -2425,7 +2425,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@lido-nestjs/contracts@workspace:packages/contracts":
+"@lido-nestjs/contracts@workspace:*, @lido-nestjs/contracts@workspace:packages/contracts":
   version: 0.0.0-use.local
   resolution: "@lido-nestjs/contracts@workspace:packages/contracts"
   dependencies:
@@ -2504,7 +2504,29 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@lido-nestjs/utils@workspace:packages/utils":
+"@lido-nestjs/registry@workspace:packages/registry":
+  version: 0.0.0-use.local
+  resolution: "@lido-nestjs/registry@workspace:packages/registry"
+  dependencies:
+    "@lido-nestjs/contracts": "workspace:*"
+    "@lido-nestjs/utils": "workspace:*"
+    "@mikro-orm/core": ^5.0.1
+    "@mikro-orm/nestjs": ^4.3.1
+    "@nestjs/common": ^8.2.5
+    "@nestjs/core": ^8.2.5
+    "@nestjs/testing": ^8.2.5
+    reflect-metadata: ^0.1.13
+    rxjs: ^7.5.2
+  peerDependencies:
+    "@nestjs/common": ^8.2.5
+    "@nestjs/core": ^8.2.5
+    reflect-metadata: ^0.1.13
+    rxjs: ^7.5.2
+    tslib: ^2.3.1
+  languageName: unknown
+  linkType: soft
+
+"@lido-nestjs/utils@workspace:*, @lido-nestjs/utils@workspace:packages/utils":
   version: 0.0.0-use.local
   resolution: "@lido-nestjs/utils@workspace:packages/utils"
   dependencies:
@@ -2575,6 +2597,57 @@ __metadata:
     globby: ^11.0.0
     read-yaml-file: ^1.1.0
   checksum: f5a756e5a659e0e1c33f48852d56826d170d5b10a3cdea89ce4fcaa77678d8799aa4004b30e1985c87b73dbc390b95bb6411b78336dd1e0db87c08c74b5c0e74
+  languageName: node
+  linkType: hard
+
+"@mikro-orm/core@npm:^5.0.1":
+  version: 5.0.1
+  resolution: "@mikro-orm/core@npm:5.0.1"
+  dependencies:
+    dotenv: 16.0.0
+    escaya: 0.0.61
+    fs-extra: 10.0.0
+    globby: 11.0.4
+    mikro-orm: ^5.0.0
+    reflect-metadata: 0.1.13
+  peerDependencies:
+    "@mikro-orm/entity-generator": ^5.0.0
+    "@mikro-orm/mariadb": ^5.0.0
+    "@mikro-orm/migrations": ^5.0.0
+    "@mikro-orm/mongodb": ^5.0.0
+    "@mikro-orm/mysql": ^5.0.0
+    "@mikro-orm/postgresql": ^5.0.0
+    "@mikro-orm/seeder": ^5.0.0
+    "@mikro-orm/sqlite": ^5.0.0
+  peerDependenciesMeta:
+    "@mikro-orm/entity-generator":
+      optional: true
+    "@mikro-orm/mariadb":
+      optional: true
+    "@mikro-orm/migrations":
+      optional: true
+    "@mikro-orm/mongodb":
+      optional: true
+    "@mikro-orm/mysql":
+      optional: true
+    "@mikro-orm/postgresql":
+      optional: true
+    "@mikro-orm/seeder":
+      optional: true
+    "@mikro-orm/sqlite":
+      optional: true
+  checksum: 921a6100777e9485aa4ec36c36d80ae30ce7c1411262fdfbdfa08fa6a8e3d360e2c147ffb9023b28860ff7b9469e9efaa31508e5749ca3f5d7fe81c3e9c1e03c
+  languageName: node
+  linkType: hard
+
+"@mikro-orm/nestjs@npm:^4.3.1":
+  version: 4.3.1
+  resolution: "@mikro-orm/nestjs@npm:4.3.1"
+  peerDependencies:
+    "@mikro-orm/core": ^4.0.0||^5.0.0-dev.0
+    "@nestjs/common": ^7.0.0||^8.0.0
+    "@nestjs/core": ^7.0.0||^8.0.0
+  checksum: 0424c9caca8a9b0df3521f4bde3ddc473ae21e697d8758ea6cfc7b2e40d466de48568c02769c6783d6edebed750acf4a94c0ce0f54a6562ae824e5614da9abb5
   languageName: node
   linkType: hard
 
@@ -6111,6 +6184,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"dotenv@npm:16.0.0":
+  version: 16.0.0
+  resolution: "dotenv@npm:16.0.0"
+  checksum: 664cebb51f0a9a1d1b930f51f0271e72e26d62feaecc9dc03df39453dd494b4e724809ca480fb3ec3213382b1ed3f791aaeb83569a137f9329ce58efd4853dbf
+  languageName: node
+  linkType: hard
+
 "duplexer2@npm:~0.1.0":
   version: 0.1.4
   resolution: "duplexer2@npm:0.1.4"
@@ -6412,6 +6492,13 @@ __metadata:
   version: 4.0.0
   resolution: "escape-string-regexp@npm:4.0.0"
   checksum: 98b48897d93060f2322108bf29db0feba7dd774be96cd069458d1453347b25ce8682ecc39859d4bca2203cc0ab19c237bcc71755eff49a0f8d90beadeeba5cc5
+  languageName: node
+  linkType: hard
+
+"escaya@npm:0.0.61":
+  version: 0.0.61
+  resolution: "escaya@npm:0.0.61"
+  checksum: 40c1e54d5c50a7c92617eeb4616c8b4dac1434b8ae40fd02be034b3fd207b827d68d7f06d4339de647ac56fef9287725c87383b001225a9ce20345615cd2a2a6
   languageName: node
   linkType: hard
 
@@ -7207,6 +7294,17 @@ __metadata:
   languageName: node
   linkType: hard
 
+"fs-extra@npm:10.0.0, fs-extra@npm:^10.0.0":
+  version: 10.0.0
+  resolution: "fs-extra@npm:10.0.0"
+  dependencies:
+    graceful-fs: ^4.2.0
+    jsonfile: ^6.0.1
+    universalify: ^2.0.0
+  checksum: 5285a3d8f34b917cf2b66af8c231a40c1623626e9d701a20051d3337be16c6d7cac94441c8b3732d47a92a2a027886ca93c69b6a4ae6aee3c89650d2a8880c0a
+  languageName: node
+  linkType: hard
+
 "fs-extra@npm:8.1.0, fs-extra@npm:^8.1.0":
   version: 8.1.0
   resolution: "fs-extra@npm:8.1.0"
@@ -7215,17 +7313,6 @@ __metadata:
     jsonfile: ^4.0.0
     universalify: ^0.1.0
   checksum: bf44f0e6cea59d5ce071bba4c43ca76d216f89e402dc6285c128abc0902e9b8525135aa808adad72c9d5d218e9f4bcc63962815529ff2f684ad532172a284880
-  languageName: node
-  linkType: hard
-
-"fs-extra@npm:^10.0.0":
-  version: 10.0.0
-  resolution: "fs-extra@npm:10.0.0"
-  dependencies:
-    graceful-fs: ^4.2.0
-    jsonfile: ^6.0.1
-    universalify: ^2.0.0
-  checksum: 5285a3d8f34b917cf2b66af8c231a40c1623626e9d701a20051d3337be16c6d7cac94441c8b3732d47a92a2a027886ca93c69b6a4ae6aee3c89650d2a8880c0a
   languageName: node
   linkType: hard
 
@@ -10929,6 +11016,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"mikro-orm@npm:^5.0.0":
+  version: 5.0.0
+  resolution: "mikro-orm@npm:5.0.0"
+  checksum: 6394605146555495e8c41bd70e6061b820740da7327287b8f897c94e8c232e7f2de2328a296c49ad6a232195b8c724328e3dc0eb00d19a89193970b9b71f6e08
+  languageName: node
+  linkType: hard
+
 "mime-db@npm:1.51.0":
   version: 1.51.0
   resolution: "mime-db@npm:1.51.0"
@@ -13146,7 +13240,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"reflect-metadata@npm:^0.1.13":
+"reflect-metadata@npm:0.1.13, reflect-metadata@npm:^0.1.13":
   version: 0.1.13
   resolution: "reflect-metadata@npm:0.1.13"
   checksum: 798d379a7b6f6455501145419505c97dd11cbc23857a386add2b9ef15963ccf15a48d9d15507afe01d4cd74116df8a213247200bac00320bd7c11ddeaa5e8fb4
