@@ -11,4 +11,88 @@ yarn add @lido-nestjs/contracts
 
 ## Usage
 
-TODO
+### Basic usage
+
+```ts
+// Import
+import { Module } from '@nestjs/common';
+import { LidoContractModule } from '@lido-nestjs/contracts';
+import { getDefaultProvider } from '@ethersproject/providers';
+import { MyService } from './my.service';
+
+@Module({
+  imports: [
+    LidoContractModule.forFeature({
+      provider: getDefaultProvider('mainnet'),
+    }),
+  ],
+  providers: [MyService],
+  exports: [MyService],
+})
+export class MyModule {}
+
+// Usage
+import { LIDO_CONTRACT_TOKEN, Lido } from '@lido-nestjs/contracts';
+import { Inject } from '@nestjs/common';
+
+export class MyService {
+  constructor(@Inject(LIDO_CONTRACT_TOKEN) private contract: Lido) {}
+
+  async myMethod() {
+    return await this.contract.decimals();
+  }
+}
+```
+
+Specify a different address:
+
+```ts
+LidoContractModule.forFeature({
+  address: '0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84',
+});
+```
+
+### Global usage
+
+```ts
+import { Module } from '@nestjs/common';
+import { LidoContractModule } from '@lido-nestjs/contracts';
+
+@Module({
+  imports: [LidoContractModule.forRoot()],
+})
+export class MyModule {}
+```
+
+### Async usage
+
+```ts
+import { Module } from '@nestjs/common';
+import { LidoContractModule } from '@lido-nestjs/contracts';
+import { ConfigModule, ConfigService } from './config.service';
+
+@Module({
+  imports: [
+    LidoContractModule.forRootAsync({
+      async useFactory(testService: TestService) {
+        return { address: testService.address };
+      },
+      inject: [TestService],
+    }),
+  ],
+})
+export class MyModule {}
+```
+
+### Use global provider
+
+```ts
+import { Module } from '@nestjs/common';
+import { LidoContractModule } from '@lido-nestjs/contracts';
+import { ProviderModule } from './provider.service';
+
+@Module({
+  imports: [ProviderModule.forRoot(), LidoContractModule.forRoot()],
+})
+export class MyModule {}
+```

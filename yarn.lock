@@ -876,7 +876,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@ethersproject/providers@npm:5.5.3":
+"@ethersproject/providers@npm:5.5.3, @ethersproject/providers@npm:^5.5.3":
   version: 5.5.3
   resolution: "@ethersproject/providers@npm:5.5.3"
   dependencies:
@@ -2429,6 +2429,8 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@lido-nestjs/contracts@workspace:packages/contracts"
   dependencies:
+    "@ethersproject/abi": ^5.5.0
+    "@ethersproject/providers": ^5.5.3
     "@lido-nestjs/constants": "workspace:*"
     "@nestjs/common": ^8.2.5
     "@nestjs/core": ^8.2.5

@@ -1,19 +1,22 @@
-import { DynamicModule } from '@nestjs/common';
-import { Signer, providers } from 'ethers';
+import { DynamicModule, Module } from '@nestjs/common';
+import { Signer } from 'ethers';
+import { Provider } from '@ethersproject/providers';
 import {
   ContractFactoryOptions,
   ContractModuleAsyncOptions,
   ContractModuleSyncOptions,
 } from './interfaces/contract.interface';
 import { ContractFactory } from './interfaces/factory.interface';
+import { ModuleRef } from '@nestjs/core';
 
+@Module({})
 export class ContractModule {
   static module = ContractModule;
   static contractFactory: ContractFactory;
   static contractToken: symbol;
   static defaultAddresses: Record<number, string>;
 
-  static forRoot(options: ContractModuleSyncOptions): DynamicModule {
+  static forRoot(options?: ContractModuleSyncOptions): DynamicModule {
     return {
       global: true,
       ...this.forFeature(options),
@@ -27,13 +30,16 @@ export class ContractModule {
     };
   }
 
-  static forFeature(options: ContractModuleSyncOptions): DynamicModule {
+  static forFeature(options?: ContractModuleSyncOptions): DynamicModule {
     return {
       module: this.module,
       providers: [
         {
           provide: this.contractToken,
-          useFactory: async () => await this.factory(options),
+          useFactory: async (moduleRef: ModuleRef) => {
+            return await this.factory(moduleRef, options);
+          },
+          inject: [ModuleRef],
         },
       ],
     };
@@ -48,30 +54,37 @@ export class ContractModule {
       providers: [
         {
           provide: this.contractToken,
-          useFactory: async (...args) => {
+          useFactory: async (moduleRef: ModuleRef, ...args) => {
             const config = await options.useFactory(...args);
-            return this.factory(config);
+            return this.factory(moduleRef, config);
           },
-          inject: options.inject,
+          inject: [ModuleRef, ...(options.inject ?? [])],
         },
       ],
     };
   }
 
-  protected static async factory(options: ContractFactoryOptions) {
+  protected static async factory(
+    moduleRef: ModuleRef,
+    options?: ContractFactoryOptions,
+  ) {
+    const getFromScope = () => moduleRef.get(Provider, { strict: false });
+    const getFromOptions = () => options?.provider;
+    const provider = getFromOptions() || getFromScope();
+
     const address = await this.extractAddress(
-      options.address,
-      options.provider,
+      options?.address,
+      provider,
       this.defaultAddresses,
     );
 
-    return this.contractFactory.connect(address, options.provider);
+    return this.contractFactory.connect(address, provider);
   }
 
   protected static async detectChainId(
-    providerOrSigner: Signer | providers.Provider,
+    providerOrSigner: Signer | Provider,
   ): Promise<number> {
-    if (providerOrSigner instanceof providers.Provider) {
+    if (providerOrSigner instanceof Provider) {
       const network = await providerOrSigner.getNetwork();
       return network.chainId;
     }
@@ -86,7 +99,7 @@ export class ContractModule {
 
   protected static async extractAddress(
     address: string | undefined,
-    providerOrSigner: Signer | providers.Provider,
+    providerOrSigner: Signer | Provider,
     addressMap: Record<number, string>,
   ): Promise<string> {
     if (address) return address;

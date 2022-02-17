@@ -28,6 +28,8 @@
     "access": "public"
   },
   "dependencies": {
+    "@ethersproject/abi": "^5.5.0",
+    "@ethersproject/providers": "^5.5.3",
     "@lido-nestjs/constants": "workspace:*",
     "ethers": "^5.5.4"
   },
