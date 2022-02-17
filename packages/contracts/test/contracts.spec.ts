@@ -3,12 +3,15 @@ import { getNetwork } from '@ethersproject/networks';
 import { CHAINS } from '@lido-nestjs/constants';
 import { Test } from '@nestjs/testing';
 import {
+  DepositContractModule,
   LdoContractModule,
   LidoContractModule,
   OracleContractModule,
   RegistryContractModule,
   SecurityContractModule,
   WstethContractModule,
+  DEPOSIT_CONTRACT_ADDRESSES,
+  DEPOSIT_CONTRACT_TOKEN,
   LDO_CONTRACT_ADDRESSES,
   LDO_CONTRACT_TOKEN,
   LIDO_CONTRACT_ADDRESSES,
@@ -55,6 +58,14 @@ describe('Chains', () => {
     await expect(() =>
       getContract(LidoContractModule, LIDO_CONTRACT_TOKEN, CHAINS.Kovan),
     ).rejects.toThrow();
+  });
+
+  test('deposit', async () => {
+    await testAddress(
+      DepositContractModule,
+      DEPOSIT_CONTRACT_TOKEN,
+      DEPOSIT_CONTRACT_ADDRESSES,
+    );
   });
 
   test('ldo', async () => {
