@@ -1,5 +1,8 @@
 export * from './generated';
 
+export * from './deposit/deposit.constants';
+export * from './deposit/deposit.module';
+
 export * from './ldo/ldo.constants';
 export * from './ldo/ldo.module';
 

@@ -1,11 +1,16 @@
-import { getDefaultProvider } from '@ethersproject/providers';
+import { getDefaultProvider, Provider } from '@ethersproject/providers';
 import { hexZeroPad } from '@ethersproject/bytes';
-import { DynamicModule, Injectable, Module } from '@nestjs/common';
+import {
+  DynamicModule,
+  Injectable,
+  Module,
+  ModuleMetadata,
+} from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { Lido, LidoContractModule, LIDO_CONTRACT_TOKEN } from '../src';
-import { ContractModule } from '../src/contract.module';
 
 const address = hexZeroPad('0x12', 20);
+const provider = getDefaultProvider('mainnet');
 
 @Injectable()
 class TestService {
@@ -25,20 +30,8 @@ class TestModule {
 }
 
 describe('Async module initializing', () => {
-  const provider = getDefaultProvider('mainnet');
-
-  const testModules = async (Module: typeof ContractModule) => {
-    const moduleRef = await Test.createTestingModule({
-      imports: [
-        TestModule.forRoot(),
-        Module.forRootAsync({
-          async useFactory(testService: TestService) {
-            return { address: testService.address, provider };
-          },
-          inject: [TestService],
-        }),
-      ],
-    }).compile();
+  const testModules = async (metadata: ModuleMetadata) => {
+    const moduleRef = await Test.createTestingModule(metadata).compile();
     const contract: Lido = moduleRef.get(LIDO_CONTRACT_TOKEN);
 
     expect(contract.name).toBeDefined();
@@ -46,11 +39,78 @@ describe('Async module initializing', () => {
     expect(contract.address).toBe(address);
   };
 
-  test('forRootAsync', async () => {
-    await testModules(LidoContractModule);
+  test('forRootAsync, Test module, Provider', async () => {
+    const module = LidoContractModule.forRootAsync({
+      async useFactory(testService: TestService) {
+        return { address: testService.address };
+      },
+      inject: [TestService],
+    });
+    const providers = [{ provide: Provider, useValue: provider }];
+
+    const imports = [TestModule.forRoot(), module];
+    await testModules({ imports, providers });
   });
 
-  test('forFeatureAsync', async () => {
-    await testModules(LidoContractModule);
+  test('forFeatureAsync, Test module, Provider', async () => {
+    const module = LidoContractModule.forFeatureAsync({
+      async useFactory(testService: TestService) {
+        return { address: testService.address };
+      },
+      inject: [TestService],
+    });
+    const providers = [{ provide: Provider, useValue: provider }];
+
+    const imports = [TestModule.forRoot(), module];
+    await testModules({ imports, providers });
+  });
+
+  test('forFeatureAsync, Test module, Provider from options', async () => {
+    const module = LidoContractModule.forFeatureAsync({
+      async useFactory(testService: TestService) {
+        return { address: testService.address, provider };
+      },
+      inject: [TestService],
+    });
+
+    const imports = [TestModule.forRoot(), module];
+    await testModules({ imports });
+  });
+
+  test('forFeatureAsync, Provider from options', async () => {
+    const module = LidoContractModule.forFeatureAsync({
+      async useFactory() {
+        return { address, provider };
+      },
+    });
+
+    const imports = [module];
+    await testModules({ imports });
+  });
+
+  test('Without provider', async () => {
+    await expect(() =>
+      Test.createTestingModule({
+        imports: [
+          LidoContractModule.forFeatureAsync({
+            async useFactory() {
+              return { address };
+            },
+          }),
+        ],
+      }).compile(),
+    ).rejects.toThrowError();
+
+    await expect(() =>
+      Test.createTestingModule({
+        imports: [
+          LidoContractModule.forFeatureAsync({
+            async useFactory() {
+              return { address };
+            },
+          }),
+        ],
+      }).compile(),
+    ).rejects.toThrowError();
   });
 });
