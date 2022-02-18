@@ -12,5 +12,5 @@ export interface ExecutionModuleAsyncOptions
   useFactory: (
     ...args: any[]
   ) => Promise<ExecutionModuleSyncOptions> | ExecutionModuleSyncOptions;
-  inject?: any[];
+  inject: any[];
 }

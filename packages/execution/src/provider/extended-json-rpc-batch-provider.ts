@@ -1,18 +1,22 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
-import { deepCopy } from '@ethersproject/properties';
+import { deepCopy, Deferrable } from '@ethersproject/properties';
 import {
   ConnectionInfo,
   fetchJson,
   FetchJsonResponse,
 } from '@ethersproject/web';
-import { JsonRpcProvider } from '@ethersproject/providers';
+import { Formatter, JsonRpcProvider } from '@ethersproject/providers';
 import { Network, Networkish } from '@ethersproject/networks';
 import { defineReadOnly } from '@ethersproject/properties';
 import { Queue } from '../common/queue';
 import { FetchError } from '../error/fetch.error';
 import { Injectable } from '@nestjs/common';
 import pLimit, { LimitFunction } from '../common/promise-limit';
+import { FormatterWithEIP1898 } from '../ethers/formatter-with-eip1898';
+import { BigNumber, BigNumberish } from '@ethersproject/bignumber';
+import { BlockTag } from '../ethers/block-tag';
+import { TransactionRequest } from '@ethersproject/abstract-provider/src.ts/index';
+import { MiddlewareCallback, MiddlewareService } from '@lido-nestjs/middleware';
 
 export interface RequestPolicy {
   jsonRpcMaxBatchSize: number;
@@ -38,24 +42,70 @@ export interface JsonRpcResponse {
   };
 }
 
-export interface RequestIntent {
+export interface FullRequestIntent {
   request: JsonRpcRequest;
-  resolve?: (result: unknown) => void;
-  reject?: (error: Error) => void;
+  resolve: (result: unknown) => void;
+  reject: (error: Error) => void;
+}
+
+export interface RequestIntent {
+  request: FullRequestIntent['request'];
+  resolve: FullRequestIntent['resolve'] | null;
+  reject: FullRequestIntent['reject'] | null;
+}
+
+export type PartialRequestIntent =
+  | RequestIntent
+  | {
+      request: RequestIntent['request'];
+      resolve: null;
+      reject: null;
+    };
+
+/**
+ * EIP-1898 support
+ * https://eips.ethereum.org/EIPS/eip-1898
+ */
+declare module '@ethersproject/providers' {
+  export interface JsonRpcProvider {
+    getBalance(
+      addressOrName: string | Promise<string>,
+      blockTag?: BlockTag | Promise<BlockTag>,
+    ): Promise<BigNumber>;
+    getTransactionCount(
+      addressOrName: string | Promise<string>,
+      blockTag?: BlockTag | Promise<BlockTag>,
+    ): Promise<number>;
+    getCode(
+      addressOrName: string | Promise<string>,
+      blockTag?: BlockTag | Promise<BlockTag>,
+    ): Promise<string>;
+    getStorageAt(
+      addressOrName: string | Promise<string>,
+      position: BigNumberish | Promise<BigNumberish>,
+      blockTag?: BlockTag | Promise<BlockTag>,
+    ): Promise<string>;
+    call(
+      transaction: Deferrable<TransactionRequest>,
+      blockTag?: BlockTag | Promise<BlockTag>,
+    ): Promise<string>;
+  }
 }
 
 @Injectable()
 export class ExtendedJsonRpcBatchProvider extends JsonRpcProvider {
   protected _batchAggregator: NodeJS.Timer | null = null;
-  protected _queue: Queue<RequestIntent> = new Queue<RequestIntent>();
+  protected _queue: Queue<FullRequestIntent> = new Queue<FullRequestIntent>();
   protected _requestPolicy: RequestPolicy;
   protected _concurrencyLimiter: LimitFunction;
   protected _tickCounter = 0;
+  protected _fetchMiddlewareService: MiddlewareService<Promise<any>>;
 
   public constructor(
     url: ConnectionInfo | string,
     network?: Networkish,
     requestPolicy?: RequestPolicy,
+    fetchMiddlewares: MiddlewareCallback<Promise<any>>[] = [],
   ) {
     super(url, network);
     this._requestPolicy = requestPolicy ?? {
@@ -66,6 +116,19 @@ export class ExtendedJsonRpcBatchProvider extends JsonRpcProvider {
     this._concurrencyLimiter = pLimit(
       this._requestPolicy.maxConcurrentRequests,
     );
+
+    this._fetchMiddlewareService = new MiddlewareService<Promise<any>>({
+      middlewares: fetchMiddlewares,
+    });
+  }
+
+  static _formatter: Formatter | null = null;
+
+  static getFormatter(): Formatter {
+    if (this._formatter == null) {
+      this._formatter = new FormatterWithEIP1898();
+    }
+    return this._formatter;
   }
 
   protected _batchAggregatorTick() {
@@ -91,9 +154,11 @@ export class ExtendedJsonRpcBatchProvider extends JsonRpcProvider {
         provider: this,
       });
 
-      this._concurrencyLimiter(() =>
-        this.fetchJson(this.connection, JSON.stringify(batchRequest)),
-      ).then(
+      this._concurrencyLimiter(() => {
+        return this._fetchMiddlewareService.go(() =>
+          this.fetchJson(this.connection, JSON.stringify(batchRequest)),
+        );
+      }).then(
         (batchResult: JsonRpcResponse[]) => {
           this.emit('debug', {
             action: 'response',
@@ -115,9 +180,9 @@ export class ExtendedJsonRpcBatchProvider extends JsonRpcProvider {
               const error = new FetchError(payload.error.message);
               error.code = payload.error.code;
               error.data = payload.error.data;
-              inflightRequest.reject!(error);
+              inflightRequest.reject(error);
             } else {
-              inflightRequest.resolve!(payload.result);
+              inflightRequest.resolve(payload.result);
             }
           });
         },
@@ -130,7 +195,7 @@ export class ExtendedJsonRpcBatchProvider extends JsonRpcProvider {
           });
 
           batch.forEach((inflightRequest) => {
-            inflightRequest.reject!(error);
+            inflightRequest.reject(error);
           });
         },
       );
@@ -156,6 +221,10 @@ export class ExtendedJsonRpcBatchProvider extends JsonRpcProvider {
     }
   }
 
+  public use(callback: MiddlewareCallback<Promise<any>>) {
+    this._fetchMiddlewareService.use(callback);
+  }
+
   public send(method: string, params: Array<unknown>): Promise<unknown> {
     const request: JsonRpcRequest = {
       method: method,
@@ -166,6 +235,8 @@ export class ExtendedJsonRpcBatchProvider extends JsonRpcProvider {
 
     const currentRequest: RequestIntent = {
       request,
+      reject: null,
+      resolve: null,
     };
 
     const promise = new Promise((resolve, reject) => {
@@ -173,7 +244,7 @@ export class ExtendedJsonRpcBatchProvider extends JsonRpcProvider {
       currentRequest.reject = reject;
     });
 
-    this._queue.enqueue(currentRequest);
+    this._queue.enqueue(<FullRequestIntent>currentRequest);
 
     this._startBatchAggregator();
 

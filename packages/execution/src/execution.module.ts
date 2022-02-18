@@ -27,6 +27,7 @@ const getModuleProviders = (
           options.urls[0],
           undefined, // options.network,
           options.requestPolicy,
+          options.fetchMiddlewares,
         );
       },
     },
@@ -73,7 +74,7 @@ export class ExecutionModule {
         {
           provide: EXECUTION_MODULE_OPTIONS,
           useFactory: options.useFactory,
-          inject: options.inject || [],
+          inject: options.inject,
         },
         {
           provide: SimpleFallbackJsonRpcBatchProvider,

@@ -4,8 +4,8 @@ export class FetchError extends Error {
   public code = 0;
   public data: unknown;
 
-  public constructor(message?: string) {
+  public constructor(message: string) {
     super('');
-    this.message = message || `FetchError`;
+    this.message = message;
   }
 }

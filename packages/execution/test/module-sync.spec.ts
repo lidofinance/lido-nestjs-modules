@@ -1,6 +1,6 @@
 import { Test } from '@nestjs/testing';
 import { ExecutionModule, ExtendedJsonRpcBatchProvider } from '../src';
-import { LoggerModule } from '@lido-nestjs/logger';
+import { jsonTransport, LoggerModule } from '@lido-nestjs/logger';
 
 describe('Module sync initializing', () => {
   describe('forRoot', () => {
@@ -10,7 +10,7 @@ describe('Module sync initializing', () => {
       const moduleRef = await Test.createTestingModule({
         imports: [
           ExecutionModule.forRoot({
-            imports: [LoggerModule.forRoot({})],
+            imports: [LoggerModule.forRoot({ transports: [jsonTransport()] })],
             urls: ['http://localhost'],
             network: 1,
           }),
@@ -35,7 +35,7 @@ describe('Module sync initializing', () => {
       const moduleRef = await Test.createTestingModule({
         imports: [
           ExecutionModule.forFeature({
-            imports: [LoggerModule.forRoot({})],
+            imports: [LoggerModule.forRoot({ transports: [jsonTransport()] })],
             urls: ['http://localhost'],
             network: 1,
           }),

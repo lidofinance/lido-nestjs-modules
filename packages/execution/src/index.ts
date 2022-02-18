@@ -6,4 +6,3 @@ export * from './interfaces/fallback-provider';
 export * from './interfaces/simple-fallback-provider-config';
 export { ExecutionModuleAsyncOptions } from './interfaces/module.options';
 export { ExecutionModuleSyncOptions } from './interfaces/module.options';
-export { EXECUTION_MODULE_OPTIONS } from './constants/constants';

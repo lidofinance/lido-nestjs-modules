@@ -1,10 +1,45 @@
-import { BaseProvider } from '@ethersproject/providers';
+import { BaseProvider, Formatter } from '@ethersproject/providers';
 import { SimpleFallbackProviderConfig } from '../interfaces/simple-fallback-provider-config';
 import { ExtendedJsonRpcBatchProvider } from './extended-json-rpc-batch-provider';
 import { Network } from '@ethersproject/networks';
 import { Injectable, LoggerService } from '@nestjs/common';
 import { retrier } from '../common/retrier';
 import { FallbackProvider } from '../interfaces/fallback-provider';
+import { BlockTag } from '../ethers/block-tag';
+import { BigNumber, BigNumberish } from '@ethersproject/bignumber';
+import { Deferrable } from '@ethersproject/properties';
+import { TransactionRequest } from '@ethersproject/abstract-provider/src.ts/index';
+import { FormatterWithEIP1898 } from '../ethers/formatter-with-eip1898';
+
+/**
+ * EIP-1898 support
+ * https://eips.ethereum.org/EIPS/eip-1898
+ */
+declare module '@ethersproject/providers' {
+  export interface BaseProvider {
+    getBalance(
+      addressOrName: string | Promise<string>,
+      blockTag?: BlockTag | Promise<BlockTag>,
+    ): Promise<BigNumber>;
+    getTransactionCount(
+      addressOrName: string | Promise<string>,
+      blockTag?: BlockTag | Promise<BlockTag>,
+    ): Promise<number>;
+    getCode(
+      addressOrName: string | Promise<string>,
+      blockTag?: BlockTag | Promise<BlockTag>,
+    ): Promise<string>;
+    getStorageAt(
+      addressOrName: string | Promise<string>,
+      position: BigNumberish | Promise<BigNumberish>,
+      blockTag?: BlockTag | Promise<BlockTag>,
+    ): Promise<string>;
+    call(
+      transaction: Deferrable<TransactionRequest>,
+      blockTag?: BlockTag | Promise<BlockTag>,
+    ): Promise<string>;
+  }
+}
 
 @Injectable()
 export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
@@ -27,27 +62,28 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
     };
     this.logger = logger;
 
-    const urls = config.urls.filter((url) => {
-      if (typeof url === 'string' && !url) {
+    const conns = config.urls.filter((url) => {
+      if (!url) {
         return false;
       }
 
-      if (typeof url === 'object' && url !== null && !url.url) {
+      if (typeof url === 'object' && !url.url) {
         return false;
       }
 
       return true;
     });
 
-    if (urls.length < 1) {
+    if (conns.length < 1) {
       throw new Error('No valid URLs or Connections were provided');
     }
 
-    this.fallbackProviders = <[FallbackProvider]>urls.map((url, index) => {
+    this.fallbackProviders = <[FallbackProvider]>conns.map((conn, index) => {
       const provider = new ExtendedJsonRpcBatchProvider(
-        url,
+        conn,
         undefined,
         config.requestPolicy,
+        config.fetchMiddlewares ?? [],
       );
       return {
         valid: false,
@@ -57,6 +93,15 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
       };
     });
     this.activeFallbackProviderIndex = 0;
+  }
+
+  static _formatter: Formatter | null = null;
+
+  static getFormatter(): Formatter {
+    if (this._formatter == null) {
+      this._formatter = new FormatterWithEIP1898();
+    }
+    return this._formatter;
   }
 
   protected get provider(): FallbackProvider {
@@ -79,7 +124,9 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
 
     if (!variant.valid) {
       // this likely will never happen
-      throw new Error('No valid providers remaining. Exiting');
+      throw new Error(
+        'No valid providers (all fallback endpoints unreachable)',
+      );
     }
 
     return variant;
@@ -111,13 +158,13 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
     let attempt = 0;
 
     // will perform maximum `this.config.maxRetries` retries for fetching data with single provider
-    // after that will switch to next provider
+    // after failure will switch to next provider
     // maximum number of switching is limited to total fallback provider count
     while (attempt < this.fallbackProviders.length) {
       try {
         attempt++;
         // awaiting is extremely important here
-        // without it the error will not be caught in current try-catch scope
+        // without it, the error will not be caught in current try-catch scope
         return await retry(() =>
           this.provider.provider.perform(method, params),
         );
@@ -151,7 +198,7 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
     let previousNetwork: Network | null = null;
 
     this.fallbackProviders.forEach((variant) => {
-      if (!variant.network) {
+      if (!variant.network || !variant.valid) {
         return;
       }
 
@@ -174,7 +221,9 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
     });
 
     if (!previousNetwork) {
-      throw new Error('No valid networks found');
+      throw new Error(
+        'No valid fallback providers found (all fallback endpoints unreachable)',
+      );
     }
 
     return previousNetwork;
