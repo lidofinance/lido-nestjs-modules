@@ -4,11 +4,20 @@ import {
   RegistryModuleAsyncOptions,
 } from './interfaces/module.interface';
 import { RegistryService } from './registry.service';
-import { REGISTRY_OPTIONS_TOKEN } from './registry.constants';
+import { RegistryOperatorFetchService } from './operator/operator.fetch';
+import { RegistryOperatorStorageService } from './operator/operator.storage';
 
 @Module({
-  providers: [RegistryService],
-  exports: [RegistryService],
+  providers: [
+    RegistryService,
+    RegistryOperatorStorageService,
+    RegistryOperatorFetchService,
+  ],
+  exports: [
+    RegistryService,
+    RegistryOperatorStorageService,
+    RegistryOperatorFetchService,
+  ],
 })
 export class RegistryModule {
   static forRoot(options?: RegistryModuleSyncOptions): DynamicModule {
@@ -26,17 +35,9 @@ export class RegistryModule {
   }
 
   static forFeature(options?: RegistryModuleSyncOptions): DynamicModule {
-    const { imports, ...serviceOptions } = options || {};
-
     return {
       module: RegistryModule,
-      imports,
-      providers: [
-        {
-          provide: REGISTRY_OPTIONS_TOKEN,
-          useValue: serviceOptions,
-        },
-      ],
+      imports: options?.imports,
     };
   }
 
@@ -46,13 +47,6 @@ export class RegistryModule {
     return {
       module: RegistryModule,
       imports: options.imports,
-      providers: [
-        {
-          provide: REGISTRY_OPTIONS_TOKEN,
-          useFactory: options.useFactory,
-          inject: options.inject,
-        },
-      ],
     };
   }
 }

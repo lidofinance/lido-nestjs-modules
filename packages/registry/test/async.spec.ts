@@ -1,6 +1,10 @@
 import { hexZeroPad } from '@ethersproject/bytes';
 import { DynamicModule, Injectable, Module } from '@nestjs/common';
+import { ModuleMetadata } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
+import { getNetwork } from '@ethersproject/networks';
+import { getDefaultProvider } from '@ethersproject/providers';
+import { RegistryContractModule } from '@lido-nestjs/contracts';
 import { RegistryModule, RegistryService } from '../src';
 
 const address = hexZeroPad('0x12', 20);
@@ -23,29 +27,44 @@ class TestModule {
 }
 
 describe('Async module initializing', () => {
-  const testModules = async (Module: typeof RegistryModule) => {
-    const moduleRef = await Test.createTestingModule({
-      imports: [
-        TestModule.forRoot(),
-        Module.forRootAsync({
-          async useFactory(testService: TestService) {
-            // TODO: config
-            return { address: testService.address };
-          },
-          inject: [TestService],
-        }),
-      ],
-    }).compile();
+  const provider = getDefaultProvider(process.env.EL_RPC_URL);
+
+  jest
+    .spyOn(provider, 'detectNetwork')
+    .mockImplementation(async () => getNetwork('mainnet'));
+
+  const testModules = async (imports: ModuleMetadata['imports']) => {
+    const moduleRef = await Test.createTestingModule({ imports }).compile();
     const registryService: RegistryService = moduleRef.get(RegistryService);
 
     expect(registryService.updateStoredData).toBeDefined();
   };
 
   test('forRootAsync', async () => {
-    await testModules(RegistryModule);
+    await testModules([
+      TestModule.forRoot(),
+      RegistryContractModule.forRoot({ provider }),
+      RegistryModule.forRootAsync({
+        async useFactory(/* testService: TestService */) {
+          // TODO: config
+          return {};
+        },
+        inject: [TestService],
+      }),
+    ]);
   });
 
   test('forFeatureAsync', async () => {
-    await testModules(RegistryModule);
+    await testModules([
+      TestModule.forRoot(),
+      RegistryContractModule.forRoot({ provider }),
+      RegistryModule.forFeatureAsync({
+        async useFactory(/* testService: TestService */) {
+          // TODO: config
+          return {};
+        },
+        inject: [TestService],
+      }),
+    ]);
   });
 });

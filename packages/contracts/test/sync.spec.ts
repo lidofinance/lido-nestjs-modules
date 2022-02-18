@@ -6,7 +6,7 @@ import { Lido, LidoContractModule, LIDO_CONTRACT_TOKEN } from '../src';
 describe('Sync module initializing', () => {
   const provider = {
     provide: Provider,
-    useFactory: () => getDefaultProvider('mainnet'),
+    useFactory: () => getDefaultProvider(process.env.EL_RPC_URL),
   };
 
   const testModules = async (metadata: ModuleMetadata) => {

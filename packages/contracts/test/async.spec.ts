@@ -10,7 +10,7 @@ import { Test } from '@nestjs/testing';
 import { Lido, LidoContractModule, LIDO_CONTRACT_TOKEN } from '../src';
 
 const address = hexZeroPad('0x12', 20);
-const provider = getDefaultProvider('mainnet');
+const provider = getDefaultProvider(process.env.EL_RPC_URL);
 
 @Injectable()
 class TestService {

@@ -1,7 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { ModuleMetadata } from '@nestjs/common';
+import { Registry } from '@lido-nestjs/contracts';
 
-export interface RegistryOptions {}
+export interface RegistryOptions {
+  registryContract?: Registry;
+}
 
 export interface RegistryModuleSyncOptions
   extends Pick<ModuleMetadata, 'imports'>,

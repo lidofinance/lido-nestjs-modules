@@ -13,7 +13,7 @@ export class RegistryOperatorFetchService {
   ) {}
 
   /** fetches number of operators */
-  public async count(overrides?: CallOverrides): Promise<number> {
+  public async count(overrides: CallOverrides = {}): Promise<number> {
     const bigNumber = await this.contract.getNodeOperatorsCount(overrides);
     return bigNumber.toNumber();
   }
@@ -21,7 +21,7 @@ export class RegistryOperatorFetchService {
   /** fetches one operator */
   public async fetchOne(
     operatorIndex: number,
-    overrides?: CallOverrides,
+    overrides: CallOverrides = {},
   ): Promise<RegistryOperator> {
     const fullInfo = true;
     const operator = await this.contract.getNodeOperator(
@@ -56,13 +56,13 @@ export class RegistryOperatorFetchService {
   public async fetch(
     fromIndex = 0,
     toIndex = -1,
-    overrides?: CallOverrides,
+    overrides: CallOverrides = {},
   ): Promise<RegistryOperator[]> {
-    if (fromIndex > toIndex) {
+    if (fromIndex > toIndex && toIndex !== -1) {
       throw new Error('fromIndex is greater than or equal to toIndex');
     }
 
-    if (toIndex == null || toIndex == -1) {
+    if (toIndex == null || toIndex === -1) {
       toIndex = await this.count(overrides);
     }
 

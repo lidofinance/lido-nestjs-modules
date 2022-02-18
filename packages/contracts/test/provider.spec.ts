@@ -8,7 +8,7 @@ import { Lido, LidoContractModule, LIDO_CONTRACT_TOKEN } from '../src';
 const privateKey = '0x12';
 
 describe('Providers', () => {
-  const provider = getDefaultProvider('mainnet');
+  const provider = getDefaultProvider(process.env.EL_RPC_URL);
   const signer = new Wallet(privateKey, provider);
 
   const testModules = async (imports: ModuleMetadata['imports']) => {
