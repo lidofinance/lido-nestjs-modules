@@ -5,12 +5,12 @@ import {
 } from '@lido-nestjs/contracts';
 import { getNetwork } from '@ethersproject/networks';
 import { Interface } from '@ethersproject/abi';
-import { getDefaultProvider } from '@ethersproject/providers';
+import { JsonRpcBatchProvider } from '@ethersproject/providers';
 import { operator, operatorFields } from './fixtures/operator.fixture';
 import { RegistryModule, RegistryOperatorFetchService } from '../src';
 
 describe('Operators', () => {
-  const provider = getDefaultProvider(process.env.EL_RPC_URL);
+  const provider = new JsonRpcBatchProvider(process.env.EL_RPC_URL);
   let fetchService: RegistryOperatorFetchService;
 
   const mockCall = jest
