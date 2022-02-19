@@ -7,11 +7,12 @@ import { getNetwork } from '@ethersproject/networks';
 import { Interface } from '@ethersproject/abi';
 import { getDefaultProvider } from '@ethersproject/providers';
 import { operator, operatorFields } from './fixtures/operator.fixture';
-import { RegistryModule, RegistryOperatorFetchService } from '../src';
+import { key, keyFields } from './fixtures/key.fixture';
+import { RegistryModule, RegistryKeyFetchService } from '../src';
 
-describe('Operators', () => {
+describe('Keys', () => {
   const provider = getDefaultProvider(process.env.EL_RPC_URL);
-  let fetchService: RegistryOperatorFetchService;
+  let fetchService: RegistryKeyFetchService;
 
   const mockCall = jest
     .spyOn(provider, 'call')
@@ -27,53 +28,39 @@ describe('Operators', () => {
       RegistryModule.forFeature(),
     ];
     const moduleRef = await Test.createTestingModule({ imports }).compile();
-    fetchService = moduleRef.get(RegistryOperatorFetchService);
+    fetchService = moduleRef.get(RegistryKeyFetchService);
   });
 
   afterEach(async () => {
     mockCall.mockReset();
   });
 
-  test('count', async () => {
-    const expected = 2;
-    mockCall.mockImplementation(async () => {
-      const iface = new Interface(Registry__factory.abi);
-      return iface.encodeFunctionResult('getNodeOperatorsCount', [expected]);
-    });
-    const result = await fetchService.count();
-
-    expect(result).toBe(expected);
-    expect(mockCall).toBeCalledTimes(1);
-  });
-
   test('fetchOne', async () => {
-    const expected = { index: 1, ...operator };
+    const expected = { operatorIndex: 0, index: 1, ...key };
 
     mockCall.mockImplementation(async () => {
       const iface = new Interface(Registry__factory.abi);
-      return iface.encodeFunctionResult(
-        'getNodeOperator',
-        operatorFields(operator),
-      );
+      return iface.encodeFunctionResult('getSigningKey', keyFields);
     });
-    const result = await fetchService.fetchOne(expected.index);
+    const result = await fetchService.fetchOne(
+      expected.operatorIndex,
+      expected.index,
+    );
 
     expect(result).toEqual(expected);
     expect(mockCall).toBeCalledTimes(1);
   });
 
   test('fetch', async () => {
-    const expectedFirst = { index: 1, ...operator };
-    const expectedSecond = { index: 2, ...operator };
+    const expectedFirst = { operatorIndex: 0, index: 1, ...key };
+    const expectedSecond = { operatorIndex: 0, index: 2, ...key };
 
     mockCall.mockImplementation(async () => {
       const iface = new Interface(Registry__factory.abi);
-      return iface.encodeFunctionResult(
-        'getNodeOperator',
-        operatorFields(operator),
-      );
+      return iface.encodeFunctionResult('getSigningKey', keyFields);
     });
     const result = await fetchService.fetch(
+      expectedFirst.operatorIndex,
       expectedFirst.index,
       expectedSecond.index + 1,
     );
@@ -82,28 +69,28 @@ describe('Operators', () => {
     expect(mockCall).toBeCalledTimes(2);
   });
 
-  test('fetch all', async () => {
-    const expected = { index: 0, ...operator };
+  test('fetch all operator keys', async () => {
+    const expected = { operatorIndex: 1, index: 0, ...key };
 
     mockCall
       .mockImplementationOnce(async () => {
         const iface = new Interface(Registry__factory.abi);
-        return iface.encodeFunctionResult('getNodeOperatorsCount', [1]);
-      })
-      .mockImplementationOnce(async () => {
-        const iface = new Interface(Registry__factory.abi);
         return iface.encodeFunctionResult(
           'getNodeOperator',
-          operatorFields(operator),
+          operatorFields({ ...operator, totalSigningKeys: 1 }),
         );
+      })
+      .mockImplementation(async () => {
+        const iface = new Interface(Registry__factory.abi);
+        return iface.encodeFunctionResult('getSigningKey', keyFields);
       });
-    const result = await fetchService.fetch();
+    const result = await fetchService.fetch(expected.operatorIndex);
 
     expect(result).toEqual([expected]);
     expect(mockCall).toBeCalledTimes(2);
   });
 
   test('fetch. fromIndex > toIndex', async () => {
-    await expect(() => fetchService.fetch(2, 1)).rejects.toThrow();
+    await expect(() => fetchService.fetch(0, 2, 1)).rejects.toThrow();
   });
 });

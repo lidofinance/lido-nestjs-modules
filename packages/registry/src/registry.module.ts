@@ -6,17 +6,20 @@ import {
 import { RegistryService } from './registry.service';
 import { RegistryOperatorFetchService } from './operator/operator.fetch';
 import { RegistryOperatorStorageService } from './operator/operator.storage';
+import { RegistryKeyFetchService } from './key/key.fetch';
 
 @Module({
   providers: [
     RegistryService,
     RegistryOperatorStorageService,
     RegistryOperatorFetchService,
+    RegistryKeyFetchService,
   ],
   exports: [
     RegistryService,
     RegistryOperatorStorageService,
     RegistryOperatorFetchService,
+    RegistryKeyFetchService,
   ],
 })
 export class RegistryModule {
