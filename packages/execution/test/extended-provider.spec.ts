@@ -3,7 +3,7 @@ import { ExtendedJsonRpcBatchProvider, ExecutionModule } from '../src';
 import { ConnectionInfo } from '@ethersproject/web';
 import { fakeFetchImpl, fixtures } from './fixtures/fake-json-rpc';
 import { range } from './utils';
-import { jsonTransport, LoggerModule } from '@lido-nestjs/logger';
+import { nullTransport, LoggerModule } from '@lido-nestjs/logger';
 import { JsonRpcRequest, JsonRpcResponse } from '../dist';
 import { MiddlewareCallback } from '@lido-nestjs/middleware';
 
@@ -28,7 +28,7 @@ describe('Execution module. ', () => {
       const module = {
         imports: [
           ExecutionModule.forFeature({
-            imports: [LoggerModule.forRoot({ transports: [jsonTransport()] })],
+            imports: [LoggerModule.forRoot({ transports: [nullTransport()] })],
             urls: ['http://localhost'],
             requestPolicy: {
               jsonRpcMaxBatchSize,
