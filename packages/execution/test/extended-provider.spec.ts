@@ -1,5 +1,5 @@
 import { Test } from '@nestjs/testing';
-import { ExtendedJsonRpcBatchProvider, ExecutionModule } from '../src';
+import { ExtendedJsonRpcBatchProvider, BatchProviderModule } from '../src';
 import { ConnectionInfo } from '@ethersproject/web';
 import { fakeFetchImpl, fixtures } from './fixtures/fake-json-rpc';
 import { range } from './utils';
@@ -27,15 +27,14 @@ describe('Execution module. ', () => {
     ) => {
       const module = {
         imports: [
-          ExecutionModule.forFeature({
+          BatchProviderModule.forFeature({
             imports: [LoggerModule.forRoot({ transports: [nullTransport()] })],
-            urls: ['http://localhost'],
+            url: 'http://localhost',
             requestPolicy: {
               jsonRpcMaxBatchSize,
               batchAggregationWaitMs: 10,
               maxConcurrentRequests,
             },
-            network: 1,
             fetchMiddlewares,
           }),
         ],
@@ -189,7 +188,7 @@ describe('Execution module. ', () => {
       expect(mockCallback).toBeCalledTimes(0);
 
       await mockedProvider.getBlock(10000);
-      expect(mockCallback).toBeCalledTimes(6); // TODO fix to 4
+      expect(mockCallback).toBeCalledTimes(4);
 
       // 'getNetwork' fetch call
       expect(mockCallback.mock.calls[0][0]).toBe('foo');

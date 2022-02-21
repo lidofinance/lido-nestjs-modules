@@ -16,13 +16,13 @@ yarn add @lido-nestjs/execution
 ```ts
 // Import
 import { Injectable, Module } from '@nestjs/common';
-import { ExecutionModule } from '@lido-nestjs/execution';
+import { FallbackProviderModule } from '@lido-nestjs/execution';
 import { MyService } from './my.service';
 
 @Module({
   imports: [
     LoggerModule.forRoot({}),
-    ExecutionModule.forRoot({
+    FallbackProviderModule.forRoot({
       imports: [],
       urls: ['http://localhost:8545', 'http://fallback:8545'],
       network: 1,
@@ -48,4 +48,25 @@ export class MyService {
 
 ### Async usage
 
-// TODO
+```ts
+import { Module } from '@nestjs/common';
+import { FallbackProviderModule } from '@lido-nestjs/execution';
+import { ConfigModule, ConfigService } from './my.service';
+
+@Module({
+  imports: [
+    ConfigModule.forRoot(),
+    FetchModule.forRoot(),
+    FallbackProviderModule.forRootAsync({
+      async useFactory(configService: ConfigService) {
+        return {
+          urls: configService.urls,
+          network: configService.network,
+        };
+      },
+      inject: [ConfigService],
+    }),
+  ],
+})
+export class MyModule {}
+```
