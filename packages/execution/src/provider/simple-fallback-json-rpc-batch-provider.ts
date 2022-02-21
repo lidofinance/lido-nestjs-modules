@@ -10,6 +10,11 @@ import { BigNumber, BigNumberish } from '@ethersproject/bignumber';
 import { Deferrable } from '@ethersproject/properties';
 import { TransactionRequest } from '@ethersproject/abstract-provider/src.ts/index';
 import { FormatterWithEIP1898 } from '../ethers/formatter-with-eip1898';
+import {
+  getNetworkChain,
+  networksChainsEqual,
+  networksEqual,
+} from '../common/networks';
 
 /**
  * EIP-1898 support
@@ -47,6 +52,7 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
   protected logger: LoggerService;
   protected fallbackProviders: [FallbackProvider];
   protected activeFallbackProviderIndex: number;
+  protected detectNetworkFirstRun = true;
 
   public constructor(
     config: SimpleFallbackProviderConfig,
@@ -86,7 +92,6 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
         config.fetchMiddlewares ?? [],
       );
       return {
-        valid: false,
         network: null,
         provider,
         index,
@@ -95,9 +100,9 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
     this.activeFallbackProviderIndex = 0;
   }
 
-  static _formatter: Formatter | null = null;
+  public static _formatter: Formatter | null = null;
 
-  static getFormatter(): Formatter {
+  public static getFormatter(): Formatter {
     if (this._formatter == null) {
       this._formatter = new FormatterWithEIP1898();
     }
@@ -109,27 +114,31 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
       this.activeFallbackProviderIndex = 0;
     }
 
-    let variant = this.fallbackProviders[this.activeFallbackProviderIndex];
+    let fallbackProvider =
+      this.fallbackProviders[this.activeFallbackProviderIndex];
     let attempt = 0;
 
-    while (!variant.valid || attempt < this.fallbackProviders.length) {
-      variant = this.fallbackProviders[this.activeFallbackProviderIndex];
+    const isValid = (provider: FallbackProvider): boolean =>
+      provider.network !== null &&
+      provider.network.chainId === getNetworkChain(this.config.network);
 
-      if (!variant.valid) {
+    while (
+      !isValid(fallbackProvider) ||
+      attempt < this.fallbackProviders.length
+    ) {
+      fallbackProvider =
+        this.fallbackProviders[this.activeFallbackProviderIndex];
+
+      // skipping providers with unreachable endpoints or networks
+      // that are not equal to predefined network (from config)
+      if (!isValid(fallbackProvider)) {
         this.activeFallbackProviderIndex++;
       }
 
       attempt++;
     }
 
-    if (!variant.valid) {
-      // this likely will never happen
-      throw new Error(
-        'No valid providers (all fallback endpoints unreachable)',
-      );
-    }
-
-    return variant;
+    return fallbackProvider;
   }
 
   protected switchToNextProvider() {
@@ -177,7 +186,7 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
       }
     }
 
-    throw new Error('All attempts failed');
+    throw new Error('All attempts to do ETH1 RPC request failed');
   }
 
   public async detectNetwork(): Promise<Network> {
@@ -187,45 +196,63 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
 
     results.forEach((result, i) => {
       if (result.status === 'fulfilled') {
-        this.fallbackProviders[i].valid = true;
         this.fallbackProviders[i].network = result.value;
       } else {
-        this.fallbackProviders[i].valid = false;
         this.fallbackProviders[i].network = null;
       }
     });
 
     let previousNetwork: Network | null = null;
 
-    this.fallbackProviders.forEach((variant) => {
-      if (!variant.network || !variant.valid) {
+    this.fallbackProviders.forEach((fallbackProvider, index) => {
+      if (!fallbackProvider.network) {
+        return;
+      }
+
+      if (!networksChainsEqual(fallbackProvider.network, this.config.network)) {
+        if (this.detectNetworkFirstRun) {
+          throw new Error(
+            `Fallback provider [${index}] network chainId ` +
+              `[${fallbackProvider.network.chainId}] is different to network ` +
+              `chainId from config [${getNetworkChain(this.config.network)}]`,
+          );
+        }
+        // TODO add logs here
+        // skipping network with bad chainId
         return;
       }
 
       if (previousNetwork) {
-        // Make sure the network matches the previous networks
-        if (
-          !(
-            previousNetwork.name === variant.network.name &&
-            previousNetwork.chainId === variant.network.chainId &&
-            (previousNetwork.ensAddress === variant.network.ensAddress ||
-              (previousNetwork.ensAddress == null &&
-                variant.network.ensAddress == null))
-          )
-        ) {
-          throw new Error('Provider networks mismatch');
+        // Make sure the fallbackProvider network matches the previous network
+        if (!this.networksEqual(previousNetwork, fallbackProvider.network)) {
+          if (this.detectNetworkFirstRun) {
+            throw new Error(
+              `Fallback provider [${index}] network is different to other provider's networks`,
+            );
+          }
+          this.logger.warn(
+            `Fallback provider [${index}] network is different to other provider's networks`,
+          );
         }
       } else {
-        previousNetwork = variant.network;
+        previousNetwork = fallbackProvider.network;
       }
     });
 
     if (!previousNetwork) {
       throw new Error(
-        'No valid fallback providers found (all fallback endpoints unreachable)',
+        'All fallback endpoints are unreachable or all fallback networks differ between each other',
       );
     }
 
+    if (this.detectNetworkFirstRun) {
+      this.detectNetworkFirstRun = false;
+    }
+
     return previousNetwork;
+  }
+
+  protected networksEqual(networkA: Network, networkB: Network): boolean {
+    return networksEqual(networkA, networkB);
   }
 }

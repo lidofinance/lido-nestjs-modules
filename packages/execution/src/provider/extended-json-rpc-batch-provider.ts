@@ -122,9 +122,9 @@ export class ExtendedJsonRpcBatchProvider extends JsonRpcProvider {
     });
   }
 
-  static _formatter: Formatter | null = null;
+  public static _formatter: Formatter | null = null;
 
-  static getFormatter(): Formatter {
+  public static getFormatter(): Formatter {
     if (this._formatter == null) {
       this._formatter = new FormatterWithEIP1898();
     }

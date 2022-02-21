@@ -45,7 +45,7 @@ describe('Execution module. ', () => {
 
       mockedProviderFetch = jest
         .spyOn(mockedProvider, 'fetchJson')
-        .mockImplementation(fakeFetchImpl);
+        .mockImplementation(fakeFetchImpl());
 
       mockedDetectNetwork = jest.spyOn(mockedProvider, 'detectNetwork');
     };
@@ -60,10 +60,10 @@ describe('Execution module. ', () => {
       expect(mockedProviderFetch).toBeCalledTimes(0);
       expect(mockedDetectNetwork).toBeCalledTimes(0);
 
-      const block = await mockedProvider.getBlock(10000);
+      const block = await mockedProvider.getBlock(1);
       expect(mockedProviderFetch).toBeCalledTimes(2);
       expect(mockedDetectNetwork).toBeCalledTimes(2);
-      expect(block.hash).toBe(fixtures.eth_getBlockByNumber.hash);
+      expect(block.hash).toBe(fixtures.eth_getBlockByNumber.default.hash);
 
       const balance = await mockedProvider.getBalance(fixtures.address);
       expect(mockedProviderFetch).toBeCalledTimes(3);
