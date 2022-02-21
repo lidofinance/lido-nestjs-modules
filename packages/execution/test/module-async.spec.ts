@@ -5,7 +5,7 @@ import {
   ExecutionModuleAsyncOptions,
   SimpleFallbackJsonRpcBatchProvider,
 } from '../src';
-import { jsonTransport, LoggerModule } from '@lido-nestjs/logger';
+import { nullTransport, LoggerModule } from '@lido-nestjs/logger';
 import {
   DynamicModule,
   Injectable,
@@ -76,7 +76,7 @@ describe('Async module initializing', () => {
 
   test('forRootAsync', async () => {
     await testModules([
-      LoggerModule.forRoot({ transports: [jsonTransport()] }),
+      LoggerModule.forRoot({ transports: [nullTransport()] }),
       TestAsyncModule.forRoot(),
       ExecutionModule.forRootAsync(factory),
     ]);
@@ -85,7 +85,7 @@ describe('Async module initializing', () => {
       ExecutionModule.forRootAsync({
         imports: [
           TestAsyncModule.forRoot(),
-          LoggerModule.forRoot({ transports: [jsonTransport()] }),
+          LoggerModule.forRoot({ transports: [nullTransport()] }),
         ],
         ...factory,
       }),
@@ -94,7 +94,7 @@ describe('Async module initializing', () => {
 
   test('forFeatureAsync', async () => {
     await testModules([
-      LoggerModule.forRoot({ transports: [jsonTransport()] }),
+      LoggerModule.forRoot({ transports: [nullTransport()] }),
       TestAsyncModule.forRoot(),
       ExecutionModule.forFeatureAsync(factory),
     ]);
@@ -103,7 +103,7 @@ describe('Async module initializing', () => {
       ExecutionModule.forFeatureAsync({
         imports: [
           TestAsyncModule.forRoot(),
-          LoggerModule.forRoot({ transports: [jsonTransport()] }),
+          LoggerModule.forRoot({ transports: [nullTransport()] }),
         ],
         ...factory,
       }),

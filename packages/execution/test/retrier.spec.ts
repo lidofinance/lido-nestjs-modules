@@ -48,7 +48,7 @@ describe('Retrier. ', () => {
     const elapsed = end();
 
     expect(elapsed.ms).toBeGreaterThan(1700);
-    expect(elapsed.ms).toBeLessThan(1799);
+    expect(elapsed.ms).toBeLessThan(1900);
     expect(result).toBe('yay');
     expect(attempts).toBe(4);
   });

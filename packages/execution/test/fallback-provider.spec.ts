@@ -14,7 +14,7 @@ import {
   makeFakeFetchImplThatFailsFirstNRequests,
   makeFetchImplWithSpecificNetwork,
 } from './fixtures/fake-json-rpc';
-import { jsonTransport, LoggerModule } from '@lido-nestjs/logger';
+import { nullTransport, LoggerModule } from '@lido-nestjs/logger';
 import { ConnectionInfo } from '@ethersproject/web';
 import { range } from './utils';
 import { NonEmptyArray } from '../dist/interfaces/non-empty-array';
@@ -56,7 +56,7 @@ describe('Execution module. ', () => {
       const module = {
         imports: [
           ExecutionModule.forFeature({
-            imports: [LoggerModule.forRoot({ transports: [jsonTransport()] })],
+            imports: [LoggerModule.forRoot({ transports: [nullTransport()] })],
             urls:
               urls ??
               <[string]>(
