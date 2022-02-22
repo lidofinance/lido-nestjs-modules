@@ -1,4 +1,5 @@
 export * from './generated';
+export * from './generated/common';
 
 export * from './deposit/deposit.constants';
 export * from './deposit/deposit.module';

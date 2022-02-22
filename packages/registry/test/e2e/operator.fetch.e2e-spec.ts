@@ -2,7 +2,7 @@ import { Test } from '@nestjs/testing';
 import { RegistryContractModule } from '@lido-nestjs/contracts';
 import { getDefaultProvider } from '@ethersproject/providers';
 import { isAddress } from '@ethersproject/address';
-import { RegistryModule, RegistryOperatorFetchService } from '../src';
+import { RegistryModule, RegistryOperatorFetchService } from '../../src';
 
 describe('Operators', () => {
   const provider = getDefaultProvider(process.env.EL_RPC_URL);

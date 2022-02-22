@@ -4,7 +4,10 @@ import { ModuleMetadata } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { getNetwork } from '@ethersproject/networks';
 import { getDefaultProvider } from '@ethersproject/providers';
-import { RegistryContractModule } from '@lido-nestjs/contracts';
+import {
+  LidoContractModule,
+  RegistryContractModule,
+} from '@lido-nestjs/contracts';
 import { RegistryModule, RegistryService } from '../src';
 
 const address = hexZeroPad('0x12', 20);
@@ -43,6 +46,7 @@ describe('Async module initializing', () => {
   test('forRootAsync', async () => {
     await testModules([
       TestModule.forRoot(),
+      LidoContractModule.forRoot({ provider }),
       RegistryContractModule.forRoot({ provider }),
       RegistryModule.forRootAsync({
         async useFactory(/* testService: TestService */) {
@@ -57,6 +61,7 @@ describe('Async module initializing', () => {
   test('forFeatureAsync', async () => {
     await testModules([
       TestModule.forRoot(),
+      LidoContractModule.forRoot({ provider }),
       RegistryContractModule.forRoot({ provider }),
       RegistryModule.forFeatureAsync({
         async useFactory(/* testService: TestService */) {

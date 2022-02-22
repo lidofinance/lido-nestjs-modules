@@ -1,7 +1,7 @@
 import { Test } from '@nestjs/testing';
 import { RegistryContractModule } from '@lido-nestjs/contracts';
 import { JsonRpcBatchProvider } from '@ethersproject/providers';
-import { RegistryModule, RegistryKeyFetchService } from '../src';
+import { RegistryModule, RegistryKeyFetchService } from '../../src';
 
 describe('Keys', () => {
   const provider = new JsonRpcBatchProvider(process.env.EL_RPC_URL);
