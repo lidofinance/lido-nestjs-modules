@@ -1,12 +1,6 @@
-export const EXECUTION_MODULE_OPTIONS = Symbol('execution-module-options');
-
-export enum Provider {
-  ExtendedJsonRpcBatchProvider,
-  SimpleFallbackJsonRpcBatchProvider,
-}
-
-// export type Providers =
-//   [Provider.ExtendedJsonRpcBatchProvider, Provider.SimpleFallbackJsonRpcBatchProvider] |
-//   [Provider.SimpleFallbackJsonRpcBatchProvider, Provider.ExtendedJsonRpcBatchProvider] |
-//   [Provider.SimpleFallbackJsonRpcBatchProvider] |
-//   [Provider.ExtendedJsonRpcBatchProvider];
+export const FALLBACK_PROVIDER_MODULE_OPTIONS = Symbol(
+  'fallback-provider-module-options',
+);
+export const BATCH_PROVIDER_MODULE_OPTIONS = Symbol(
+  'batch-provider-module-options',
+);
