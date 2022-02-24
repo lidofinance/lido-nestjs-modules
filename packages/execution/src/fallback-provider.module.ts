@@ -1,16 +1,16 @@
 import { DynamicModule, Module, Provider } from '@nestjs/common';
 import { ExtendedJsonRpcBatchProvider } from './provider/extended-json-rpc-batch-provider';
 import {
-  ExecutionModuleAsyncOptions,
-  ExecutionModuleSyncOptions,
+  FallbackProviderModuleAsyncOptions,
+  FallbackProviderModuleSyncOptions,
 } from './interfaces/module.options';
-import { EXECUTION_MODULE_OPTIONS } from './constants/constants';
+import { FALLBACK_PROVIDER_MODULE_OPTIONS } from './constants/constants';
 import { SimpleFallbackJsonRpcBatchProvider } from './provider/simple-fallback-json-rpc-batch-provider';
 import { LoggerService } from '@nestjs/common/services/logger.service';
 import { LOGGER_PROVIDER } from '@lido-nestjs/logger';
 
 const getModuleProviders = (
-  options: ExecutionModuleSyncOptions,
+  options: FallbackProviderModuleSyncOptions,
 ): Provider[] => {
   return [
     {
@@ -35,28 +35,29 @@ const getModuleProviders = (
 };
 
 @Module({})
-export class ExecutionModule {
-  public static forRoot(options: ExecutionModuleSyncOptions): DynamicModule {
+export class FallbackProviderModule {
+  public static forRoot(
+    options: FallbackProviderModuleSyncOptions,
+  ): DynamicModule {
     return {
       global: true,
       ...this.forFeature(options),
     };
   }
 
-  public static forFeature(options: ExecutionModuleSyncOptions): DynamicModule {
+  public static forFeature(
+    options: FallbackProviderModuleSyncOptions,
+  ): DynamicModule {
     return {
-      module: ExecutionModule,
+      module: FallbackProviderModule,
       imports: options.imports,
       providers: getModuleProviders(options),
-      exports: [
-        SimpleFallbackJsonRpcBatchProvider,
-        ExtendedJsonRpcBatchProvider,
-      ],
+      exports: [SimpleFallbackJsonRpcBatchProvider],
     };
   }
 
   public static forRootAsync(
-    options: ExecutionModuleAsyncOptions,
+    options: FallbackProviderModuleAsyncOptions,
   ): DynamicModule {
     return {
       global: true,
@@ -65,14 +66,14 @@ export class ExecutionModule {
   }
 
   public static forFeatureAsync(
-    options: ExecutionModuleAsyncOptions,
+    options: FallbackProviderModuleAsyncOptions,
   ): DynamicModule {
     return {
-      module: ExecutionModule,
+      module: FallbackProviderModule,
       imports: options.imports,
       providers: [
         {
-          provide: EXECUTION_MODULE_OPTIONS,
+          provide: FALLBACK_PROVIDER_MODULE_OPTIONS,
           useFactory: options.useFactory,
           inject: options.inject,
         },
@@ -80,29 +81,15 @@ export class ExecutionModule {
           provide: SimpleFallbackJsonRpcBatchProvider,
           useFactory: (
             logger: LoggerService,
-            options: ExecutionModuleSyncOptions,
+            options: FallbackProviderModuleSyncOptions,
           ) => {
             return new SimpleFallbackJsonRpcBatchProvider(options, logger);
           },
-          inject: [LOGGER_PROVIDER, EXECUTION_MODULE_OPTIONS],
-        },
-        {
-          provide: ExtendedJsonRpcBatchProvider,
-          useFactory: (options: ExecutionModuleSyncOptions) => {
-            return new ExtendedJsonRpcBatchProvider(
-              options.urls[0],
-              undefined, // options.network,
-              options.requestPolicy,
-            );
-          },
-          inject: [EXECUTION_MODULE_OPTIONS],
+          inject: [LOGGER_PROVIDER, FALLBACK_PROVIDER_MODULE_OPTIONS],
         },
         ...(options.providers || []),
       ],
-      exports: [
-        SimpleFallbackJsonRpcBatchProvider,
-        ExtendedJsonRpcBatchProvider,
-      ],
+      exports: [SimpleFallbackJsonRpcBatchProvider],
     };
   }
 }

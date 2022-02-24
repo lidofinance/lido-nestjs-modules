@@ -2,7 +2,7 @@
 import { Test } from '@nestjs/testing';
 import {
   ExtendedJsonRpcBatchProvider,
-  ExecutionModule,
+  FallbackProviderModule,
   SimpleFallbackJsonRpcBatchProvider,
 } from '../src';
 import {
@@ -55,7 +55,7 @@ describe('Execution module. ', () => {
     ) => {
       const module = {
         imports: [
-          ExecutionModule.forFeature({
+          FallbackProviderModule.forFeature({
             imports: [LoggerModule.forRoot({ transports: [nullTransport()] })],
             urls:
               urls ??
