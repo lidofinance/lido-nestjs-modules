@@ -2,8 +2,8 @@ import { Inject, Injectable } from '@nestjs/common';
 import { CallOverrides } from '@ethersproject/contracts';
 import { rangePromise } from '@lido-nestjs/utils';
 import { Registry, REGISTRY_CONTRACT_TOKEN } from '@lido-nestjs/contracts';
-import { RegistryKey } from '../interfaces/key.interface';
-import { RegistryOperatorFetchService } from '../operator/operator.fetch';
+import { RegistryKey } from './interfaces/key.interface';
+import { RegistryOperatorFetchService } from './operator.fetch';
 import { REGISTRY_KEY_BATCH_SIZE } from './key.constants';
 
 @Injectable()

@@ -1,5 +1,5 @@
 import { AddressZero } from '@ethersproject/constants';
-import { RegistryOperator } from '../../src/interfaces/operator.interface';
+import { RegistryOperator } from '../../src/fetch/interfaces/operator.interface';
 
 export const operator = {
   active: true,

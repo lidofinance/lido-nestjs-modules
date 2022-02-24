@@ -9,7 +9,7 @@ import { Interface } from '@ethersproject/abi';
 import { BigNumber } from '@ethersproject/bignumber';
 import { JsonRpcBatchProvider } from '@ethersproject/providers';
 import { unbufferedLog } from '../fixtures/unbuffered.fixture';
-import { RegistryModule, RegistryMetaFetchService } from '../../src';
+import { RegistryFetchModule, RegistryMetaFetchService } from '../../src';
 
 describe('Meta', () => {
   const provider = new JsonRpcBatchProvider(process.env.EL_RPC_URL);
@@ -31,7 +31,7 @@ describe('Meta', () => {
     const imports = [
       LidoContractModule.forRoot({ provider }),
       RegistryContractModule.forRoot({ provider }),
-      RegistryModule.forFeature(),
+      RegistryFetchModule.forFeature(),
     ];
     const moduleRef = await Test.createTestingModule({ imports }).compile();
     fetchService = moduleRef.get(RegistryMetaFetchService);

@@ -31,7 +31,8 @@
     "@lido-nestjs/contracts": "workspace:*",
     "@lido-nestjs/utils": "workspace:*",
     "@mikro-orm/core": "^5.0.1",
-    "@mikro-orm/nestjs": "^4.3.1"
+    "@mikro-orm/nestjs": "^4.3.1",
+    "@mikro-orm/sqlite": "^5.0.3"
   },
   "peerDependencies": {
     "@nestjs/common": "^8.2.5",

@@ -1,7 +1,10 @@
 import { Test } from '@nestjs/testing';
-import { RegistryContractModule } from '@lido-nestjs/contracts';
+import {
+  LidoContractModule,
+  RegistryContractModule,
+} from '@lido-nestjs/contracts';
 import { JsonRpcBatchProvider } from '@ethersproject/providers';
-import { RegistryModule, RegistryKeyFetchService } from '../../src';
+import { RegistryFetchModule, RegistryKeyFetchService } from '../../src';
 
 describe('Keys', () => {
   const provider = new JsonRpcBatchProvider(process.env.EL_RPC_URL);
@@ -9,8 +12,9 @@ describe('Keys', () => {
 
   beforeEach(async () => {
     const imports = [
+      LidoContractModule.forRoot({ provider }),
       RegistryContractModule.forRoot({ provider }),
-      RegistryModule.forFeature(),
+      RegistryFetchModule.forFeature(),
     ];
     const moduleRef = await Test.createTestingModule({ imports }).compile();
     fetchService = moduleRef.get(RegistryKeyFetchService);

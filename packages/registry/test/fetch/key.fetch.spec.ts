@@ -9,7 +9,7 @@ import { Interface } from '@ethersproject/abi';
 import { getDefaultProvider } from '@ethersproject/providers';
 import { operator, operatorFields } from '../fixtures/operator.fixture';
 import { key, keyFields } from '../fixtures/key.fixture';
-import { RegistryModule, RegistryKeyFetchService } from '../../src';
+import { RegistryFetchModule, RegistryKeyFetchService } from '../../src';
 
 describe('Keys', () => {
   const provider = getDefaultProvider(process.env.EL_RPC_URL);
@@ -27,7 +27,7 @@ describe('Keys', () => {
     const imports = [
       LidoContractModule.forRoot({ provider }),
       RegistryContractModule.forRoot({ provider }),
-      RegistryModule.forFeature(),
+      RegistryFetchModule.forFeature(),
     ];
     const moduleRef = await Test.createTestingModule({ imports }).compile();
     fetchService = moduleRef.get(RegistryKeyFetchService);

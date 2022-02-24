@@ -2,16 +2,16 @@
 import { ModuleMetadata } from '@nestjs/common';
 import { Registry } from '@lido-nestjs/contracts';
 
-export interface RegistryOptions {
+export interface RegistryStorageOptions {
   registryContract?: Registry;
 }
 
-export interface RegistryModuleSyncOptions
+export interface RegistryStorageModuleSyncOptions
   extends Pick<ModuleMetadata, 'imports'>,
-    RegistryOptions {}
+    RegistryStorageOptions {}
 
-export interface RegistryModuleAsyncOptions
+export interface RegistryStorageModuleAsyncOptions
   extends Pick<ModuleMetadata, 'imports'> {
-  useFactory: (...args: any[]) => Promise<RegistryOptions>;
+  useFactory: (...args: any[]) => Promise<RegistryStorageOptions>;
   inject?: any[];
 }

@@ -2,7 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { CallOverrides } from '@ethersproject/contracts';
 import { rangePromise } from '@lido-nestjs/utils';
 import { Registry, REGISTRY_CONTRACT_TOKEN } from '@lido-nestjs/contracts';
-import { RegistryOperator } from '../interfaces/operator.interface';
+import { RegistryOperator } from './interfaces/operator.interface';
 import { REGISTRY_OPERATORS_BATCH_SIZE } from './operator.constants';
 
 @Injectable()

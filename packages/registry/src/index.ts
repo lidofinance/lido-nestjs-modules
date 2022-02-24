@@ -1,17 +1,25 @@
-export * from './registry.constants';
-export * from './registry.module';
-export * from './registry.service';
+export * from './fetch/registry-fetch.constants';
+export * from './fetch/registry-fetch.module';
+export * from './fetch/registry-fetch.service';
 
-export * from './key/key.constants';
-export * from './key/key.entity';
-export * from './key/key.fetch';
-export * from './key/key.storage';
+export * from './fetch/key.constants';
+export * from './fetch/key.fetch';
 
-export * from './meta/meta.entity';
-export * from './meta/meta.fetch';
-export * from './meta/meta.storage';
+export * from './fetch/meta.fetch';
 
-export * from './operator/operator.constants';
-export * from './operator/operator.entity';
-export * from './operator/operator.fetch';
-export * from './operator/operator.storage';
+export * from './fetch/operator.constants';
+export * from './fetch/operator.fetch';
+
+export * from './storage/registry-storage.constants';
+export * from './storage/registry-storage.module';
+export * from './storage/registry-storage.service';
+
+export * from './storage/key.entity';
+export * from './storage/key.repository';
+export * from './storage/key.storage';
+
+export * from './storage/meta.entity';
+export * from './storage/meta.storage';
+
+export * from './storage/operator.entity';
+export * from './storage/operator.storage';

@@ -8,7 +8,7 @@ import {
   LidoContractModule,
   RegistryContractModule,
 } from '@lido-nestjs/contracts';
-import { RegistryModule, RegistryService } from '../src';
+import { RegistryFetchModule, RegistryFetchService } from '../../src';
 
 const address = hexZeroPad('0x12', 20);
 
@@ -38,9 +38,10 @@ describe('Async module initializing', () => {
 
   const testModules = async (imports: ModuleMetadata['imports']) => {
     const moduleRef = await Test.createTestingModule({ imports }).compile();
-    const registryService: RegistryService = moduleRef.get(RegistryService);
+    const fetchService: RegistryFetchService =
+      moduleRef.get(RegistryFetchService);
 
-    expect(registryService.updateStoredData).toBeDefined();
+    expect(fetchService).toBeDefined();
   };
 
   test('forRootAsync', async () => {
@@ -48,7 +49,7 @@ describe('Async module initializing', () => {
       TestModule.forRoot(),
       LidoContractModule.forRoot({ provider }),
       RegistryContractModule.forRoot({ provider }),
-      RegistryModule.forRootAsync({
+      RegistryFetchModule.forRootAsync({
         async useFactory(/* testService: TestService */) {
           // TODO: config
           return {};
@@ -63,7 +64,7 @@ describe('Async module initializing', () => {
       TestModule.forRoot(),
       LidoContractModule.forRoot({ provider }),
       RegistryContractModule.forRoot({ provider }),
-      RegistryModule.forFeatureAsync({
+      RegistryFetchModule.forFeatureAsync({
         async useFactory(/* testService: TestService */) {
           // TODO: config
           return {};

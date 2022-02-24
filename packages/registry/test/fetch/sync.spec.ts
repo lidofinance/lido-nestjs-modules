@@ -6,7 +6,7 @@ import {
   LidoContractModule,
   RegistryContractModule,
 } from '@lido-nestjs/contracts';
-import { RegistryModule, RegistryService } from '../src';
+import { RegistryFetchModule, RegistryFetchService } from '../../src';
 
 describe('Sync module initializing', () => {
   const provider = getDefaultProvider(process.env.EL_RPC_URL);
@@ -17,16 +17,17 @@ describe('Sync module initializing', () => {
 
   const testModules = async (imports: ModuleMetadata['imports']) => {
     const moduleRef = await Test.createTestingModule({ imports }).compile();
-    const registryService: RegistryService = moduleRef.get(RegistryService);
+    const fetchService: RegistryFetchService =
+      moduleRef.get(RegistryFetchService);
 
-    expect(registryService.updateStoredData).toBeDefined();
+    expect(fetchService).toBeDefined();
   };
 
   test('forRoot', async () => {
     await testModules([
       LidoContractModule.forRoot({ provider }),
       RegistryContractModule.forRoot({ provider }),
-      RegistryModule.forRoot({}),
+      RegistryFetchModule.forRoot({}),
     ]);
   });
 
@@ -34,7 +35,7 @@ describe('Sync module initializing', () => {
     await testModules([
       LidoContractModule.forRoot({ provider }),
       RegistryContractModule.forRoot({ provider }),
-      RegistryModule.forFeature({}),
+      RegistryFetchModule.forFeature({}),
     ]);
   });
 });

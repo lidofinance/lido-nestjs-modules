@@ -4,7 +4,7 @@ import {
   LidoContractModule,
 } from '@lido-nestjs/contracts';
 import { getDefaultProvider } from '@ethersproject/providers';
-import { RegistryModule, RegistryMetaFetchService } from '../../src';
+import { RegistryFetchModule, RegistryMetaFetchService } from '../../src';
 
 describe('Operators', () => {
   const provider = getDefaultProvider(process.env.EL_RPC_URL);
@@ -14,7 +14,7 @@ describe('Operators', () => {
     const imports = [
       LidoContractModule.forRoot({ provider }),
       RegistryContractModule.forRoot({ provider }),
-      RegistryModule.forFeature(),
+      RegistryFetchModule.forFeature(),
     ];
     const moduleRef = await Test.createTestingModule({ imports }).compile();
     fetchService = moduleRef.get(RegistryMetaFetchService);
@@ -31,7 +31,5 @@ describe('Operators', () => {
 
     expect(logs).toBeInstanceOf(Array);
     expect(logs.length).toBeGreaterThan(0);
-
-    console.log(logs[0]);
   });
 });

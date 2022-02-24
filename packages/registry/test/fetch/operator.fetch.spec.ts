@@ -8,7 +8,7 @@ import { getNetwork } from '@ethersproject/networks';
 import { Interface } from '@ethersproject/abi';
 import { JsonRpcBatchProvider } from '@ethersproject/providers';
 import { operator, operatorFields } from '../fixtures/operator.fixture';
-import { RegistryModule, RegistryOperatorFetchService } from '../../src';
+import { RegistryFetchModule, RegistryOperatorFetchService } from '../../src';
 
 describe('Operators', () => {
   const provider = new JsonRpcBatchProvider(process.env.EL_RPC_URL);
@@ -26,7 +26,7 @@ describe('Operators', () => {
     const imports = [
       LidoContractModule.forRoot({ provider }),
       RegistryContractModule.forRoot({ provider }),
-      RegistryModule.forFeature(),
+      RegistryFetchModule.forFeature(),
     ];
     const moduleRef = await Test.createTestingModule({ imports }).compile();
     fetchService = moduleRef.get(RegistryOperatorFetchService);
