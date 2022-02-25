@@ -24,24 +24,24 @@ export class RegistryOperator {
   @PrimaryKey()
   index!: number;
 
-  @Property({ type: 'boolean' })
+  @Property()
   active!: boolean;
 
-  @Property({ type: 'varchar', length: 256 })
+  @Property({ length: 256 })
   name!: string;
 
-  @Property({ type: 'varchar', length: 42 })
+  @Property({ length: 42 })
   rewardAddress!: string;
 
-  @Property({ type: 'int' })
+  @Property()
   stakingLimit!: number;
 
-  @Property({ type: 'int' })
+  @Property()
   stoppedValidators!: number;
 
-  @Property({ type: 'int' })
+  @Property()
   totalSigningKeys!: number;
 
-  @Property({ type: 'int' })
+  @Property()
   usedSigningKeys!: number;
 }

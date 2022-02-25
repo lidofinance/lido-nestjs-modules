@@ -9,9 +9,14 @@ import { RegistryMetaStorageService } from './meta.storage';
 import { RegistryKeyStorageService } from './key.storage';
 import { MikroOrmModule } from '@mikro-orm/nestjs';
 import { RegistryKey } from './key.entity';
+import { RegistryOperator } from './operator.entity';
 
 @Module({
-  imports: [MikroOrmModule.forFeature({ entities: [RegistryKey] })],
+  imports: [
+    MikroOrmModule.forFeature({
+      entities: [RegistryKey, RegistryOperator],
+    }),
+  ],
   providers: [
     RegistryStorageService,
     RegistryOperatorStorageService,

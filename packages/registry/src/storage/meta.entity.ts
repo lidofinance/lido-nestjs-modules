@@ -20,12 +20,12 @@ export class RegistryMeta {
   @PrimaryKey()
   blockNumber!: number;
 
-  @Property({ type: 'varchar', length: 66 })
+  @Property({ length: 66 })
   blockHash!: string;
 
-  @Property({ type: 'int' })
+  @Property()
   keysOpIndex?: number;
 
-  @Property({ type: 'int' })
+  @Property()
   unbufferedBlockNumber?: number;
 }

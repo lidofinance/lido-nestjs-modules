@@ -26,7 +26,9 @@ describe('Async module initializing', () => {
       RegistryStorageService,
     );
 
+    await storageService.onModuleInit();
     expect(storageService).toBeDefined();
+    await storageService.onModuleDestroy();
   };
 
   test('forRootAsync', async () => {

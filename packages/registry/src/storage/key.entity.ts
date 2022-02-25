@@ -26,12 +26,12 @@ export class RegistryKey {
   @PrimaryKey()
   operatorIndex!: number;
 
-  @Property({ type: 'varchar', length: 98 })
+  @Property({ length: 98 })
   key!: string;
 
-  @Property({ type: 'varchar', length: 194 })
+  @Property({ length: 194 })
   depositSignature!: string;
 
-  @Property({ type: 'boolean' })
+  @Property()
   used!: boolean;
 }

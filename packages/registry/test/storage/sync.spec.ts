@@ -10,7 +10,9 @@ describe('Sync module initializing', () => {
       RegistryStorageService,
     );
 
+    await storageService.onModuleInit();
     expect(storageService).toBeDefined();
+    await storageService.onModuleDestroy();
   };
 
   test('forRoot', async () => {
