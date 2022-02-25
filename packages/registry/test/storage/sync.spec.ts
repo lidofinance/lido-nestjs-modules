@@ -35,7 +35,7 @@ describe('Sync module initializing', () => {
         allowGlobalContext: true,
         entities: ['./packages/registry/**/*.entity.ts'],
       }),
-      RegistryStorageModule.forFeature({}),
+      RegistryStorageModule.forFeature(),
     ]);
   });
 });

@@ -33,6 +33,29 @@ describe('Keys', () => {
     await registryService.onModuleDestroy();
   });
 
+  test('find by index', async () => {
+    const keys = [
+      { operatorIndex: 1, index: 1, ...key },
+      { operatorIndex: 1, index: 2, ...key },
+    ];
+
+    await expect(storageService.findAll()).resolves.toEqual([]);
+    await storageService.save(keys);
+    await expect(storageService.findOneByIndex(1, 1)).resolves.toEqual(keys[0]);
+    await expect(storageService.findOneByIndex(1, 2)).resolves.toEqual(keys[1]);
+  });
+
+  test('find by operator', async () => {
+    const keys = [
+      { operatorIndex: 1, index: 1, ...key },
+      { operatorIndex: 1, index: 2, ...key },
+    ];
+
+    await expect(storageService.findAll()).resolves.toEqual([]);
+    await storageService.save(keys);
+    await expect(storageService.findByOperatorIndex(1)).resolves.toEqual(keys);
+  });
+
   test('save one key', async () => {
     const registryKey = { operatorIndex: 1, index: 1, ...key };
 
