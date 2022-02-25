@@ -41,7 +41,7 @@ export class RegistryKeyStorageService {
   /** saves key to storage */
   async saveOne(operatorKey: RegistryKey) {
     const repository = this.em.getRepository(RegistryKey);
-    const key = this.em.create(RegistryKey, operatorKey);
+    const key = new RegistryKey(operatorKey);
     return await repository.persistAndFlush(key);
   }
 
@@ -51,7 +51,7 @@ export class RegistryKeyStorageService {
 
     await Promise.all(
       operatorKeys.map(async (operatorKey) => {
-        const key = this.em.create(RegistryKey, operatorKey);
+        const key = new RegistryKey(operatorKey);
         return await repository.persist(key);
       }),
     );

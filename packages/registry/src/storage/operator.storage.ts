@@ -35,7 +35,7 @@ export class RegistryOperatorStorageService {
   /** saves operator to storage */
   async saveOne(operator: RegistryOperator) {
     const repository = this.em.getRepository(RegistryOperator);
-    const key = this.em.create(RegistryOperator, operator);
+    const key = new RegistryOperator(operator);
     return await repository.persistAndFlush(key);
   }
 
@@ -45,7 +45,7 @@ export class RegistryOperatorStorageService {
 
     await Promise.all(
       operators.map(async (operator) => {
-        const key = this.em.create(RegistryOperator, operator);
+        const key = new RegistryOperator(operator);
         return await repository.persist(key);
       }),
     );
