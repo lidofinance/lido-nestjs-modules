@@ -72,6 +72,7 @@ describe('Execution module. ', () => {
             network: 1,
             maxRetries: maxRetries,
             logRetries: logRetries,
+            resetIntervalMs: 2000,
             fetchMiddlewares,
           }),
         ],
@@ -229,9 +230,13 @@ describe('Execution module. ', () => {
       const blockB = await mockedProvider.getBlock('latest');
       expect(blockB.number).toBe(10000);
       expect(mockedProviderDetectNetwork).toBeCalledTimes(2);
-      expect(mockedFallbackProviderFetch[0]).toBeCalledTimes(6);
+
+      // the same, because first provider marked as 'unreachable'
+      expect(mockedFallbackProviderFetch[0]).toBeCalledTimes(4);
       expect(mockedFallbackProviderFetch[1]).toBeCalledTimes(3);
-      expect(mockedFallbackDetectNetwork[0]).toBeCalledTimes(4);
+      expect(mockedFallbackDetectNetwork[0]).toBeCalledTimes(3);
+
+      // the same, because first provider marked as 'unreachable'
       expect(mockedFallbackDetectNetwork[1]).toBeCalledTimes(3);
     });
 
@@ -361,6 +366,9 @@ describe('Execution module. ', () => {
 
       const blockA = await mockedProvider.getBlock('latest');
       expect(blockA.number).toBe(10011);
+
+      // TODO
+
       const blockB = await mockedProvider.getBlock('latest');
       expect(blockB.number).toBe(10011);
 
