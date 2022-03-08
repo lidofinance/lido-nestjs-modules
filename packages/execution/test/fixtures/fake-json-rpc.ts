@@ -143,13 +143,19 @@ export const fakeJsonRpc =
   };
 
 export const fakeFetchImpl =
-  (chainId?: string, blockNumber?: string, blockHash?: string) =>
+  (chainId?: number, blockNumber?: number, blockHash?: string) =>
   async (
     connection: string | ConnectionInfo,
     json?: string,
   ): Promise<unknown> => {
     const requests = json ? JSON.parse(json) : {};
-    return requests.map(fakeJsonRpc(chainId, blockNumber, blockHash));
+    return requests.map(
+      fakeJsonRpc(
+        chainId ? BigNumber.from(chainId).toHexString() : undefined,
+        blockNumber ? BigNumber.from(blockNumber).toHexString() : undefined,
+        blockHash,
+      ),
+    );
   };
 
 export const fakeFetchImplThatCanOnlyDoNetworkDetection = async (
@@ -225,5 +231,5 @@ export const makeFakeFetchImplThatFailsFirstNRequests = (
 };
 
 export const makeFetchImplWithSpecificNetwork = (chainId: number) => {
-  return fakeFetchImpl(BigNumber.from(chainId).toHexString());
+  return fakeFetchImpl(chainId);
 };

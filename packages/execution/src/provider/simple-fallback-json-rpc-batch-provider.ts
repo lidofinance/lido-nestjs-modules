@@ -255,22 +255,18 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
       this.detectNetworkFirstRun = false;
     }
 
-    // if (this.resetTimer) {
-    //   clearTimeout(this.resetTimer);
-    // }
+    if (this.resetTimer) {
+      clearTimeout(this.resetTimer);
+    }
 
-    // this.resetTimer = setTimeout(
-    //   () => {
-    //     this.resetFallbacks();
-    //   },
-    //   this.config.resetIntervalMs || 10000,
-    // );
+    this.resetTimer = setTimeout(() => {
+      this.resetFallbacks();
+    }, this.config.resetIntervalMs || 10000);
 
     return previousNetwork;
   }
 
   protected resetFallbacks() {
-    console.log('==reset');
     if (this.resetTimer) {
       clearTimeout(this.resetTimer);
     }
