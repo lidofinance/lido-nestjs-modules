@@ -5,4 +5,5 @@ export interface FallbackProvider {
   provider: ExtendedJsonRpcBatchProvider;
   network: Network | null;
   index: number;
+  unreachable: boolean;
 }

@@ -53,6 +53,7 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
   protected fallbackProviders: [FallbackProvider];
   protected activeFallbackProviderIndex: number;
   protected detectNetworkFirstRun = true;
+  protected resetTimer: ReturnType<typeof setTimeout> | null = null;
 
   public constructor(
     config: SimpleFallbackProviderConfig,
@@ -95,6 +96,7 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
         network: null,
         provider,
         index,
+        unreachable: false,
       };
     });
     this.activeFallbackProviderIndex = 0;
@@ -191,14 +193,18 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
 
   public async detectNetwork(): Promise<Network> {
     const results = await Promise.allSettled(
-      this.fallbackProviders.map((c) => c.provider.getNetwork()),
+      this.fallbackProviders
+        .filter((c) => !c.unreachable)
+        .map((c) => c.provider.getNetwork()),
     );
 
-    results.forEach((result, i) => {
+    results.forEach((result, index) => {
       if (result.status === 'fulfilled') {
-        this.fallbackProviders[i].network = result.value;
+        this.fallbackProviders[index].network = result.value;
+        this.fallbackProviders[index].unreachable = false;
       } else {
-        this.fallbackProviders[i].network = null;
+        this.fallbackProviders[index].network = null;
+        this.fallbackProviders[index].unreachable = true;
       }
     });
 
@@ -249,7 +255,29 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
       this.detectNetworkFirstRun = false;
     }
 
+    if (this.resetTimer) {
+      clearTimeout(this.resetTimer);
+    }
+
+    this.resetTimer = setTimeout(() => {
+      this.resetFallbacks();
+    }, this.config.resetIntervalMs || 10000);
+
     return previousNetwork;
+  }
+
+  protected resetFallbacks() {
+    if (this.resetTimer) {
+      clearTimeout(this.resetTimer);
+    }
+
+    this.fallbackProviders.forEach((fallbackProvider, index) => {
+      if (!this.fallbackProviders[index].network?.chainId) {
+        this.fallbackProviders[index].unreachable = false;
+      }
+    });
+
+    this.activeFallbackProviderIndex = 0;
   }
 
   protected networksEqual(networkA: Network, networkB: Network): boolean {

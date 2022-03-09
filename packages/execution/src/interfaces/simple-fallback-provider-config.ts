@@ -20,5 +20,8 @@ export interface SimpleFallbackProviderConfig {
   // log retry attempts if needed
   logRetries?: boolean;
 
+  // time to reset active provider index to 0 and provider unreachable flags
+  resetIntervalMs?: number;
+
   fetchMiddlewares?: MiddlewareCallback<Promise<any>>[]; // eslint-disable-line @typescript-eslint/no-explicit-any
 }
