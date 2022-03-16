@@ -15,6 +15,8 @@ import {
   networksChainsEqual,
   networksEqual,
 } from '../common/networks';
+import { EventType, Listener } from '@ethersproject/abstract-provider';
+import { NoNewBlocksWhilePollingError } from '../error/no-new-blocks-while-polling.error';
 
 /**
  * EIP-1898 support
@@ -65,6 +67,8 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
       minBackoffMs: 500,
       maxBackoffMs: 5000,
       logRetries: true,
+      resetIntervalMs: 10000,
+      maxTimeWithoutNewBlocksMs: 60000,
       ...config,
     };
     this.logger = logger;
@@ -111,6 +115,33 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
     return this._formatter;
   }
 
+  on(eventName: EventType, listener: Listener): this {
+    let dieTimer: NodeJS.Timeout | null = null;
+
+    const startDieTimer = (latestObservedBlockNumber: number) => {
+      if (dieTimer) clearTimeout(dieTimer);
+
+      dieTimer = setTimeout(async () => {
+        const error = new NoNewBlocksWhilePollingError(
+          'No new blocks for a long time while polling',
+          latestObservedBlockNumber,
+        );
+        this.emit('error', error);
+      }, this.config.maxTimeWithoutNewBlocksMs);
+    };
+
+    if (eventName === 'block') {
+      startDieTimer(-1);
+
+      super.on(eventName, function (this: unknown, ...args) {
+        startDieTimer(args[0]);
+        return listener.apply(this, args);
+      });
+    }
+
+    return super.on(eventName, listener);
+  }
+
   protected get provider(): FallbackProvider {
     if (this.activeFallbackProviderIndex > this.fallbackProviders.length - 1) {
       this.activeFallbackProviderIndex = 0;
@@ -125,7 +156,7 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
       provider.network.chainId === getNetworkChain(this.config.network);
 
     while (
-      !isValid(fallbackProvider) ||
+      !isValid(fallbackProvider) &&
       attempt < this.fallbackProviders.length
     ) {
       fallbackProvider =
