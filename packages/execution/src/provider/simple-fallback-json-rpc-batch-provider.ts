@@ -211,8 +211,6 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
           this.provider.provider.perform(method, params),
         );
       } catch (e) {
-        console.log(e);
-
         this.logger.error(
           'Error while doing ETH1 RPC request. Will try to switch to another provider',
         );
@@ -220,8 +218,6 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
         this.switchToNextProvider();
       }
     }
-
-    console.log(method);
 
     throw new Error('All attempts to do ETH1 RPC request failed');
   }
