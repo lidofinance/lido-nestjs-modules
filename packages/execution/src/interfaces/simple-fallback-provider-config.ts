@@ -24,4 +24,6 @@ export interface SimpleFallbackProviderConfig {
   resetIntervalMs?: number;
 
   fetchMiddlewares?: MiddlewareCallback<Promise<any>>[]; // eslint-disable-line @typescript-eslint/no-explicit-any
+
+  maxTimeWithoutNewBlocksMs?: number; // should be greater than polling interval, usually 2x polling interval
 }

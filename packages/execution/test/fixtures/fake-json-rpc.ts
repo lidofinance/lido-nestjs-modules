@@ -137,6 +137,12 @@ export const fakeJsonRpc =
             hash: blockHash ?? fixtures.eth_getBlockByNumber.default.hash,
           },
         };
+      case 'eth_blockNumber':
+        return {
+          jsonrpc: '2.0',
+          id: request.id,
+          result: '0x2710',
+        };
       default:
         return { jsonrpc: '2.0', id: request.id, result: {} };
     }
