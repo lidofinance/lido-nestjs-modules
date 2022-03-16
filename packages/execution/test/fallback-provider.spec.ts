@@ -16,7 +16,7 @@ import {
 } from './fixtures/fake-json-rpc';
 import { nullTransport, LoggerModule } from '@lido-nestjs/logger';
 import { ConnectionInfo } from '@ethersproject/web';
-import { range } from './utils';
+import { range, sleep } from './utils';
 import { NonEmptyArray } from '../dist/interfaces/non-empty-array';
 import { MiddlewareCallback } from '@lido-nestjs/middleware';
 import { Network } from '@ethersproject/networks';
@@ -46,12 +46,13 @@ describe('Execution module. ', () => {
 
     const createMocks = async (
       fallbackProvidersQty = 2,
-      jsonRpcMaxBatchSize = 1,
-      maxConcurrentRequests = 1,
+      jsonRpcMaxBatchSize = 2,
+      maxConcurrentRequests = 2,
       maxRetries = 1,
       logRetries = false,
       urls: NonEmptyArray<string | ConnectionInfo> | null = null,
       fetchMiddlewares?: MiddlewareCallback<Promise<any>>[], // eslint-disable-line @typescript-eslint/no-explicit-any
+      resetIntervalMs?: number,
     ) => {
       const module = {
         imports: [
@@ -72,6 +73,7 @@ describe('Execution module. ', () => {
             network: 1,
             maxRetries: maxRetries,
             logRetries: logRetries,
+            resetIntervalMs: resetIntervalMs,
             fetchMiddlewares,
           }),
         ],
@@ -161,6 +163,36 @@ describe('Execution module. ', () => {
       expect(mockedFallbackDetectNetwork[1]).toBeCalledTimes(3);
     });
 
+    test('should do fallback to second provider if first provider is unavailable, but after 2 seconds do a reset (switch) to the first provider', async () => {
+      jest.setTimeout(5000);
+
+      await createMocks(2, 1, 1, 1, false, null, undefined, 2000);
+
+      // first provider always fails
+      mockedFallbackProviderFetch[0].mockImplementation(
+        fakeFetchImplThatAlwaysFails,
+      );
+
+      mockedFallbackProviderFetch[1].mockImplementation(
+        fakeFetchImpl(1, 10068),
+      );
+
+      // will do a fallback from 1st provider to 2nd provider
+      const blockA = await mockedProvider.getBlock('latest');
+      expect(blockA.number).toBe(10068);
+
+      // mocking first provider to return certain block data
+      mockedFallbackProviderFetch[0].mockImplementation(
+        fakeFetchImpl(1, 10032),
+      );
+
+      await sleep(2500); // will do a reset
+
+      // data from first provider
+      const blockB = await mockedProvider.getBlock('latest');
+      expect(blockB.number).toBe(10032);
+    });
+
     test('should throw exception when only 1 fallback provider supplied and it can only do network detection', async () => {
       await createMocks(1, 1, 1, 1);
 
@@ -229,9 +261,13 @@ describe('Execution module. ', () => {
       const blockB = await mockedProvider.getBlock('latest');
       expect(blockB.number).toBe(10000);
       expect(mockedProviderDetectNetwork).toBeCalledTimes(2);
-      expect(mockedFallbackProviderFetch[0]).toBeCalledTimes(6);
+
+      // the same, because first provider marked as 'unreachable'
+      expect(mockedFallbackProviderFetch[0]).toBeCalledTimes(4);
       expect(mockedFallbackProviderFetch[1]).toBeCalledTimes(3);
-      expect(mockedFallbackDetectNetwork[0]).toBeCalledTimes(4);
+      expect(mockedFallbackDetectNetwork[0]).toBeCalledTimes(3);
+
+      // the same, because first provider marked as 'unreachable'
       expect(mockedFallbackDetectNetwork[1]).toBeCalledTimes(3);
     });
 
@@ -344,7 +380,8 @@ describe('Execution module. ', () => {
     });
 
     test('should work when one fallback endpoint is unreachable at startup, but have different network ENS or Name after being reachable again', async () => {
-      await createMocks(2);
+      jest.setTimeout(5000);
+      await createMocks(2, 1, 1, 1, false, null, undefined, 2000);
 
       const mockedNetworksEqual = jest
         .spyOn(mockedProvider, 'networksEqual')
@@ -361,6 +398,9 @@ describe('Execution module. ', () => {
 
       const blockA = await mockedProvider.getBlock('latest');
       expect(blockA.number).toBe(10011);
+
+      await sleep(2500); // will do a reset to first provider (due to resetIntervalMs)
+
       const blockB = await mockedProvider.getBlock('latest');
       expect(blockB.number).toBe(10011);
 
@@ -389,7 +429,8 @@ describe('Execution module. ', () => {
       'should not fail when one or more fallback endpoints are unreachable at startup, ' +
         'but appears to be reachable after startup with network(s), different to predefined network',
       async () => {
-        await createMocks(2, 1, 1, 1);
+        jest.setTimeout(5000);
+        await createMocks(2, 1, 1, 1, false, null, undefined, 2000);
 
         mockedFallbackProviderFetch[0].mockImplementation(
           makeFakeFetchImplThatFailsFirstNRequests(3, 2, 10000),
@@ -401,6 +442,8 @@ describe('Execution module. ', () => {
         // fallback from 1st provider to 2nd provider
         const blockA = await mockedProvider.getBlock('latest');
         expect(blockA.number).toBe(10042);
+
+        await sleep(2500); // will do a reset to first provider (due to resetIntervalMs)
 
         // fallback from 2nd provider to 1st provider
         const blockB = await mockedProvider.getBlock('latest');
