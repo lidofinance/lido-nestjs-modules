@@ -39,6 +39,7 @@ describe('Meta', () => {
 
   afterEach(async () => {
     mockCall.mockReset();
+    mockSend.mockReset();
   });
 
   test('fetchKeysOpIndex', async () => {
@@ -80,5 +81,74 @@ describe('Meta', () => {
         removeListener: expect.any(Function),
       }),
     ]);
+  });
+
+  describe('fetchLastUnbufferedLog', () => {
+    test('Basic', async () => {
+      mockSend.mockImplementation(async () => [unbufferedLog]);
+      const result = await fetchService.fetchLastUnbufferedLog(100);
+
+      expect(mockSend).toBeCalledTimes(1);
+      expect(mockSend).toBeCalledWith('eth_getLogs', [
+        expect.objectContaining({
+          address: expect.any(String),
+          fromBlock: expect.any(String),
+          toBlock: expect.any(String),
+          topics: [expect.any(String)],
+        }),
+      ]);
+      expect(result).toEqual(
+        expect.objectContaining({
+          ...unbufferedLog,
+          event: 'Unbuffered',
+          eventSignature: 'Unbuffered(uint256)',
+          args: expect.arrayContaining([BigNumber.from(unbufferedLog.data)]),
+          decode: expect.any(Function),
+          getBlock: expect.any(Function),
+          getTransaction: expect.any(Function),
+          getTransactionReceipt: expect.any(Function),
+          removeListener: expect.any(Function),
+        }),
+      );
+    });
+
+    test('Get previous batch', async () => {
+      mockSend
+        .mockImplementationOnce(async () => [])
+        .mockImplementationOnce(async () => [unbufferedLog]);
+
+      await fetchService.fetchLastUnbufferedLog(100, 10);
+
+      expect(mockSend).toBeCalledTimes(2);
+
+      const calls = mockSend.mock.calls;
+      expect(calls[0][1]).toEqual([
+        expect.objectContaining({
+          fromBlock: BigNumber.from(91).toHexString(),
+          toBlock: BigNumber.from(100).toHexString(),
+        }),
+      ]);
+      expect(calls[1][1]).toEqual([
+        expect.objectContaining({
+          fromBlock: BigNumber.from(81).toHexString(),
+          toBlock: BigNumber.from(90).toHexString(),
+        }),
+      ]);
+    });
+
+    test('Wrong block', async () => {
+      await expect(fetchService.fetchLastUnbufferedLog(0)).rejects.toThrow();
+      await expect(fetchService.fetchLastUnbufferedLog(-1)).rejects.toThrow();
+    });
+
+    test('Wrong step', async () => {
+      await expect(
+        fetchService.fetchLastUnbufferedLog(10, 0),
+      ).rejects.toThrow();
+
+      await expect(
+        fetchService.fetchLastUnbufferedLog(10, -1),
+      ).rejects.toThrow();
+    });
   });
 });

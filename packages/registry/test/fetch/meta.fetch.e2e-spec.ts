@@ -32,4 +32,10 @@ describe('Operators', () => {
     expect(logs).toBeInstanceOf(Array);
     expect(logs.length).toBeGreaterThan(0);
   });
+
+  test('fetch last Unbuffered log', async () => {
+    const log = await fetchService.fetchLastUnbufferedLog(14_000_000);
+
+    expect(log).toEqual(expect.objectContaining({ blockNumber: 13999866 }));
+  });
 });
