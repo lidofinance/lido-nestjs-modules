@@ -12,6 +12,7 @@ import {
   fixtures,
   makeFakeFetchImplThatFailsAfterNRequests,
   makeFakeFetchImplThatFailsFirstNRequests,
+  makeFakeFetchImplThrowsError,
   makeFetchImplWithSpecificNetwork,
 } from './fixtures/fake-json-rpc';
 import { nullTransport, LoggerModule } from '@lido-nestjs/logger';
@@ -20,6 +21,7 @@ import { range, sleep } from './utils';
 import { NonEmptyArray } from '../dist/interfaces/non-empty-array';
 import { MiddlewareCallback } from '@lido-nestjs/middleware';
 import { Network } from '@ethersproject/networks';
+import { nonRetryableErrors } from '../src/common/errors';
 
 export type MockedExtendedJsonRpcBatchProvider =
   ExtendedJsonRpcBatchProvider & {
@@ -161,6 +163,41 @@ describe('Execution module. ', () => {
       expect(mockedFallbackProviderFetch[1]).toBeCalledTimes(1);
       expect(mockedFallbackDetectNetwork[0]).toBeCalledTimes(3);
       expect(mockedFallbackDetectNetwork[1]).toBeCalledTimes(3);
+    });
+
+    test('should not retry on non-retryable errors and not switch to another provider', async () => {
+      await createMocks(2);
+
+      // will trigger network detection
+      await mockedProvider.getBlock(10000);
+
+      // network detection + getBlock
+      expect(mockedFallbackProviderFetch[0]).toBeCalledTimes(2);
+
+      // network detection only
+      expect(mockedFallbackProviderFetch[1]).toBeCalledTimes(1);
+
+      const makeError = (errorCode: number | string) => {
+        const err = new Error(`ErrorCode${errorCode}`);
+        (<Error & { code: number | string }>err).code = errorCode;
+        return err;
+      };
+
+      for (let i = 0; i < nonRetryableErrors.length; i++) {
+        mockedFallbackProviderFetch[0].mockReset();
+        mockedFallbackProviderFetch[1].mockClear();
+
+        mockedFallbackProviderFetch[0].mockImplementation(
+          makeFakeFetchImplThrowsError(makeError(nonRetryableErrors[i])),
+        );
+
+        await expect(
+          async () => await mockedProvider.getBlock(42),
+        ).rejects.toThrow(`ErrorCode${nonRetryableErrors[i]}`);
+
+        expect(mockedFallbackProviderFetch[0]).toBeCalledTimes(1);
+        expect(mockedFallbackProviderFetch[1]).toBeCalledTimes(0);
+      }
     });
 
     test('should do fallback to second provider if first provider is unavailable, but after 2 seconds do a reset (switch) to the first provider', async () => {

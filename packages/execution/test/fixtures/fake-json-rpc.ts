@@ -184,6 +184,12 @@ export const fakeFetchImplThatCanOnlyDoNetworkDetection = async (
   return results;
 };
 
+export const makeFakeFetchImplThrowsError = (error: Error) => {
+  return async (): Promise<unknown> => {
+    throw error;
+  };
+};
+
 export const fakeFetchImplThatAlwaysFails = async (): Promise<never> => {
   throw new Error('Always fail');
 };

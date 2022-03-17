@@ -11,7 +11,7 @@ describe('Retrier. ', () => {
     attempts++;
     await sleep(10);
     if (attempts <= successOn) {
-      throw new Error('Not ready yet');
+      throw new Error(`Not ready yet, attempt ${attempts}`);
     }
 
     return 'yay';
@@ -34,7 +34,7 @@ describe('Retrier. ', () => {
     const retry = retrier(null, 2);
     successOn = 4;
     await expect(async () => await retry(doSomeWork)).rejects.toThrow(
-      'Not ready yet',
+      'Not ready yet, attempt 2',
     );
     expect(attempts).toBe(2);
   });
@@ -102,5 +102,45 @@ describe('Retrier. ', () => {
 
   test('should fail after M overridden, and N default max backoff', () => {
     // TODO
+  });
+
+  test('should support error default filter', async () => {
+    const errorFilter = (error: Error | unknown): boolean => {
+      return (
+        error instanceof Error && error.message === 'Not ready yet, attempt 2'
+      );
+    };
+    const retry = retrier(undefined, 5, 100, 1000, false, errorFilter);
+    successOn = 5;
+
+    await expect(async () => await retry(doSomeWork)).rejects.toThrow(
+      'Not ready yet, attempt 2',
+    );
+
+    expect(attempts).toBe(2);
+  });
+
+  test('should support error specific filter', async () => {
+    const errorFilter = (error: Error | unknown): boolean => {
+      return (
+        error instanceof Error && error.message === 'Not ready yet, attempt 2'
+      );
+    };
+    const retry = retrier(undefined, 5, 100, 1000, false);
+    successOn = 5;
+
+    await expect(
+      async () =>
+        await retry(
+          doSomeWork,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          errorFilter,
+        ),
+    ).rejects.toThrow('Not ready yet, attempt 2');
+
+    expect(attempts).toBe(2);
   });
 });

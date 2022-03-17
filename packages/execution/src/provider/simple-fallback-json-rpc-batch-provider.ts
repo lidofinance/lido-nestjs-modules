@@ -17,6 +17,7 @@ import {
 } from '../common/networks';
 import { EventType, Listener } from '@ethersproject/abstract-provider';
 import { NoNewBlocksWhilePollingError } from '../error/no-new-blocks-while-polling.error';
+import { isErrorHasCode, nonRetryableErrors } from '../common/errors';
 
 /**
  * EIP-1898 support
@@ -185,6 +186,10 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
     this.logger.log(`Switched to next provider for execution layer`);
   }
 
+  protected errorShouldBeReThrown(error: Error | unknown): boolean {
+    return isErrorHasCode(error) && nonRetryableErrors.includes(error.code);
+  }
+
   public async perform(
     method: string,
     params: { [name: string]: unknown },
@@ -195,6 +200,7 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
       this.config.minBackoffMs,
       this.config.maxBackoffMs,
       this.config.logRetries,
+      (e) => this.errorShouldBeReThrown(e),
     );
 
     let attempt = 0;
@@ -211,6 +217,10 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
           this.provider.provider.perform(method, params),
         );
       } catch (e) {
+        if (this.errorShouldBeReThrown(e)) {
+          throw e;
+        }
+
         this.logger.error(
           'Error while doing ETH1 RPC request. Will try to switch to another provider',
         );
