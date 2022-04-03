@@ -1,5 +1,5 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Inject, Injectable } from '@nestjs/common';
-import { CallOverrides } from '@ethersproject/contracts';
 import { BigNumber } from '@ethersproject/bignumber';
 import {
   Lido,
@@ -8,6 +8,7 @@ import {
   REGISTRY_CONTRACT_TOKEN,
   TypedEvent,
 } from '@lido-nestjs/contracts';
+import { CallOverrides } from './interfaces/overrides.interface';
 
 @Injectable()
 export class RegistryMetaFetchService {
@@ -23,7 +24,9 @@ export class RegistryMetaFetchService {
   public async fetchKeysOpIndex(
     overrides: CallOverrides = {},
   ): Promise<number> {
-    const bigNumber = await this.registryContract.getKeysOpIndex(overrides);
+    const bigNumber = await this.registryContract.getKeysOpIndex(
+      overrides as any,
+    );
     return bigNumber.toNumber();
   }
 

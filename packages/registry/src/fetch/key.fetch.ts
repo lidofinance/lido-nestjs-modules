@@ -1,7 +1,8 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Inject, Injectable } from '@nestjs/common';
-import { CallOverrides } from '@ethersproject/contracts';
 import { rangePromise } from '@lido-nestjs/utils';
 import { Registry, REGISTRY_CONTRACT_TOKEN } from '@lido-nestjs/contracts';
+import { CallOverrides } from './interfaces/overrides.interface';
 import { RegistryKey } from './interfaces/key.interface';
 import { RegistryOperatorFetchService } from './operator.fetch';
 import { REGISTRY_KEY_BATCH_SIZE } from './key.constants';
@@ -24,7 +25,7 @@ export class RegistryKeyFetchService {
     const keyData = await this.contract.getSigningKey(
       operatorIndex,
       keyIndex,
-      overrides,
+      overrides as any,
     );
 
     const { key, depositSignature, used } = keyData;

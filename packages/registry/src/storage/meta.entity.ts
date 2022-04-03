@@ -24,8 +24,8 @@ export class RegistryMeta {
   blockHash!: string;
 
   @Property()
-  keysOpIndex?: number;
+  keysOpIndex!: number;
 
   @Property()
-  unbufferedBlockNumber?: number;
+  unbufferedBlockNumber!: number;
 }

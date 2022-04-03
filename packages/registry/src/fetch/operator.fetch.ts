@@ -1,7 +1,8 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Inject, Injectable } from '@nestjs/common';
-import { CallOverrides } from '@ethersproject/contracts';
 import { rangePromise } from '@lido-nestjs/utils';
 import { Registry, REGISTRY_CONTRACT_TOKEN } from '@lido-nestjs/contracts';
+import { CallOverrides } from './interfaces/overrides.interface';
 import { RegistryOperator } from './interfaces/operator.interface';
 import { REGISTRY_OPERATORS_BATCH_SIZE } from './operator.constants';
 
@@ -14,7 +15,9 @@ export class RegistryOperatorFetchService {
 
   /** fetches number of operators */
   public async count(overrides: CallOverrides = {}): Promise<number> {
-    const bigNumber = await this.contract.getNodeOperatorsCount(overrides);
+    const bigNumber = await this.contract.getNodeOperatorsCount(
+      overrides as any,
+    );
     return bigNumber.toNumber();
   }
 
@@ -27,7 +30,7 @@ export class RegistryOperatorFetchService {
     const operator = await this.contract.getNodeOperator(
       operatorIndex,
       fullInfo,
-      overrides,
+      overrides as any,
     );
 
     const {
