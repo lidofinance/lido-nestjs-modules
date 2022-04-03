@@ -1,4 +1,4 @@
-import { DynamicModule, Module } from '@nestjs/common';
+import { DynamicModule } from '@nestjs/common';
 import { Signer } from 'ethers';
 import { Provider } from '@ethersproject/providers';
 import {
@@ -9,7 +9,6 @@ import {
 import { ContractFactory } from './interfaces/factory.interface';
 import { ModuleRef } from '@nestjs/core';
 
-@Module({})
 export class ContractModule {
   static module = ContractModule;
   static contractFactory: ContractFactory;
@@ -42,6 +41,7 @@ export class ContractModule {
           inject: [ModuleRef],
         },
       ],
+      exports: [this.contractToken],
     };
   }
 
@@ -61,6 +61,7 @@ export class ContractModule {
           inject: [ModuleRef, ...(options.inject ?? [])],
         },
       ],
+      exports: [this.contractToken],
     };
   }
 
