@@ -3,6 +3,7 @@ import { getNetwork } from '@ethersproject/networks';
 import { CHAINS } from '@lido-nestjs/constants';
 import { Test } from '@nestjs/testing';
 import {
+  AragonTokenManagerContractModule,
   DepositContractModule,
   LdoContractModule,
   LidoContractModule,
@@ -10,6 +11,8 @@ import {
   RegistryContractModule,
   SecurityContractModule,
   WstethContractModule,
+  ARAGON_TOKEN_MANAGER_CONTRACT_ADDRESSES,
+  ARAGON_TOKEN_MANAGER_CONTRACT_TOKEN,
   DEPOSIT_CONTRACT_ADDRESSES,
   DEPOSIT_CONTRACT_TOKEN,
   LDO_CONTRACT_ADDRESSES,
@@ -58,6 +61,14 @@ describe('Chains', () => {
     await expect(() =>
       getContract(LidoContractModule, LIDO_CONTRACT_TOKEN, CHAINS.Kovan),
     ).rejects.toThrow();
+  });
+
+  test('aragon token manager', async () => {
+    await testAddress(
+      AragonTokenManagerContractModule,
+      ARAGON_TOKEN_MANAGER_CONTRACT_TOKEN,
+      ARAGON_TOKEN_MANAGER_CONTRACT_ADDRESSES,
+    );
   });
 
   test('deposit', async () => {
