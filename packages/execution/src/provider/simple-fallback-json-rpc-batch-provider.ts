@@ -1,4 +1,5 @@
 import { BaseProvider, Formatter } from '@ethersproject/providers';
+import { CallOverrides as CallOverridesSource } from '@ethersproject/contracts';
 import { SimpleFallbackProviderConfig } from '../interfaces/simple-fallback-provider-config';
 import { ExtendedJsonRpcBatchProvider } from './extended-json-rpc-batch-provider';
 import { Network } from '@ethersproject/networks';
@@ -17,6 +18,8 @@ import {
 } from '../common/networks';
 import { EventType, Listener } from '@ethersproject/abstract-provider';
 import { NoNewBlocksWhilePollingError } from '../error/no-new-blocks-while-polling.error';
+import { isErrorHasCode, nonRetryableErrors } from '../common/errors';
+import { AllProvidersFailedError } from '../error/all-providers-failed.error';
 
 /**
  * EIP-1898 support
@@ -46,6 +49,10 @@ declare module '@ethersproject/providers' {
       blockTag?: BlockTag | Promise<BlockTag>,
     ): Promise<string>;
   }
+
+  export interface CallOverrides extends Omit<CallOverridesSource, 'blockTag'> {
+    blockTag?: BlockTag;
+  }
 }
 
 @Injectable()
@@ -56,6 +63,7 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
   protected activeFallbackProviderIndex: number;
   protected detectNetworkFirstRun = true;
   protected resetTimer: ReturnType<typeof setTimeout> | null = null;
+  protected lastPerformError: Error | null | unknown = null;
 
   public constructor(
     config: SimpleFallbackProviderConfig,
@@ -185,6 +193,10 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
     this.logger.log(`Switched to next provider for execution layer`);
   }
 
+  protected errorShouldBeReThrown(error: Error | unknown): boolean {
+    return isErrorHasCode(error) && nonRetryableErrors.includes(error.code);
+  }
+
   public async perform(
     method: string,
     params: { [name: string]: unknown },
@@ -195,6 +207,7 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
       this.config.minBackoffMs,
       this.config.maxBackoffMs,
       this.config.logRetries,
+      (e) => this.errorShouldBeReThrown(e),
     );
 
     let attempt = 0;
@@ -202,6 +215,7 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
     // will perform maximum `this.config.maxRetries` retries for fetching data with single provider
     // after failure will switch to next provider
     // maximum number of switching is limited to total fallback provider count
+    let lastError: Error | unknown;
     while (attempt < this.fallbackProviders.length) {
       try {
         attempt++;
@@ -211,15 +225,33 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
           this.provider.provider.perform(method, params),
         );
       } catch (e) {
+        if (this.errorShouldBeReThrown(e)) {
+          throw e;
+        }
+
         this.logger.error(
           'Error while doing ETH1 RPC request. Will try to switch to another provider',
         );
+        lastError = e;
         this.logger.error(e);
-        this.switchToNextProvider();
+
+        // This check is needed to avoid multiple `switchToNextProvider` calls when doing one JSON-RPC batch.
+        // This can happen when multiple N calls to `perform` are batched in one JSON-RPC request and
+        // that request fails and throws `Error`. This `Error` is bubbled N times to corresponding `perform` calls.
+        // Without the following check, each `perform` call from batch catches `Error` and switches to the next provider,
+        // so during one batch multiple switching to next provider can occur, which is not needed.
+        if (this.lastPerformError != e) {
+          this.switchToNextProvider();
+          this.lastPerformError = e;
+        }
       }
     }
 
-    throw new Error('All attempts to do ETH1 RPC request failed');
+    const allProvidersFailedError = new AllProvidersFailedError(
+      'All attempts to do ETH1 RPC request failed',
+    );
+    allProvidersFailedError.originalError = lastError;
+    throw allProvidersFailedError;
   }
 
   public async detectNetwork(): Promise<Network> {
