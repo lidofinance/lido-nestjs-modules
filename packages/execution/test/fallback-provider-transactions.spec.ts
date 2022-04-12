@@ -182,11 +182,75 @@ describe('Execution module. ', () => {
       );
 
       // Methods:
-      // eth_chainId (on init) + eth_gasPrice + eth_getBlockByNumber + eth_estimateGas + eth_blockNumber + eth_sendRawTransaction (failed, retried)
-      //
+      // eth_chainId (on init) + batch[eth_gasPrice + eth_getBlockByNumber] + eth_estimateGas + eth_blockNumber + eth_sendRawTransaction (failed) + eth_sendRawTransaction (failed)
       expect(mockedFallbackProviderFetch[0]).toBeCalledTimes(6);
       // eth_chainId (on init) + eth_sendRawTransaction
       expect(mockedFallbackProviderFetch[1]).toBeCalledTimes(2);
+
+      // just in case - check
+      expect(mockedProviderDetectNetwork).toBeCalledTimes(6);
+      expect(mockedFallbackDetectNetwork[0]).toBeCalledTimes(7);
+      expect(mockedFallbackDetectNetwork[1]).toBeCalledTimes(7);
+    });
+
+    test('should work when WRITE operations fail on first endpoint', async () => {
+      await createMocks(2, 10, 10, 2);
+
+      const jsons: any[][] = [[], []];
+
+      // first provider always fails on eth_sendRawTransaction, should fallback to next provider
+      mockedFallbackProviderFetch[0].mockImplementation(
+        (conn: string | ConnectionInfo, json: string) => {
+          jsons[0].push(...JSON.parse(json));
+
+          return fakeFetchImplThatCantDo([
+            'eth_sendRawTransaction',
+            'eth_getBlockByNumber',
+          ])(conn, json);
+        },
+      );
+      mockedFallbackProviderFetch[1].mockImplementation(
+        (conn: string | ConnectionInfo, json: string) => {
+          jsons[1].push(...JSON.parse(json));
+
+          return fakeFetchImpl()(conn, json);
+        },
+      );
+
+      function wrapTransaction(
+        this: MockedSimpleFallbackJsonRpcBatchProvider,
+        tx: Transaction,
+        hash?: string,
+        startBlock?: number,
+      ): TransactionResponse {
+        return this._originalWrapTransaction(tx, tx.hash, startBlock);
+      }
+
+      const wrapTransactionMock = jest
+        .spyOn(mockedProvider, '_wrapTransaction')
+        .mockImplementation(wrapTransaction.bind(mockedProvider));
+
+      const wallet = Wallet.createRandom().connect(mockedProvider);
+
+      const transaction: TransactionRequest = {
+        type: 2,
+        nonce: 42,
+        to: Wallet.createRandom().address,
+        value: BigNumber.from(42),
+      };
+
+      await sleep(10);
+      const tx = await wallet.populateTransaction(transaction);
+      const signedTx = await wallet.signTransaction(tx);
+      await mockedProvider.sendTransaction(signedTx);
+
+      expect(wrapTransactionMock).toBeCalledTimes(1);
+
+      // Methods:
+      // eth_chainId (on init) + batch[eth_gasPrice + eth_getBlockByNumber](failed)+ batch[eth_gasPrice +  eth_getBlockByNumber(failed)](failed)
+      expect(mockedFallbackProviderFetch[0]).toBeCalledTimes(3);
+      // eth_chainId (on init) + batch[eth_gasPrice + eth_getBlockByNumber] + eth_estimateGas + eth_blockNumber + eth_sendRawTransaction
+      expect(mockedFallbackProviderFetch[1]).toBeCalledTimes(5);
 
       // just in case - check
       expect(mockedProviderDetectNetwork).toBeCalledTimes(6);
