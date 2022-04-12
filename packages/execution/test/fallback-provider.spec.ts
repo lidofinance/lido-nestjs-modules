@@ -18,7 +18,7 @@ import {
 import { nullTransport, LoggerModule } from '@lido-nestjs/logger';
 import { ConnectionInfo } from '@ethersproject/web';
 import { range, sleep } from './utils';
-import { NonEmptyArray } from '../dist/interfaces/non-empty-array';
+import { NonEmptyArray } from '../src/interfaces/non-empty-array';
 import { MiddlewareCallback } from '@lido-nestjs/middleware';
 import { Network } from '@ethersproject/networks';
 import { nonRetryableErrors } from '../src/common/errors';
