@@ -196,26 +196,14 @@ describe('Execution module. ', () => {
     test('should work when WRITE operations fail on first endpoint', async () => {
       await createMocks(2, 10, 10, 2);
 
-      const jsons: any[][] = [[], []];
-
-      // first provider always fails on eth_sendRawTransaction, should fallback to next provider
+      // first provider always fails on eth_sendRawTransaction or eth_getBlockByNumber
       mockedFallbackProviderFetch[0].mockImplementation(
-        (conn: string | ConnectionInfo, json: string) => {
-          jsons[0].push(...JSON.parse(json));
-
-          return fakeFetchImplThatCantDo([
-            'eth_sendRawTransaction',
-            'eth_getBlockByNumber',
-          ])(conn, json);
-        },
+        fakeFetchImplThatCantDo([
+          'eth_sendRawTransaction',
+          'eth_getBlockByNumber',
+        ]),
       );
-      mockedFallbackProviderFetch[1].mockImplementation(
-        (conn: string | ConnectionInfo, json: string) => {
-          jsons[1].push(...JSON.parse(json));
-
-          return fakeFetchImpl()(conn, json);
-        },
-      );
+      mockedFallbackProviderFetch[1].mockImplementation(fakeFetchImpl());
 
       function wrapTransaction(
         this: MockedSimpleFallbackJsonRpcBatchProvider,
