@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { ConnectionInfo } from '@ethersproject/web';
-import { NonEmptyArray } from '../../dist/interfaces/non-empty-array';
+import { NonEmptyArray } from '../../src/interfaces/non-empty-array';
 import { BigNumber } from '@ethersproject/bignumber';
 
 interface JsonRpcRequest {

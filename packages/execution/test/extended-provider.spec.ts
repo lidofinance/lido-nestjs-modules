@@ -4,7 +4,7 @@ import { ConnectionInfo } from '@ethersproject/web';
 import { fakeFetchImpl, fixtures } from './fixtures/fake-json-rpc';
 import { range } from './utils';
 import { nullTransport, LoggerModule } from '@lido-nestjs/logger';
-import { JsonRpcRequest, JsonRpcResponse } from '../dist';
+import { JsonRpcRequest, JsonRpcResponse } from '../src';
 import { MiddlewareCallback } from '@lido-nestjs/middleware';
 
 type MockedExtendedJsonRpcBatchProvider = ExtendedJsonRpcBatchProvider & {
