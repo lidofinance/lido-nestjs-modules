@@ -24,3 +24,6 @@ export * from './security/security.module';
 
 export * from './wsteth/wsteth.constants';
 export * from './wsteth/wsteth.module';
+
+export * from './easytrack/easytrack.constants';
+export * from './easytrack/easytrack.module';
