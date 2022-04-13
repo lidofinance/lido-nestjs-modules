@@ -1,5 +1,6 @@
 jest.mock('node-fetch');
 
+import { performance } from 'perf_hooks';
 import { Test } from '@nestjs/testing';
 import {
   FetchModule,

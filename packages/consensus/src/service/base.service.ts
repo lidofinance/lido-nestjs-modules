@@ -1,5 +1,6 @@
 import snakeCase from 'lodash.snakecase';
 import { RequestInit } from 'node-fetch';
+import { AbortController } from 'node-abort-controller';
 import { FetchService } from '@lido-nestjs/fetch';
 import { Inject, Injectable, Optional } from '@nestjs/common';
 import {

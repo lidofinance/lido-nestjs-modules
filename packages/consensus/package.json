@@ -30,6 +30,7 @@
   "dependencies": {
     "@lido-nestjs/fetch": "workspace:*",
     "lodash.snakecase": "^4.1.1",
+    "node-abort-controller": "^3.0.1",
     "node-fetch": "^2.6.7"
   },
   "peerDependencies": {
