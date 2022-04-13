@@ -27,6 +27,9 @@ import {
   SECURITY_CONTRACT_TOKEN,
   WSTETH_CONTRACT_ADDRESSES,
   WSTETH_CONTRACT_TOKEN,
+  EasyTrackContractModule,
+  EASYTRACK_CONTRACT_ADDRESSES,
+  EASYTRACK_CONTRACT_TOKEN,
 } from '../src';
 import { ContractModule } from '../src/contract.module';
 
@@ -124,6 +127,14 @@ describe('Chains', () => {
       WstethContractModule,
       WSTETH_CONTRACT_TOKEN,
       WSTETH_CONTRACT_ADDRESSES,
+    );
+  });
+
+  test('easytrack', async () => {
+    await testAddress(
+      EasyTrackContractModule,
+      EASYTRACK_CONTRACT_TOKEN,
+      EASYTRACK_CONTRACT_ADDRESSES,
     );
   });
 });
