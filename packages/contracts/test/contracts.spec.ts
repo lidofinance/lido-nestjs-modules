@@ -4,6 +4,7 @@ import { CHAINS } from '@lido-nestjs/constants';
 import { Test } from '@nestjs/testing';
 import {
   AragonTokenManagerContractModule,
+  AragonVotingManagerContractModule,
   DepositContractModule,
   LdoContractModule,
   LidoContractModule,
@@ -13,6 +14,8 @@ import {
   WstethContractModule,
   ARAGON_TOKEN_MANAGER_CONTRACT_ADDRESSES,
   ARAGON_TOKEN_MANAGER_CONTRACT_TOKEN,
+  ARAGON_VOTING_CONTRACT_ADDRESSES,
+  ARAGON_VOTING_CONTRACT_TOKEN,
   DEPOSIT_CONTRACT_ADDRESSES,
   DEPOSIT_CONTRACT_TOKEN,
   LDO_CONTRACT_ADDRESSES,
@@ -71,6 +74,14 @@ describe('Chains', () => {
       AragonTokenManagerContractModule,
       ARAGON_TOKEN_MANAGER_CONTRACT_TOKEN,
       ARAGON_TOKEN_MANAGER_CONTRACT_ADDRESSES,
+    );
+  });
+
+  test('aragon voting', async () => {
+    await testAddress(
+      AragonVotingManagerContractModule,
+      ARAGON_VOTING_CONTRACT_TOKEN,
+      ARAGON_VOTING_CONTRACT_ADDRESSES,
     );
   });
 

@@ -4,6 +4,9 @@ export * from './generated/common';
 export * from './aragon-token-manager/aragon-token-manager.constants';
 export * from './aragon-token-manager/aragon-token-manager.module';
 
+export * from './aragon-voting/aragon-voting.constants';
+export * from './aragon-voting/aragon-voting.module';
+
 export * from './deposit/deposit.constants';
 export * from './deposit/deposit.module';
 

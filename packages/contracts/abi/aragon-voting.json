@@ -1,0 +1,79 @@
+[
+  {
+    "constant": true,
+    "inputs": [{ "name": "_voteId", "type": "uint256" }],
+    "name": "getVote",
+    "outputs": [
+      { "name": "open", "type": "bool" },
+      { "name": "executed", "type": "bool" },
+      { "name": "startDate", "type": "uint64" },
+      { "name": "snapshotBlock", "type": "uint64" },
+      { "name": "supportRequired", "type": "uint64" },
+      { "name": "minAcceptQuorum", "type": "uint64" },
+      { "name": "yea", "type": "uint256" },
+      { "name": "nay", "type": "uint256" },
+      { "name": "votingPower", "type": "uint256" },
+      { "name": "script", "type": "bytes" }
+    ],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [],
+    "name": "voteTime",
+    "outputs": [{ "name": "", "type": "uint64" }],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [],
+    "name": "minAcceptQuorumPct",
+    "outputs": [{ "name": "", "type": "uint64" }],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [],
+    "name": "votesLength",
+    "outputs": [{ "name": "", "type": "uint256" }],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [],
+    "name": "supportRequiredPct",
+    "outputs": [{ "name": "", "type": "uint64" }],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      { "indexed": true, "name": "voteId", "type": "uint256" },
+      { "indexed": true, "name": "creator", "type": "address" },
+      { "indexed": false, "name": "metadata", "type": "string" }
+    ],
+    "name": "StartVote",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      { "indexed": true, "name": "executor", "type": "address" },
+      { "indexed": false, "name": "script", "type": "bytes" },
+      { "indexed": false, "name": "input", "type": "bytes" },
+      { "indexed": false, "name": "returnData", "type": "bytes" }
+    ],
+    "name": "ScriptResult",
+    "type": "event"
+  }
+]
