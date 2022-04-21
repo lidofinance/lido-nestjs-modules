@@ -16,6 +16,9 @@ export * from './ldo/ldo.module';
 export * from './lido/lido.constants';
 export * from './lido/lido.module';
 
+export * from './mev-vault/mev-vault.constants';
+export * from './mev-vault/mev-vault.module';
+
 export * from './oracle/oracle.constants';
 export * from './oracle/oracle.module';
 
