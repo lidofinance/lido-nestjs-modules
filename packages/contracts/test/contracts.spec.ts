@@ -1,13 +1,14 @@
-import { getDefaultProvider } from '@ethersproject/providers';
-import { getNetwork } from '@ethersproject/networks';
+import { JsonRpcProvider } from '@ethersproject/providers';
 import { CHAINS } from '@lido-nestjs/constants';
 import { Test } from '@nestjs/testing';
 import {
   AragonTokenManagerContractModule,
   AragonVotingManagerContractModule,
   DepositContractModule,
+  EasyTrackContractModule,
   LdoContractModule,
   LidoContractModule,
+  MevVaultContractModule,
   OracleContractModule,
   RegistryContractModule,
   SecurityContractModule,
@@ -18,10 +19,14 @@ import {
   ARAGON_VOTING_CONTRACT_TOKEN,
   DEPOSIT_CONTRACT_ADDRESSES,
   DEPOSIT_CONTRACT_TOKEN,
+  EASYTRACK_CONTRACT_ADDRESSES,
+  EASYTRACK_CONTRACT_TOKEN,
   LDO_CONTRACT_ADDRESSES,
   LDO_CONTRACT_TOKEN,
   LIDO_CONTRACT_ADDRESSES,
   LIDO_CONTRACT_TOKEN,
+  MEV_VAULT_CONTRACT_ADDRESSES,
+  MEV_VAULT_CONTRACT_TOKEN,
   ORACLE_CONTRACT_ADDRESSES,
   ORACLE_CONTRACT_TOKEN,
   REGISTRY_CONTRACT_ADDRESSES,
@@ -30,9 +35,6 @@ import {
   SECURITY_CONTRACT_TOKEN,
   WSTETH_CONTRACT_ADDRESSES,
   WSTETH_CONTRACT_TOKEN,
-  EasyTrackContractModule,
-  EASYTRACK_CONTRACT_ADDRESSES,
-  EASYTRACK_CONTRACT_TOKEN,
 } from '../src';
 import { ContractModule } from '../src/contract.module';
 
@@ -42,7 +44,12 @@ describe('Chains', () => {
     token: symbol,
     chainId: string | CHAINS,
   ) => {
-    const provider = getDefaultProvider(getNetwork(Number(chainId)));
+    const provider = new JsonRpcProvider('http://localhost');
+
+    jest.spyOn(provider, 'detectNetwork').mockImplementation(async () => {
+      return { chainId: Number(chainId), name: 'empty' };
+    });
+
     const moduleRef = await Test.createTestingModule({
       imports: [Module.forRoot({ provider })],
     }).compile();
@@ -93,6 +100,14 @@ describe('Chains', () => {
     );
   });
 
+  test('easytrack', async () => {
+    await testAddress(
+      EasyTrackContractModule,
+      EASYTRACK_CONTRACT_TOKEN,
+      EASYTRACK_CONTRACT_ADDRESSES,
+    );
+  });
+
   test('ldo', async () => {
     await testAddress(
       LdoContractModule,
@@ -106,6 +121,14 @@ describe('Chains', () => {
       LidoContractModule,
       LIDO_CONTRACT_TOKEN,
       LIDO_CONTRACT_ADDRESSES,
+    );
+  });
+
+  test('mev vault', async () => {
+    await testAddress(
+      MevVaultContractModule,
+      MEV_VAULT_CONTRACT_TOKEN,
+      MEV_VAULT_CONTRACT_ADDRESSES,
     );
   });
 
@@ -138,14 +161,6 @@ describe('Chains', () => {
       WstethContractModule,
       WSTETH_CONTRACT_TOKEN,
       WSTETH_CONTRACT_ADDRESSES,
-    );
-  });
-
-  test('easytrack', async () => {
-    await testAddress(
-      EasyTrackContractModule,
-      EASYTRACK_CONTRACT_TOKEN,
-      EASYTRACK_CONTRACT_ADDRESSES,
     );
   });
 });
