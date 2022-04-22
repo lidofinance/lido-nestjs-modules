@@ -6,6 +6,7 @@ export class RegistryStorageService implements OnModuleInit, OnModuleDestroy {
   constructor(private readonly orm: MikroORM) {}
 
   async onModuleInit(): Promise<void> {
+    // TODO: think about migrations
     const generator = this.orm.getSchemaGenerator();
     await generator.updateSchema();
   }
