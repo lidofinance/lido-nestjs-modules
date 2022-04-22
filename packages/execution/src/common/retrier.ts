@@ -7,6 +7,7 @@ export const retrier = (
   defaultMinBackoffMs = 1000,
   defaultMaxBackoffMs = 60000,
   defaultLogWarning = false,
+  defaultErrorFilter?: (error: Error | unknown) => boolean,
 ) => {
   return async <T extends unknown>(
     callback: () => Promise<T> | T,
@@ -14,14 +15,20 @@ export const retrier = (
     minBackoffMs?: number,
     maxBackoffMs?: number,
     logWarning?: boolean,
+    errorFilter?: (error: Error | unknown) => boolean,
   ): Promise<T> => {
     maxRetryCount = maxRetryCount ?? defaultMaxRetryCount;
     minBackoffMs = minBackoffMs ?? defaultMinBackoffMs;
     maxBackoffMs = maxBackoffMs ?? defaultMaxBackoffMs;
     logWarning = logWarning ?? defaultLogWarning;
+    errorFilter = errorFilter ?? defaultErrorFilter;
     try {
       return await callback();
     } catch (err) {
+      if (typeof errorFilter === 'function' && errorFilter(err)) {
+        throw err;
+      }
+
       if (logger && logWarning) {
         logger.warn(
           err,
@@ -40,6 +47,7 @@ export const retrier = (
         minBackoffMs * 2,
         maxBackoffMs,
         logWarning,
+        errorFilter,
       );
     }
   };

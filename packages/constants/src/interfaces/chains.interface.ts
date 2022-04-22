@@ -4,5 +4,8 @@ export enum CHAINS {
   Rinkeby = 4,
   Goerli = 5,
   Kovan = 42,
+  Moonriver = 1285,
+  Moonbase = 1287,
   Kintsugi = 1337702,
+  Kiln = 1337802,
 }

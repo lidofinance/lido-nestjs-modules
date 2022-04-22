@@ -96,3 +96,11 @@ import { ProviderModule } from './provider.service';
 })
 export class MyModule {}
 ```
+
+## How to add new abi
+
+1. Put ABI into `packages/contracts/abi` folder
+2. Set up `packages/contracts/<your name of abi>`: module, contracts
+3. Nice to have: add test for ABI: `packages/contracts/test/contracts.spec.ts`
+4. Go through install FAQ
+5. Enjoy

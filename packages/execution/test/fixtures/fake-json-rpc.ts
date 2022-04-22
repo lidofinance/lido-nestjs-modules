@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { ConnectionInfo } from '@ethersproject/web';
-import { NonEmptyArray } from '../../dist/interfaces/non-empty-array';
+import { NonEmptyArray } from '../../src/interfaces/non-empty-array';
 import { BigNumber } from '@ethersproject/bignumber';
 
 interface JsonRpcRequest {
@@ -67,7 +67,12 @@ export const fixtures = {
 };
 
 export const fakeJsonRpc =
-  (chainId?: string, blockNumber?: string, blockHash?: string) =>
+  (
+    chainId?: string,
+    blockNumber?: string,
+    blockHash?: string,
+    txHash?: string,
+  ) =>
   (request: JsonRpcRequest): JsonRpcResponse => {
     switch (request.method) {
       case 'eth_chainId':
@@ -137,13 +142,44 @@ export const fakeJsonRpc =
             hash: blockHash ?? fixtures.eth_getBlockByNumber.default.hash,
           },
         };
+      case 'eth_blockNumber':
+        return {
+          jsonrpc: '2.0',
+          id: request.id,
+          result: '0x2710',
+        };
+      case 'eth_gasPrice':
+        return {
+          jsonrpc: '2.0',
+          id: request.id,
+          result: '0x1dfd14000', // 8049999872 Wei
+        };
+      case 'eth_estimateGas':
+        return {
+          jsonrpc: '2.0',
+          id: request.id,
+          result: '0x5208', // 21000
+        };
+      case 'eth_sendRawTransaction':
+        return {
+          jsonrpc: '2.0',
+          id: request.id,
+          result:
+            txHash ??
+            '0xbdbda178dac948c2ff214526717069e4f4aaf8a550bd0335bfa2235412403489',
+        };
       default:
         return { jsonrpc: '2.0', id: request.id, result: {} };
     }
   };
 
 export const fakeFetchImpl =
-  (chainId?: number, blockNumber?: number, blockHash?: string) =>
+  (
+    chainId?: number,
+    blockNumber?: number,
+    blockHash?: string,
+    txHash?: string,
+  ) =>
   async (
     connection: string | ConnectionInfo,
     json?: string,
@@ -154,8 +190,31 @@ export const fakeFetchImpl =
         chainId ? BigNumber.from(chainId).toHexString() : undefined,
         blockNumber ? BigNumber.from(blockNumber).toHexString() : undefined,
         blockHash,
+        txHash,
       ),
     );
+  };
+
+export const fakeFetchImplThatCantDo =
+  (methods: string[]) =>
+  async (
+    connection: string | ConnectionInfo,
+    json?: string,
+  ): Promise<unknown> => {
+    const requests = json ? JSON.parse(json) : {};
+
+    const results = requests.map((request: JsonRpcRequest) => {
+      if (!methods.includes(request.method)) {
+        return fakeJsonRpc()(request);
+      }
+      return null;
+    });
+
+    if (results.filter((r: JsonRpcResponse | null) => r === null).length > 0) {
+      throw new Error("Can't do a method");
+    }
+
+    return results;
   };
 
 export const fakeFetchImplThatCanOnlyDoNetworkDetection = async (
@@ -176,6 +235,12 @@ export const fakeFetchImplThatCanOnlyDoNetworkDetection = async (
   }
 
   return results;
+};
+
+export const makeFakeFetchImplThrowsError = (error: Error) => {
+  return async (): Promise<unknown> => {
+    throw error;
+  };
 };
 
 export const fakeFetchImplThatAlwaysFails = async (): Promise<never> => {

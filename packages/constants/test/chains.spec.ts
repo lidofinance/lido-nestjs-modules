@@ -7,6 +7,9 @@ describe('Chains', () => {
     expect(CHAINS.Rinkeby).toBeDefined();
     expect(CHAINS.Goerli).toBeDefined();
     expect(CHAINS.Kovan).toBeDefined();
+    expect(CHAINS.Moonriver).toBeDefined();
+    expect(CHAINS.Moonbase).toBeDefined();
     expect(CHAINS.Kintsugi).toBeDefined();
+    expect(CHAINS.Kiln).toBeDefined();
   });
 });

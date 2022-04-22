@@ -1,6 +1,12 @@
 export * from './generated';
 export * from './generated/common';
 
+export * from './aragon-token-manager/aragon-token-manager.constants';
+export * from './aragon-token-manager/aragon-token-manager.module';
+
+export * from './aragon-voting/aragon-voting.constants';
+export * from './aragon-voting/aragon-voting.module';
+
 export * from './deposit/deposit.constants';
 export * from './deposit/deposit.module';
 
@@ -9,6 +15,9 @@ export * from './ldo/ldo.module';
 
 export * from './lido/lido.constants';
 export * from './lido/lido.module';
+
+export * from './mev-vault/mev-vault.constants';
+export * from './mev-vault/mev-vault.module';
 
 export * from './oracle/oracle.constants';
 export * from './oracle/oracle.module';
@@ -21,3 +30,6 @@ export * from './security/security.module';
 
 export * from './wsteth/wsteth.constants';
 export * from './wsteth/wsteth.module';
+
+export * from './easytrack/easytrack.constants';
+export * from './easytrack/easytrack.module';

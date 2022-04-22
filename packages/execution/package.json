@@ -34,6 +34,7 @@
     "access": "public"
   },
   "dependencies": {
+    "@ethersproject/logger": "^5.5.0",
     "@ethersproject/networks": "^5.5.2",
     "@ethersproject/properties": "^5.5.0",
     "@ethersproject/providers": "^5.5.3",
