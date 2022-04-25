@@ -56,6 +56,12 @@ describe('Keys', () => {
     expect(mockRegistryKeyRepository.findAll).toBeCalledTimes(1);
   });
 
+  test('findUsed', async () => {
+    await expect(storageService.findUsed()).resolves.toEqual([]);
+    expect(mockRegistryKeyRepository.find).toBeCalledTimes(1);
+    expect(mockRegistryKeyRepository.find).toBeCalledWith({ used: true });
+  });
+
   test('findByOperatorIndex', async () => {
     await expect(storageService.findByOperatorIndex(1)).resolves.toEqual([]);
     expect(mockRegistryKeyRepository.find).toBeCalledTimes(1);

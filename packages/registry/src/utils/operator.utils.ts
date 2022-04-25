@@ -7,8 +7,8 @@ export const compareOperators = (
   if (operatorOne == null) return false;
   if (operatorTwo == null) return false;
 
-  const addressOne = operatorOne?.rewardAddress;
-  const addressTwo = operatorTwo?.rewardAddress;
+  const addressOne = operatorOne.rewardAddress.toLocaleLowerCase();
+  const addressTwo = operatorTwo.rewardAddress.toLocaleLowerCase();
 
   if (addressOne !== addressTwo) return false;
 

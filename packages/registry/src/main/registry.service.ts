@@ -1,13 +1,20 @@
 import { Inject, Injectable, LoggerService } from '@nestjs/common';
 import { Registry, REGISTRY_CONTRACT_TOKEN } from '@lido-nestjs/contracts';
+import { EntityManager } from '@mikro-orm/sqlite';
 import { LOGGER_PROVIDER } from '@lido-nestjs/logger';
+
 import { RegistryMetaFetchService } from '../fetch/meta.fetch';
 import { RegistryKeyFetchService } from '../fetch/key.fetch';
 import { RegistryOperatorFetchService } from '../fetch/operator.fetch';
+
 import { RegistryMetaStorageService } from '../storage/meta.storage';
 import { RegistryKeyStorageService } from '../storage/key.storage';
 import { RegistryOperatorStorageService } from '../storage/operator.storage';
+
+import { RegistryMeta } from '../storage/meta.entity';
+import { RegistryKey } from '../storage/key.entity';
 import { RegistryOperator } from '../storage/operator.entity';
+
 import { compareMeta } from '../utils/meta.utils';
 import { compareOperators } from '../utils/operator.utils';
 
@@ -25,13 +32,15 @@ export class RegistryService {
 
     private readonly operatorFetch: RegistryOperatorFetchService,
     private readonly operatorStorage: RegistryOperatorStorageService,
+
+    private readonly entityManager: EntityManager,
   ) {}
 
   /** collects changed data from the contract and store it to the db */
-  async update(blockNumber: number | null = null) {
+  async update(blockHashOrBlockTag?: string | number) {
     const prevMeta = await this.getMetaDataFromStorage();
-    const currMeta = await this.getMetaDataFromContract(blockNumber);
-    const isSameMeta = compareMeta(prevMeta, currMeta);
+    const currMeta = await this.getMetaDataFromContract(blockHashOrBlockTag);
+    const isSameContractState = compareMeta(prevMeta, currMeta);
 
     this.logger.log('Collected metadata', { prevMeta, currMeta });
 
@@ -43,9 +52,10 @@ export class RegistryService {
       return;
     }
 
-    if (isSameMeta) {
-      // keysOpIndex and unbufferedBlockNumber are the same
-      // no update required
+    if (isSameContractState) {
+      this.logger.debug?.('Same state, no data update required', { currMeta });
+      await this.metaStorage.save(currMeta);
+      this.logger.debug?.('Updated metadata in the DB', { currMeta });
       return;
     }
 
@@ -54,16 +64,42 @@ export class RegistryService {
     const previousOperators = await this.getOperatorsFromStorage();
     const currentOperators = await this.getOperatorsFromContract(blockHash);
 
+    this.logger.log('Collected operators', {
+      previousOperators: previousOperators.length,
+      currentOperators: currentOperators.length,
+    });
+
     const updatedKeys = await this.getUpdatedKeysFromContract(
       previousOperators,
       currentOperators,
       blockHash,
     );
 
-    // TODO: wrap in transaction
-    await this.keyStorage.save(updatedKeys);
-    await this.operatorStorage.save(currentOperators);
-    await this.metaStorage.save(currMeta);
+    this.logger.log('Fetched updated keys', {
+      updatedKeys: updatedKeys.length,
+    });
+
+    // save all data in a transaction
+    await this.entityManager.transactional(async (entityManager) => {
+      updatedKeys.forEach(async (operatorKey) => {
+        const instance = new RegistryKey(operatorKey);
+        entityManager.persist(instance);
+      });
+
+      currentOperators.forEach(async (operator) => {
+        const instance = new RegistryOperator(operator);
+        entityManager.persist(instance);
+      });
+
+      const meta = new RegistryMeta(currMeta);
+      entityManager.persist(meta);
+    });
+
+    this.logger.log('Saved data to the DB', {
+      operators: currentOperators.length,
+      updatedKeys: updatedKeys.length,
+      currMeta,
+    });
   }
 
   /** returns the latest meta data from the db */
@@ -72,15 +108,18 @@ export class RegistryService {
   }
 
   /** returns the meta data from the contract */
-  private async getMetaDataFromContract(blockNumber: number | null) {
+  private async getMetaDataFromContract(blockHashOrBlockTag?: string | number) {
     const { provider } = this.registryContract;
-    const block = await provider.getBlock(blockNumber ?? 'latest');
+    const block = await provider.getBlock(blockHashOrBlockTag ?? 'latest');
     const blockHash = block.hash;
     const blockTag = { blockHash };
 
+    // we must collect keysOpIndex & lastUnbufferedLog,
+    // since `_increaseKeysOpIndex` in the contract does not occur on Unbuffer
+    // this will be fixed in the next version of the contract
     const [keysOpIndex, lastUnbufferedLog] = await Promise.all([
       this.metaFetch.fetchKeysOpIndex({ blockTag }),
-      this.metaFetch.fetchLastUnbufferedLog(block.number),
+      this.metaFetch.fetchLastUnbufferedLog(block),
     ]);
 
     const unbufferedBlockNumber = lastUnbufferedLog.blockNumber;
@@ -129,7 +168,7 @@ export class RegistryService {
   ) {
     /**
      * TODO: optimize a number of queries
-     * we can collect key change events and fetch keys only for updated operators
+     * it's possible to update keys faster by using different strategies depending on the reason for the update
      */
     const keysByOperator = await Promise.all(
       currentOperators.map(async (currOperator, currentIndex) => {
@@ -147,12 +186,21 @@ export class RegistryService {
         const toIndex = currOperator.totalSigningKeys;
         const operatorIndex = currOperator.index;
 
-        return await this.getKeysFromContract(
+        const result = await this.getKeysFromContract(
           operatorIndex,
           fromIndex,
           toIndex,
           blockHash,
         );
+
+        this.logger.log('Keys fetched', {
+          operatorIndex,
+          fromIndex,
+          toIndex,
+          fetchedKeys: result.length,
+        });
+
+        return result;
       }),
     );
 
@@ -160,19 +208,30 @@ export class RegistryService {
   }
 
   /** clears the db */
-  clear() {
-    // TODO
+  public async clear() {
+    await this.entityManager.transactional(async (entityManager) => {
+      entityManager.nativeDelete(RegistryKey, {});
+      entityManager.nativeDelete(RegistryOperator, {});
+      entityManager.nativeDelete(RegistryMeta, {});
+    });
   }
 
-  subscribe() {
-    // TODO
+  /** returns all operators from the db */
+  public async getOperators() {
+    return await this.operatorStorage.findAll();
   }
 
-  getOperators() {
-    // TODO
+  /** returns all operators keys from the db */
+  public async getAllKeys() {
+    return await this.keyStorage.findAll();
   }
 
-  getKeys() {
+  /** returns used keys from the db */
+  public async getUsedKeys() {
+    return await this.keyStorage.findUsed();
+  }
+
+  public async subscribe() {
     // TODO
   }
 }

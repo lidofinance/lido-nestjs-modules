@@ -38,8 +38,8 @@ export class RegistryOperatorStorageService {
   async save(operators: RegistryOperator[]) {
     const result = await Promise.all(
       operators.map(async (operator) => {
-        const key = new RegistryOperator(operator);
-        return await this.repository.persist(key);
+        const instance = new RegistryOperator(operator);
+        return await this.repository.persist(instance);
       }),
     );
 

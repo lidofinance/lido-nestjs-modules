@@ -7,13 +7,13 @@ export const compareMeta = (
   if (metaOne == null) return false;
   if (metaTwo == null) return false;
 
-  const keyOpIndexOne = metaOne?.keysOpIndex;
-  const keyOpIndexTwo = metaTwo?.keysOpIndex;
+  const keysOpIndexOne = metaOne.keysOpIndex;
+  const keysOpIndexTwo = metaTwo.keysOpIndex;
 
-  if (keyOpIndexOne !== keyOpIndexTwo) return false;
+  if (keysOpIndexOne !== keysOpIndexTwo) return false;
 
-  const unbufferedBlockOne = metaOne?.unbufferedBlockNumber;
-  const unbufferedBlockTwo = metaTwo?.unbufferedBlockNumber;
+  const unbufferedBlockOne = metaOne.unbufferedBlockNumber;
+  const unbufferedBlockTwo = metaTwo.unbufferedBlockNumber;
 
   if (unbufferedBlockOne !== unbufferedBlockTwo) return false;
 

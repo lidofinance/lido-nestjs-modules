@@ -29,6 +29,7 @@
   },
   "dependencies": {
     "@lido-nestjs/contracts": "workspace:*",
+    "@lido-nestjs/logger": "workspace:*",
     "@lido-nestjs/utils": "workspace:*",
     "@mikro-orm/core": "^5.0.1",
     "@mikro-orm/nestjs": "^4.3.1",
@@ -42,6 +43,7 @@
     "tslib": "^2.3.1"
   },
   "devDependencies": {
+    "@lido-nestjs/execution": "workspace:*",
     "@nestjs/common": "^8.2.5",
     "@nestjs/core": "^8.2.5",
     "@nestjs/testing": "^8.2.5",

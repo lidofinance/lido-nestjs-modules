@@ -11,6 +11,11 @@ export class RegistryKeyStorageService {
     return await this.repository.findAll();
   }
 
+  /** find used keys */
+  async findUsed(): Promise<RegistryKey[]> {
+    return await this.repository.find({ used: true });
+  }
+
   /** find all keys by operator */
   async findByOperatorIndex(operatorIndex: number): Promise<RegistryKey[]> {
     return await this.repository.find({ operatorIndex });
@@ -47,8 +52,8 @@ export class RegistryKeyStorageService {
   async save(operatorKeys: RegistryKey[]) {
     const result = await Promise.all(
       operatorKeys.map(async (operatorKey) => {
-        const key = new RegistryKey(operatorKey);
-        return await this.repository.persist(key);
+        const instance = new RegistryKey(operatorKey);
+        return await this.repository.persist(instance);
       }),
     );
 

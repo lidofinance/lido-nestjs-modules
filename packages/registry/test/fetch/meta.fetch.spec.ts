@@ -42,53 +42,44 @@ describe('Meta', () => {
     mockSend.mockReset();
   });
 
-  test('fetchKeysOpIndex', async () => {
-    const expected = 10;
+  describe('Keys op index', () => {
+    test('fetchKeysOpIndex', async () => {
+      const expected = 10;
 
-    mockCall.mockImplementation(async () => {
-      const iface = new Interface(Registry__factory.abi);
-      return iface.encodeFunctionResult('getKeysOpIndex', [expected]);
+      mockCall.mockImplementation(async () => {
+        const iface = new Interface(Registry__factory.abi);
+        return iface.encodeFunctionResult('getKeysOpIndex', [expected]);
+      });
+      const result = await fetchService.fetchKeysOpIndex();
+
+      expect(result).toEqual(expected);
+      expect(mockCall).toBeCalledTimes(1);
     });
-    const result = await fetchService.fetchKeysOpIndex();
-
-    expect(result).toEqual(expected);
-    expect(mockCall).toBeCalledTimes(1);
   });
 
-  test('fetchUnbufferedLogs', async () => {
-    mockSend.mockImplementation(async () => [unbufferedLog]);
-    const result = await fetchService.fetchUnbufferedLogs(100, 110);
+  describe('Unbuffered logs', () => {
+    test('fetchLastUnbufferedLog', async () => {
+      const blockNumber = 100;
+      const blockHash =
+        '0x0000000000000000000000000000000000000000000000000000000000000001';
 
-    expect(mockSend).toBeCalledTimes(1);
-    expect(mockSend).toBeCalledWith('eth_getLogs', [
-      expect.objectContaining({
-        address: expect.any(String),
-        fromBlock: expect.any(String),
-        toBlock: expect.any(String),
-        topics: [expect.any(String)],
-      }),
-    ]);
-    expect(result).toEqual([
-      expect.objectContaining({
-        ...unbufferedLog,
-        event: 'Unbuffered',
-        eventSignature: 'Unbuffered(uint256)',
-        args: expect.arrayContaining([BigNumber.from(unbufferedLog.data)]),
-        decode: expect.any(Function),
-        getBlock: expect.any(Function),
-        getTransaction: expect.any(Function),
-        getTransactionReceipt: expect.any(Function),
-        removeListener: expect.any(Function),
-      }),
-    ]);
-  });
-
-  describe('fetchLastUnbufferedLog', () => {
-    test('Basic', async () => {
       mockSend.mockImplementation(async () => [unbufferedLog]);
-      const result = await fetchService.fetchLastUnbufferedLog(100);
+      const result = await fetchService.fetchLastUnbufferedLog({
+        number: blockNumber,
+        hash: blockHash,
+      });
 
-      expect(mockSend).toBeCalledTimes(1);
+      expect(mockSend).toBeCalledTimes(2);
+
+      const calls = mockSend.mock.calls;
+      expect(calls[0][1]).toEqual([expect.objectContaining({ blockHash })]);
+      expect(calls[1][1]).toEqual([
+        expect.objectContaining({
+          fromBlock: '0x0',
+          toBlock: BigNumber.from(blockNumber).toHexString(),
+        }),
+      ]);
+
       expect(mockSend).toBeCalledWith('eth_getLogs', [
         expect.objectContaining({
           address: expect.any(String),
@@ -97,6 +88,7 @@ describe('Meta', () => {
           topics: [expect.any(String)],
         }),
       ]);
+
       expect(result).toEqual(
         expect.objectContaining({
           ...unbufferedLog,
@@ -112,12 +104,57 @@ describe('Meta', () => {
       );
     });
 
-    test('Get previous batch', async () => {
+    test('fetchLastUnbufferedLog - no logs', async () => {
+      jest
+        .spyOn(fetchService, 'fetchUnbufferedLogsInBlock')
+        .mockImplementation(async () => []);
+
+      jest
+        .spyOn(fetchService, 'fetchUnbufferedLogsInHistory')
+        .mockImplementation(async () => []);
+
+      await expect(
+        fetchService.fetchLastUnbufferedLog({
+          number: 0,
+          hash: '0x0000000000000000000000000000000000000000000000000000000000000001',
+        }),
+      ).rejects.toThrow();
+    });
+
+    test('fetchUnbufferedLogsInHistory', async () => {
+      mockSend.mockImplementation(async () => [unbufferedLog]);
+      const result = await fetchService.fetchUnbufferedLogsInHistory(100);
+
+      expect(mockSend).toBeCalledTimes(1);
+      expect(mockSend).toBeCalledWith('eth_getLogs', [
+        expect.objectContaining({
+          address: expect.any(String),
+          fromBlock: expect.any(String),
+          toBlock: expect.any(String),
+          topics: [expect.any(String)],
+        }),
+      ]);
+      expect(result).toEqual([
+        expect.objectContaining({
+          ...unbufferedLog,
+          event: 'Unbuffered',
+          eventSignature: 'Unbuffered(uint256)',
+          args: expect.arrayContaining([BigNumber.from(unbufferedLog.data)]),
+          decode: expect.any(Function),
+          getBlock: expect.any(Function),
+          getTransaction: expect.any(Function),
+          getTransactionReceipt: expect.any(Function),
+          removeListener: expect.any(Function),
+        }),
+      ]);
+    });
+
+    test('fetchUnbufferedLogsInHistory - get previous batch', async () => {
       mockSend
         .mockImplementationOnce(async () => [])
         .mockImplementationOnce(async () => [unbufferedLog]);
 
-      await fetchService.fetchLastUnbufferedLog(100, 10);
+      await fetchService.fetchUnbufferedLogsInHistory(100, 10);
 
       expect(mockSend).toBeCalledTimes(2);
 
@@ -136,19 +173,52 @@ describe('Meta', () => {
       ]);
     });
 
-    test('Wrong block', async () => {
-      await expect(fetchService.fetchLastUnbufferedLog(0)).rejects.toThrow();
-      await expect(fetchService.fetchLastUnbufferedLog(-1)).rejects.toThrow();
+    test('fetchUnbufferedLogsInHistory - wrong block', async () => {
+      await expect(
+        fetchService.fetchUnbufferedLogsInHistory(0),
+      ).rejects.toThrow();
+
+      await expect(
+        fetchService.fetchUnbufferedLogsInHistory(-1),
+      ).rejects.toThrow();
     });
 
-    test('Wrong step', async () => {
+    test('fetchUnbufferedLogsInHistory - wrong step', async () => {
       await expect(
-        fetchService.fetchLastUnbufferedLog(10, 0),
+        fetchService.fetchUnbufferedLogsInHistory(10, 0),
       ).rejects.toThrow();
 
       await expect(
-        fetchService.fetchLastUnbufferedLog(10, -1),
+        fetchService.fetchUnbufferedLogsInHistory(10, -1),
       ).rejects.toThrow();
+    });
+
+    test('fetchUnbufferedLogsInRange', async () => {
+      mockSend.mockImplementation(async () => [unbufferedLog]);
+      const result = await fetchService.fetchUnbufferedLogsInRange(100, 110);
+
+      expect(mockSend).toBeCalledTimes(1);
+      expect(mockSend).toBeCalledWith('eth_getLogs', [
+        expect.objectContaining({
+          address: expect.any(String),
+          fromBlock: expect.any(String),
+          toBlock: expect.any(String),
+          topics: [expect.any(String)],
+        }),
+      ]);
+      expect(result).toEqual([
+        expect.objectContaining({
+          ...unbufferedLog,
+          event: 'Unbuffered',
+          eventSignature: 'Unbuffered(uint256)',
+          args: expect.arrayContaining([BigNumber.from(unbufferedLog.data)]),
+          decode: expect.any(Function),
+          getBlock: expect.any(Function),
+          getTransaction: expect.any(Function),
+          getTransactionReceipt: expect.any(Function),
+          removeListener: expect.any(Function),
+        }),
+      ]);
     });
   });
 });
