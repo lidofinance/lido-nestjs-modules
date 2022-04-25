@@ -36,8 +36,12 @@ export class RegistryService {
     private readonly entityManager: EntityManager,
   ) {}
 
+  public async subscribeToUpdates() {
+    // TODO
+  }
+
   /** collects changed data from the contract and store it to the db */
-  async update(blockHashOrBlockTag?: string | number) {
+  public async update(blockHashOrBlockTag?: string | number) {
     const prevMeta = await this.getMetaDataFromStorage();
     const currMeta = await this.getMetaDataFromContract(blockHashOrBlockTag);
     const isSameContractState = compareMeta(prevMeta, currMeta);
@@ -102,13 +106,10 @@ export class RegistryService {
     });
   }
 
-  /** returns the latest meta data from the db */
-  private async getMetaDataFromStorage() {
-    return await this.metaStorage.get();
-  }
+  /** contract */
 
   /** returns the meta data from the contract */
-  private async getMetaDataFromContract(blockHashOrBlockTag?: string | number) {
+  public async getMetaDataFromContract(blockHashOrBlockTag?: string | number) {
     const { provider } = this.registryContract;
     const block = await provider.getBlock(blockHashOrBlockTag ?? 'latest');
     const blockHash = block.hash;
@@ -132,36 +133,14 @@ export class RegistryService {
     };
   }
 
-  /** returns the latest operators data from the db */
-  private async getOperatorsFromStorage() {
-    return await this.operatorStorage.findAll();
-  }
-
   /** returns operators from the contract */
-  private async getOperatorsFromContract(blockHash: string) {
+  public async getOperatorsFromContract(blockHash: string) {
     const overrides = { blockTag: { blockHash } };
     return await this.operatorFetch.fetch(0, -1, overrides);
   }
 
-  /** returns keys from the contract */
-  private async getKeysFromContract(
-    operatorIndex: number,
-    fromIndex: number,
-    toIndex: number,
-    blockHash: string,
-  ) {
-    const overrides = { blockTag: { blockHash } };
-
-    return await this.keyFetch.fetch(
-      operatorIndex,
-      fromIndex,
-      toIndex,
-      overrides,
-    );
-  }
-
   /** returns updated keys from the contract */
-  private async getUpdatedKeysFromContract(
+  public async getUpdatedKeysFromContract(
     previousOperators: RegistryOperator[],
     currentOperators: RegistryOperator[],
     blockHash: string,
@@ -185,12 +164,13 @@ export class RegistryService {
         const fromIndex = unchangedKeysMaxIndex;
         const toIndex = currOperator.totalSigningKeys;
         const operatorIndex = currOperator.index;
+        const overrides = { blockTag: { blockHash } };
 
-        const result = await this.getKeysFromContract(
+        const result = await this.keyFetch.fetch(
           operatorIndex,
           fromIndex,
           toIndex,
-          blockHash,
+          overrides,
         );
 
         this.logger.log('Keys fetched', {
@@ -207,6 +187,28 @@ export class RegistryService {
     return keysByOperator.flat();
   }
 
+  /** storage */
+
+  /** returns the latest meta data from the db */
+  public async getMetaDataFromStorage() {
+    return await this.metaStorage.get();
+  }
+
+  /** returns the latest operators data from the db */
+  public async getOperatorsFromStorage() {
+    return await this.operatorStorage.findAll();
+  }
+
+  /** returns all operators keys from the db */
+  public async getAllKeysFromStorage() {
+    return await this.keyStorage.findAll();
+  }
+
+  /** returns used keys from the db */
+  public async getUsedKeysFromStorage() {
+    return await this.keyStorage.findUsed();
+  }
+
   /** clears the db */
   public async clear() {
     await this.entityManager.transactional(async (entityManager) => {
@@ -214,24 +216,5 @@ export class RegistryService {
       entityManager.nativeDelete(RegistryOperator, {});
       entityManager.nativeDelete(RegistryMeta, {});
     });
-  }
-
-  /** returns all operators from the db */
-  public async getOperators() {
-    return await this.operatorStorage.findAll();
-  }
-
-  /** returns all operators keys from the db */
-  public async getAllKeys() {
-    return await this.keyStorage.findAll();
-  }
-
-  /** returns used keys from the db */
-  public async getUsedKeys() {
-    return await this.keyStorage.findUsed();
-  }
-
-  public async subscribe() {
-    // TODO
   }
 }
