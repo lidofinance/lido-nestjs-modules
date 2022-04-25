@@ -2493,6 +2493,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@lido-nestjs/execution@workspace:packages/execution"
   dependencies:
+    "@ethersproject/bignumber": ^5.5.0
     "@ethersproject/bytes": ^5.5.0
     "@ethersproject/logger": ^5.5.0
     "@ethersproject/networks": ^5.5.2
