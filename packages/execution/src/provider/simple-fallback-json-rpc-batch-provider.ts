@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { BaseProvider, Formatter } from '@ethersproject/providers';
 import { CallOverrides as CallOverridesSource } from '@ethersproject/contracts';
 import { SimpleFallbackProviderConfig } from '../interfaces/simple-fallback-provider-config';
@@ -20,6 +21,9 @@ import { EventType, Listener } from '@ethersproject/abstract-provider';
 import { NoNewBlocksWhilePollingError } from '../error/no-new-blocks-while-polling.error';
 import { isErrorHasCode, nonRetryableErrors } from '../common/errors';
 import { AllProvidersFailedError } from '../error/all-providers-failed.error';
+import { hexValue } from '@ethersproject/bytes';
+import { FeeHistory } from '../ethers/fee-history';
+import { formatBlockNumber } from '../ethers/format-block-number';
 
 /**
  * EIP-1898 support
@@ -148,6 +152,35 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
     }
 
     return super.on(eventName, listener);
+  }
+
+  public async getFeeHistory(
+    blockCount: number,
+    newestBlock: string | null | number,
+    rewardPercentiles: number[],
+  ): Promise<FeeHistory | undefined> {
+    await this.getNetwork();
+
+    const params = {
+      blockCount: hexValue(blockCount),
+      newestBlock: formatBlockNumber(newestBlock),
+      rewardPercentiles,
+    };
+
+    const result: any = await this.perform('getFeeHistory', params);
+
+    if (!result) {
+      return undefined;
+    }
+
+    return {
+      baseFeePerGas: result.baseFeePerGas.map((x: string) => BigNumber.from(x)),
+      gasUsedRatio: result.gasUsedRatio,
+      oldestBlock: BigNumber.from(result.oldestBlock).toNumber(),
+      reward: result.reward.map((x: string[]) =>
+        x.map((y) => BigNumber.from(y)),
+      ),
+    };
   }
 
   protected get provider(): FallbackProvider {

@@ -13,6 +13,7 @@ import {
   makeFakeFetchImplThatFailsAfterNRequests,
   makeFakeFetchImplThatFailsFirstNRequests,
   makeFakeFetchImplThrowsError,
+  makeFetchImplWithEmptyFeeHistory,
   makeFetchImplWithSpecificNetwork,
 } from './fixtures/fake-json-rpc';
 import { nullTransport, LoggerModule } from '@lido-nestjs/logger';
@@ -509,6 +510,32 @@ describe('Execution module. ', () => {
       ).rejects.toThrow(
         'Fallback provider [3] network chainId [2] is different to network chainId from config [1]',
       );
+    });
+
+    test('should return fee history if exists', async () => {
+      await createMocks(2);
+
+      // fallback from 1st provider to 2nd provider
+      const feeHistory = await mockedProvider.getFeeHistory(
+        3,
+        'latest',
+        [1, 5, 10],
+      );
+      expect(feeHistory).toHaveProperty('baseFeePerGas');
+      expect(feeHistory).toHaveProperty('oldestBlock');
+      expect(feeHistory).toHaveProperty('reward');
+    });
+
+    test('should return undefined fee history if not exists', async () => {
+      await createMocks(1);
+
+      mockedFallbackProviderFetch[0].mockImplementation(
+        makeFetchImplWithEmptyFeeHistory(),
+      );
+
+      // fallback from 1st provider to 2nd provider
+      const feeHistory = await mockedProvider.getFeeHistory(3, 42, [1, 5, 10]);
+      expect(feeHistory).toBeUndefined();
     });
 
     test('should support middleware for fetching', async () => {

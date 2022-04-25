@@ -1,7 +1,11 @@
 import { Test } from '@nestjs/testing';
 import { ExtendedJsonRpcBatchProvider, BatchProviderModule } from '../src';
 import { ConnectionInfo } from '@ethersproject/web';
-import { fakeFetchImpl, fixtures } from './fixtures/fake-json-rpc';
+import {
+  fakeFetchImpl,
+  fixtures,
+  makeFetchImplWithEmptyFeeHistory,
+} from './fixtures/fake-json-rpc';
 import { range } from './utils';
 import { nullTransport, LoggerModule } from '@lido-nestjs/logger';
 import { JsonRpcRequest, JsonRpcResponse } from '../src';
@@ -272,6 +276,32 @@ describe('Execution module. ', () => {
       expect(balanceWhenEip1898ByBlockHash.toHexString()).toBe(
         fixtures.eth_getBalance.eip1898_blockHash,
       );
+    });
+
+    test('should return fee history if exists', async () => {
+      await createMocks(2, 2);
+
+      // fallback from 1st provider to 2nd provider
+      const feeHistory = await mockedProvider.getFeeHistory(
+        3,
+        'latest',
+        [1, 5, 10],
+      );
+      expect(feeHistory).toHaveProperty('baseFeePerGas');
+      expect(feeHistory).toHaveProperty('oldestBlock');
+      expect(feeHistory).toHaveProperty('reward');
+    });
+
+    test('should return undefined fee history if not exists', async () => {
+      await createMocks(2, 2);
+
+      mockedProviderFetch.mockImplementation(
+        makeFetchImplWithEmptyFeeHistory(),
+      );
+
+      // fallback from 1st provider to 2nd provider
+      const feeHistory = await mockedProvider.getFeeHistory(3, 42, [1, 5, 10]);
+      expect(feeHistory).toBeUndefined();
     });
   });
 });
