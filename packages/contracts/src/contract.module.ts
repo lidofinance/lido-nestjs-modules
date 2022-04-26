@@ -85,12 +85,12 @@ export class ContractModule {
   protected static async detectChainId(
     providerOrSigner: Signer | Provider,
   ): Promise<number> {
-    if (providerOrSigner instanceof Provider) {
+    if (Provider.isProvider(providerOrSigner)) {
       const network = await providerOrSigner.getNetwork();
       return network.chainId;
     }
 
-    if (providerOrSigner instanceof Signer && providerOrSigner.provider) {
+    if (Signer.isSigner(providerOrSigner) && providerOrSigner.provider) {
       const network = await providerOrSigner.provider.getNetwork();
       return network.chainId;
     }
