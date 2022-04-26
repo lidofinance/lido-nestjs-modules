@@ -64,6 +64,8 @@ export class FetchService {
         throw new HttpException(errorBody, response.status);
       }
 
+      await this.validateResponseByRetryPolicy(response, init);
+
       return response;
     } catch (error) {
       const possibleAttempt = this.getRetryAttempts(init);
@@ -88,6 +90,15 @@ export class FetchService {
     } catch (error) {
       return response.statusText;
     }
+  }
+
+  protected validateResponseByRetryPolicy(
+    response: Response,
+    init?: RequestInit,
+  ) {
+    const callback = init?.retryPolicy?.validator;
+    if (!callback) return;
+    return callback(response);
   }
 
   protected getRetryAttempts(init?: RequestInit): number {

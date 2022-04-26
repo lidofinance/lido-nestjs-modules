@@ -17,6 +17,7 @@ export interface RequestInit extends RequestInitSource {
 export interface RequestRetryPolicy {
   delay?: number;
   attempts?: number;
+  validator?: (response: Response) => Promise<void>;
 }
 
 export interface FetchModuleAsyncOptions
