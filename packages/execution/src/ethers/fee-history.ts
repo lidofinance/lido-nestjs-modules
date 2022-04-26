@@ -41,8 +41,6 @@ export async function getFeeHistory(
 
   const result: any = await this.perform('getFeeHistory', params);
 
-  console.log(JSON.stringify(result, null, ' '));
-
   return {
     baseFeePerGas: result.baseFeePerGas.map((x: string) => BigNumber.from(x)),
     gasUsedRatio: result.gasUsedRatio,
