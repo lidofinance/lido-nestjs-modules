@@ -6,3 +6,4 @@ export * from './batch-provider.module';
 export * from './interfaces/fallback-provider';
 export * from './interfaces/simple-fallback-provider-config';
 export * from './interfaces/module.options';
+export * from './ethers/fee-history';
