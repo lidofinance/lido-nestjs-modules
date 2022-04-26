@@ -1,7 +1,11 @@
 import { Test } from '@nestjs/testing';
 import { ExtendedJsonRpcBatchProvider, BatchProviderModule } from '../src';
 import { ConnectionInfo } from '@ethersproject/web';
-import { fakeFetchImpl, fixtures } from './fixtures/fake-json-rpc';
+import {
+  fakeFetchImpl,
+  fixtures,
+  makeFetchImplWithSpecificFeeHistory,
+} from './fixtures/fake-json-rpc';
 import { range } from './utils';
 import { nullTransport, LoggerModule } from '@lido-nestjs/logger';
 import { JsonRpcRequest, JsonRpcResponse } from '../src';
@@ -272,6 +276,37 @@ describe('Execution module. ', () => {
       expect(balanceWhenEip1898ByBlockHash.toHexString()).toBe(
         fixtures.eth_getBalance.eip1898_blockHash,
       );
+    });
+
+    test('should return fee history with empty reward property', async () => {
+      await createMocks(2, 2);
+
+      const feeHistory = await mockedProvider.getFeeHistory(
+        3,
+        'latest',
+        [1, 5, 10],
+      );
+      expect(feeHistory).toHaveProperty('baseFeePerGas');
+      expect(feeHistory).toHaveProperty('oldestBlock');
+      expect(feeHistory).toHaveProperty('reward');
+    });
+
+    test('should return undefined fee history if not exists', async () => {
+      await createMocks(2, 2);
+
+      mockedProviderFetch.mockImplementation(
+        makeFetchImplWithSpecificFeeHistory({
+          baseFeePerGas: ['0x602828e60', '0x5d014f665'],
+          gasUsedRatio: [0.36889105544897927, 0.21068196330316574],
+          oldestBlock: '0xdfb206',
+        }),
+      );
+
+      const feeHistory = await mockedProvider.getFeeHistory(2);
+      expect(feeHistory).toHaveProperty('baseFeePerGas');
+      expect(feeHistory).toHaveProperty('oldestBlock');
+      expect(feeHistory).toHaveProperty('reward');
+      expect(feeHistory.reward.length).toBe(0);
     });
   });
 });

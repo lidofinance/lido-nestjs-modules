@@ -17,6 +17,7 @@ import { BigNumber, BigNumberish } from '@ethersproject/bignumber';
 import { BlockTag } from '../ethers/block-tag';
 import { TransactionRequest } from '@ethersproject/abstract-provider/src.ts/index';
 import { MiddlewareCallback, MiddlewareService } from '@lido-nestjs/middleware';
+import { FeeHistory, getFeeHistory } from '../ethers/fee-history';
 
 export interface RequestPolicy {
   jsonRpcMaxBatchSize: number;
@@ -218,6 +219,26 @@ export class ExtendedJsonRpcBatchProvider extends JsonRpcProvider {
         this._batchAggregatorTick.bind(this),
         this._requestPolicy.batchAggregationWaitMs,
       );
+    }
+  }
+
+  public async getFeeHistory(
+    blockCount: number,
+    newestBlock?: string | null | number,
+    rewardPercentiles?: number[],
+  ): Promise<FeeHistory> {
+    return getFeeHistory.call(this, blockCount, newestBlock, rewardPercentiles);
+  }
+
+  public prepareRequest(method: string, params: any): [string, Array<any>] {
+    switch (method) {
+      case 'getFeeHistory':
+        return [
+          'eth_feeHistory',
+          [params.blockCount, params.newestBlock, params.rewardPercentiles],
+        ];
+      default:
+        return super.prepareRequest(method, params);
     }
   }
 
