@@ -17,9 +17,7 @@ import { BigNumber, BigNumberish } from '@ethersproject/bignumber';
 import { BlockTag } from '../ethers/block-tag';
 import { TransactionRequest } from '@ethersproject/abstract-provider/src.ts/index';
 import { MiddlewareCallback, MiddlewareService } from '@lido-nestjs/middleware';
-import { hexValue } from '@ethersproject/bytes';
-import { FeeHistory } from '../ethers/fee-history';
-import { formatBlockNumber } from '../ethers/format-block-number';
+import { FeeHistory, getFeeHistory } from '../ethers/fee-history';
 
 export interface RequestPolicy {
   jsonRpcMaxBatchSize: number;
@@ -226,31 +224,10 @@ export class ExtendedJsonRpcBatchProvider extends JsonRpcProvider {
 
   public async getFeeHistory(
     blockCount: number,
-    newestBlock: string | null | number,
-    rewardPercentiles: number[],
-  ): Promise<FeeHistory | undefined> {
-    await this.getNetwork();
-
-    const params: { [key: string]: any } = {
-      blockCount: hexValue(blockCount),
-      newestBlock: formatBlockNumber(newestBlock),
-      rewardPercentiles,
-    };
-
-    const result = await this.perform('getFeeHistory', params);
-
-    if (!result) {
-      return undefined;
-    }
-
-    return {
-      baseFeePerGas: result.baseFeePerGas.map((x: string) => BigNumber.from(x)),
-      gasUsedRatio: result.gasUsedRatio,
-      oldestBlock: BigNumber.from(result.oldestBlock).toNumber(),
-      reward: result.reward.map((x: string[]) =>
-        x.map((y) => BigNumber.from(y)),
-      ),
-    };
+    newestBlock?: string | null | number,
+    rewardPercentiles?: number[],
+  ): Promise<FeeHistory> {
+    return getFeeHistory.call(this, blockCount, newestBlock, rewardPercentiles);
   }
 
   public prepareRequest(method: string, params: any): [string, Array<any>] {

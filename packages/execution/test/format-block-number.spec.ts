@@ -5,6 +5,14 @@ describe('format block number', () => {
     expect(formatBlockNumber(null)).toBe('latest');
   });
 
+  test('should work with undefined', () => {
+    expect(formatBlockNumber(undefined)).toBe('latest');
+  });
+
+  test('should work with 0', () => {
+    expect(formatBlockNumber(0)).toBe('0x0');
+  });
+
   test('should work with block tag', () => {
     expect(formatBlockNumber('latest')).toBe('latest');
     expect(formatBlockNumber('earliest')).toBe('earliest');

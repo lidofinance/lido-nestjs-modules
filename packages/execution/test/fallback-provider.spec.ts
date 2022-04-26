@@ -13,7 +13,7 @@ import {
   makeFakeFetchImplThatFailsAfterNRequests,
   makeFakeFetchImplThatFailsFirstNRequests,
   makeFakeFetchImplThrowsError,
-  makeFetchImplWithEmptyFeeHistory,
+  makeFetchImplWithSpecificFeeHistory,
   makeFetchImplWithSpecificNetwork,
 } from './fixtures/fake-json-rpc';
 import { nullTransport, LoggerModule } from '@lido-nestjs/logger';
@@ -515,7 +515,6 @@ describe('Execution module. ', () => {
     test('should return fee history if exists', async () => {
       await createMocks(2);
 
-      // fallback from 1st provider to 2nd provider
       const feeHistory = await mockedProvider.getFeeHistory(
         3,
         'latest',
@@ -526,16 +525,38 @@ describe('Execution module. ', () => {
       expect(feeHistory).toHaveProperty('reward');
     });
 
-    test('should return undefined fee history if not exists', async () => {
+    test('should throw error when calling fee history with incorrect blockCount', async () => {
+      await createMocks(2);
+
+      await expect(
+        async () => await mockedProvider.getFeeHistory(0),
+      ).rejects.toThrow(
+        'Invalid blockCount for `getFeeHistory`. Should be between 1 and 1024. (argument="blockCount", value=0, code=INVALID_ARGUMENT, version=packages/execution)',
+      );
+
+      await expect(
+        async () => await mockedProvider.getFeeHistory(1025),
+      ).rejects.toThrow(
+        'Invalid blockCount for `getFeeHistory`. Should be between 1 and 1024. (argument="blockCount", value=1025, code=INVALID_ARGUMENT, version=packages/execution)',
+      );
+    });
+
+    test('should return fee history with empty reward property', async () => {
       await createMocks(1);
 
       mockedFallbackProviderFetch[0].mockImplementation(
-        makeFetchImplWithEmptyFeeHistory(),
+        makeFetchImplWithSpecificFeeHistory({
+          baseFeePerGas: ['0x602828e60', '0x5d014f665'],
+          gasUsedRatio: [0.36889105544897927, 0.21068196330316574],
+          oldestBlock: '0xdfb206',
+        }),
       );
 
-      // fallback from 1st provider to 2nd provider
-      const feeHistory = await mockedProvider.getFeeHistory(3, 42, [1, 5, 10]);
-      expect(feeHistory).toBeUndefined();
+      const feeHistory = await mockedProvider.getFeeHistory(2);
+      expect(feeHistory).toHaveProperty('baseFeePerGas');
+      expect(feeHistory).toHaveProperty('oldestBlock');
+      expect(feeHistory).toHaveProperty('reward');
+      expect(feeHistory.reward.length).toBe(0);
     });
 
     test('should support middleware for fetching', async () => {

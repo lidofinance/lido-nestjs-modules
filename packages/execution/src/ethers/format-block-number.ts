@@ -1,6 +1,8 @@
 import { hexValue, isHexString } from '@ethersproject/bytes';
 
-export const formatBlockNumber = (blockNumber: string | null | number) => {
+export const formatBlockNumber = (
+  blockNumber: string | null | number | undefined,
+) => {
   if (
     blockNumber === 'latest' ||
     blockNumber === 'earliest' ||
@@ -8,7 +10,8 @@ export const formatBlockNumber = (blockNumber: string | null | number) => {
   ) {
     return blockNumber;
   } else if (
-    blockNumber &&
+    blockNumber !== null &&
+    typeof blockNumber !== 'undefined' &&
     (typeof blockNumber === 'number' || isHexString(blockNumber))
   ) {
     return hexValue(blockNumber);

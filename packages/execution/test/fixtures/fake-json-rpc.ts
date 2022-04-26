@@ -327,6 +327,6 @@ export const makeFetchImplWithSpecificNetwork = (chainId: number) => {
   return fakeFetchImpl(chainId);
 };
 
-export const makeFetchImplWithEmptyFeeHistory = () => {
-  return fakeFetchImpl(undefined, undefined, undefined, undefined, null);
+export const makeFetchImplWithSpecificFeeHistory = (feeHistory: any) => {
+  return fakeFetchImpl(undefined, undefined, undefined, undefined, feeHistory);
 };

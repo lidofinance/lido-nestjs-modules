@@ -4,7 +4,7 @@ import { ConnectionInfo } from '@ethersproject/web';
 import {
   fakeFetchImpl,
   fixtures,
-  makeFetchImplWithEmptyFeeHistory,
+  makeFetchImplWithSpecificFeeHistory,
 } from './fixtures/fake-json-rpc';
 import { range } from './utils';
 import { nullTransport, LoggerModule } from '@lido-nestjs/logger';
@@ -278,10 +278,9 @@ describe('Execution module. ', () => {
       );
     });
 
-    test('should return fee history if exists', async () => {
+    test('should return fee history with empty reward property', async () => {
       await createMocks(2, 2);
 
-      // fallback from 1st provider to 2nd provider
       const feeHistory = await mockedProvider.getFeeHistory(
         3,
         'latest',
@@ -296,12 +295,18 @@ describe('Execution module. ', () => {
       await createMocks(2, 2);
 
       mockedProviderFetch.mockImplementation(
-        makeFetchImplWithEmptyFeeHistory(),
+        makeFetchImplWithSpecificFeeHistory({
+          baseFeePerGas: ['0x602828e60', '0x5d014f665'],
+          gasUsedRatio: [0.36889105544897927, 0.21068196330316574],
+          oldestBlock: '0xdfb206',
+        }),
       );
 
-      // fallback from 1st provider to 2nd provider
-      const feeHistory = await mockedProvider.getFeeHistory(3, 42, [1, 5, 10]);
-      expect(feeHistory).toBeUndefined();
+      const feeHistory = await mockedProvider.getFeeHistory(2);
+      expect(feeHistory).toHaveProperty('baseFeePerGas');
+      expect(feeHistory).toHaveProperty('oldestBlock');
+      expect(feeHistory).toHaveProperty('reward');
+      expect(feeHistory.reward.length).toBe(0);
     });
   });
 });
