@@ -11,7 +11,7 @@ export const rangePromise = async <T>(
 
   const batchFrom = 0;
   const batchTo = Math.ceil((to - from) / batchSize);
-  const result: T[] = [];
+  let result: T[] = [];
 
   for (let batch = batchFrom; batch < batchTo; batch++) {
     const batchSlotFrom = from + batch * batchSize;
@@ -21,7 +21,7 @@ export const rangePromise = async <T>(
       range(batchSlotFrom, batchSlotTo).map((step) => callback(step)),
     );
 
-    result.push(...batchResult);
+    result = result.concat(batchResult);
   }
 
   return result;
