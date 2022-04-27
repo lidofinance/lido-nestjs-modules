@@ -7,17 +7,17 @@ export { RequestInfo } from 'node-fetch';
 export interface FetchModuleOptions {
   baseUrls?: string[];
   retryPolicy?: RequestRetryPolicy;
-  middlewares?: MiddlewareCallback<Promise<Response>>[];
+  middlewares?: MiddlewareCallback<Promise<unknown>>[];
 }
 
-export interface RequestInit extends RequestInitSource {
+export interface RequestInit<Opts> extends RequestInitSource {
   retryPolicy?: RequestRetryPolicy;
+  serializer?: (response: Opts) => Promise<Opts>;
 }
 
 export interface RequestRetryPolicy {
   delay?: number;
   attempts?: number;
-  validator?: (response: Response) => Promise<void>;
 }
 
 export interface FetchModuleAsyncOptions
@@ -25,3 +25,8 @@ export interface FetchModuleAsyncOptions
   useFactory: (...args: any[]) => Promise<FetchModuleOptions>;
   inject?: any[];
 }
+
+export type ResponseSerializer<T> = (
+  response: Response,
+  init?: RequestInit<T>,
+) => Promise<T>;

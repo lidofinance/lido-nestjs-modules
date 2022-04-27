@@ -11,8 +11,8 @@ import {
   RequestInfo,
   RequestInit,
   FetchModuleOptions,
+  ResponseSerializer,
 } from './interfaces/fetch.interface';
-
 @Injectable()
 export class FetchService {
   constructor(
@@ -20,38 +20,58 @@ export class FetchService {
     @Inject(FETCH_GLOBAL_OPTIONS_TOKEN)
     public options: FetchModuleOptions | null,
 
-    private middlewareService: MiddlewareService<Promise<Response>>,
+    private middlewareService: MiddlewareService<Promise<unknown>>,
   ) {
     this.options?.middlewares?.forEach((middleware) => {
       middlewareService.use(middleware);
     });
   }
 
-  public async fetchJson<T>(url: RequestInfo, init?: RequestInit): Promise<T> {
-    const response = await this.wrappedRequest(url, init);
-    return await response.json();
+  public async fetchJson<T>(
+    url: RequestInfo,
+    init?: RequestInit<T>,
+  ): Promise<T> {
+    return this.wrappedRequest(
+      url,
+      async (response: Response, init?: RequestInit<T>) => {
+        const json = (await response.json()) as T;
+        return this.serialize(json, init);
+      },
+      init,
+    );
   }
 
   public async fetchText(
     url: RequestInfo,
-    init?: RequestInit,
+    init?: RequestInit<string>,
   ): Promise<string> {
-    const response = await this.wrappedRequest(url, init);
-    return await response.text();
+    return this.wrappedRequest<string>(
+      url,
+      async (response: Response, init?: RequestInit<string>) => {
+        const text = await response.text();
+        return this.serialize(text, init);
+      },
+      init,
+    );
   }
 
-  protected async wrappedRequest(
+  protected async wrappedRequest<T>(
     url: RequestInfo,
-    init?: RequestInit,
-  ): Promise<Response> {
-    return await this.middlewareService.go(() => this.request(url, init));
+    responseSerializer: ResponseSerializer<T>,
+    init?: RequestInit<T>,
+  ): Promise<T> {
+    return this.middlewareService.go(
+      () => this.request(url, responseSerializer, init),
+      // TODO fix it
+    ) as unknown as T;
   }
 
-  protected async request(
+  protected async request<T>(
     url: RequestInfo,
-    init?: RequestInit,
+    responseSerializer: ResponseSerializer<T>,
+    init?: RequestInit<T>,
     attempt = 0,
-  ): Promise<Response> {
+  ): Promise<T> {
     attempt++;
 
     try {
@@ -63,20 +83,18 @@ export class FetchService {
         const errorBody = await this.extractErrorBody(response);
         throw new HttpException(errorBody, response.status);
       }
-
-      await this.validateResponseByRetryPolicy(response, init);
-
-      return response;
+      const result = await responseSerializer(response, init);
+      return result;
     } catch (error) {
       const possibleAttempt = this.getRetryAttempts(init);
       if (attempt > possibleAttempt) throw error;
 
       await this.delay(init);
-      return await this.request(url, init, attempt);
+      return await this.request(url, responseSerializer, init, attempt);
     }
   }
 
-  protected async delay(init?: RequestInit): Promise<void> {
+  protected async delay<T>(init?: RequestInit<T>): Promise<void> {
     const timeout = this.getDelayTimeout(init);
     if (timeout <= 0) return;
     return new Promise((resolve) => setTimeout(resolve, timeout));
@@ -92,16 +110,13 @@ export class FetchService {
     }
   }
 
-  protected validateResponseByRetryPolicy(
-    response: Response,
-    init?: RequestInit,
-  ) {
-    const callback = init?.retryPolicy?.validator;
-    if (!callback) return;
+  protected async serialize<T>(response: T, init?: RequestInit<T>) {
+    const callback = init?.serializer;
+    if (!callback) return response;
     return callback(response);
   }
 
-  protected getRetryAttempts(init?: RequestInit): number {
+  protected getRetryAttempts<T>(init?: RequestInit<T>): number {
     const localAttempts = init?.retryPolicy?.attempts;
     const globalAttempts = this.options?.retryPolicy?.attempts;
 
@@ -110,7 +125,7 @@ export class FetchService {
     return FETCH_GLOBAL_RETRY_DEFAULT_ATTEMPTS;
   }
 
-  protected getDelayTimeout(init?: RequestInit): number {
+  protected getDelayTimeout<T>(init?: RequestInit<T>): number {
     const localDelay = init?.retryPolicy?.delay;
     const globalDelay = this.options?.retryPolicy?.delay;
 
