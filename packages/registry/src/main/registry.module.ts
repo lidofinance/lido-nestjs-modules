@@ -4,11 +4,11 @@ import {
   RegistryModuleAsyncOptions,
 } from './interfaces/module.interface';
 import { RegistryService } from './registry.service';
-import { RegistryFetchModule } from '../fetch/registry-fetch.module';
 import { RegistryStorageModule } from '../storage/registry-storage.module';
+import { RegistryFetchModule } from '../fetch/registry-fetch.module';
 
 @Module({
-  imports: [RegistryFetchModule, RegistryStorageModule],
+  imports: [RegistryStorageModule],
   providers: [RegistryService],
   exports: [RegistryService],
 })
@@ -30,7 +30,10 @@ export class RegistryModule {
   static forFeature(options?: RegistryModuleSyncOptions): DynamicModule {
     return {
       module: RegistryModule,
-      imports: options?.imports,
+      imports: [
+        ...(options?.imports || []),
+        RegistryFetchModule.forFeature(options),
+      ],
     };
   }
 
@@ -39,7 +42,10 @@ export class RegistryModule {
   ): DynamicModule {
     return {
       module: RegistryModule,
-      imports: options.imports,
+      imports: [
+        ...(options.imports || []),
+        RegistryFetchModule.forFeatureAsync(options),
+      ],
     };
   }
 }

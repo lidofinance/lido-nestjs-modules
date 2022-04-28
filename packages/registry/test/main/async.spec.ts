@@ -1,68 +1,62 @@
 import { MikroOrmModule } from '@mikro-orm/nestjs';
-import { DynamicModule, Injectable, Module } from '@nestjs/common';
 import { ModuleMetadata } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
-import { RegistryStorageModule, RegistryStorageService } from '../../src';
-
-@Injectable()
-class TestService {}
-@Module({
-  providers: [TestService],
-  exports: [TestService],
-})
-class TestModule {
-  static forRoot(): DynamicModule {
-    return {
-      module: TestModule,
-      global: true,
-    };
-  }
-}
+import { nullTransport, LoggerModule } from '@lido-nestjs/logger';
+import { getNetwork } from '@ethersproject/networks';
+import { getDefaultProvider } from '@ethersproject/providers';
+import {
+  RegistryModule,
+  RegistryService,
+  RegistryStorageService,
+} from '../../src';
 
 describe('Async module initializing', () => {
+  const provider = getDefaultProvider('mainnet');
+
+  jest
+    .spyOn(provider, 'detectNetwork')
+    .mockImplementation(async () => getNetwork('mainnet'));
+
   const testModules = async (imports: ModuleMetadata['imports']) => {
     const moduleRef = await Test.createTestingModule({ imports }).compile();
-    const storageService: RegistryStorageService = moduleRef.get(
-      RegistryStorageService,
-    );
+    const registryService: RegistryService = moduleRef.get(RegistryService);
+    const storageService = moduleRef.get(RegistryStorageService);
 
     await storageService.onModuleInit();
-    expect(storageService).toBeDefined();
+    expect(registryService).toBeDefined();
     await storageService.onModuleDestroy();
   };
 
   test('forRootAsync', async () => {
     await testModules([
-      TestModule.forRoot(),
       MikroOrmModule.forRoot({
         dbName: ':memory:',
         type: 'sqlite',
         allowGlobalContext: true,
         entities: ['./packages/registry/**/*.entity.ts'],
       }),
-      RegistryStorageModule.forRootAsync({
+      LoggerModule.forRoot({ transports: [nullTransport()] }),
+      RegistryModule.forRootAsync({
         async useFactory() {
-          return {};
+          return { provider };
         },
-        inject: [TestService],
       }),
     ]);
   });
 
   test('forFeatureAsync', async () => {
     await testModules([
-      TestModule.forRoot(),
       MikroOrmModule.forRoot({
         dbName: ':memory:',
         type: 'sqlite',
         allowGlobalContext: true,
         entities: ['./packages/registry/**/*.entity.ts'],
       }),
-      RegistryStorageModule.forFeatureAsync({
+      LoggerModule.forRoot({ transports: [nullTransport()] }),
+      RegistryModule.forFeatureAsync({
         async useFactory() {
-          return {};
+          return { provider };
         },
-        inject: [TestService],
       }),
     ]);
   });

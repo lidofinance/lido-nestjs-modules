@@ -1,9 +1,12 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { ModuleMetadata } from '@nestjs/common';
-import { Registry } from '@lido-nestjs/contracts';
+import { Signer } from 'ethers';
+import { Provider } from '@ethersproject/providers';
 
 export interface RegistryFetchOptions {
-  registryContract?: Registry;
+  registryAddress?: string;
+  lidoAddress?: string;
+  provider?: Provider | Signer;
 }
 
 export interface RegistryFetchModuleSyncOptions

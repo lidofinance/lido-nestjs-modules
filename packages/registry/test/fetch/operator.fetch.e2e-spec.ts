@@ -1,8 +1,4 @@
 import { Test } from '@nestjs/testing';
-import {
-  LidoContractModule,
-  RegistryContractModule,
-} from '@lido-nestjs/contracts';
 import { getDefaultProvider } from '@ethersproject/providers';
 import { isAddress } from '@ethersproject/address';
 import { RegistryFetchModule, RegistryOperatorFetchService } from '../../src';
@@ -12,11 +8,7 @@ describe('Operators', () => {
   let fetchService: RegistryOperatorFetchService;
 
   beforeEach(async () => {
-    const imports = [
-      LidoContractModule.forRoot({ provider }),
-      RegistryContractModule.forRoot({ provider }),
-      RegistryFetchModule.forFeature(),
-    ];
+    const imports = [RegistryFetchModule.forFeature({ provider })];
     const moduleRef = await Test.createTestingModule({ imports }).compile();
     fetchService = moduleRef.get(RegistryOperatorFetchService);
   });

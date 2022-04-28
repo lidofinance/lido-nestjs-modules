@@ -41,7 +41,7 @@ export class RegistryService {
   }
 
   /** collects changed data from the contract and store it to the db */
-  public async update(blockHashOrBlockTag?: string | number) {
+  public async update(blockHashOrBlockTag: string | number) {
     const prevMeta = await this.getMetaDataFromStorage();
     const currMeta = await this.getMetaDataFromContract(blockHashOrBlockTag);
     const isSameContractState = compareMeta(prevMeta, currMeta);
@@ -109,9 +109,9 @@ export class RegistryService {
   /** contract */
 
   /** returns the meta data from the contract */
-  public async getMetaDataFromContract(blockHashOrBlockTag?: string | number) {
+  public async getMetaDataFromContract(blockHashOrBlockTag: string | number) {
     const { provider } = this.registryContract;
-    const block = await provider.getBlock(blockHashOrBlockTag ?? 'latest');
+    const block = await provider.getBlock(blockHashOrBlockTag);
     const blockHash = block.hash;
     const blockTag = { blockHash };
 

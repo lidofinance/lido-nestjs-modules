@@ -1,9 +1,5 @@
 import { Test } from '@nestjs/testing';
-import {
-  LidoContractModule,
-  RegistryContractModule,
-  Registry__factory,
-} from '@lido-nestjs/contracts';
+import { Registry__factory } from '@lido-nestjs/contracts';
 import { getNetwork } from '@ethersproject/networks';
 import { Interface } from '@ethersproject/abi';
 import { BigNumber } from '@ethersproject/bignumber';
@@ -28,11 +24,7 @@ describe('Meta', () => {
     .mockImplementation(async () => getNetwork('mainnet'));
 
   beforeEach(async () => {
-    const imports = [
-      LidoContractModule.forRoot({ provider }),
-      RegistryContractModule.forRoot({ provider }),
-      RegistryFetchModule.forFeature(),
-    ];
+    const imports = [RegistryFetchModule.forFeature({ provider })];
     const moduleRef = await Test.createTestingModule({ imports }).compile();
     fetchService = moduleRef.get(RegistryMetaFetchService);
   });

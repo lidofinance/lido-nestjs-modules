@@ -2489,7 +2489,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@lido-nestjs/execution@workspace:packages/execution":
+"@lido-nestjs/execution@workspace:*, @lido-nestjs/execution@workspace:packages/execution":
   version: 0.0.0-use.local
   resolution: "@lido-nestjs/execution@workspace:packages/execution"
   dependencies:
@@ -2578,6 +2578,7 @@ __metadata:
   resolution: "@lido-nestjs/registry@workspace:packages/registry"
   dependencies:
     "@lido-nestjs/contracts": "workspace:*"
+    "@lido-nestjs/execution": "workspace:*"
     "@lido-nestjs/logger": "workspace:*"
     "@lido-nestjs/utils": "workspace:*"
     "@mikro-orm/core": ^5.0.1

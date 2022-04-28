@@ -1,20 +1,20 @@
-import { hexZeroPad } from '@ethersproject/bytes';
 import { DynamicModule, Injectable, Module } from '@nestjs/common';
 import { ModuleMetadata } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { getNetwork } from '@ethersproject/networks';
-import { getDefaultProvider } from '@ethersproject/providers';
-import {
-  LidoContractModule,
-  RegistryContractModule,
-} from '@lido-nestjs/contracts';
+import { getDefaultProvider, BaseProvider } from '@ethersproject/providers';
 import { RegistryFetchModule, RegistryFetchService } from '../../src';
-
-const address = hexZeroPad('0x12', 20);
 
 @Injectable()
 class TestService {
-  public address = address;
+  provider: BaseProvider;
+
+  constructor() {
+    this.provider = getDefaultProvider(process.env.EL_RPC_URL);
+    jest
+      .spyOn(this.provider, 'detectNetwork')
+      .mockImplementation(async () => getNetwork('mainnet'));
+  }
 }
 @Module({
   providers: [TestService],
@@ -30,12 +30,6 @@ class TestModule {
 }
 
 describe('Async module initializing', () => {
-  const provider = getDefaultProvider(process.env.EL_RPC_URL);
-
-  jest
-    .spyOn(provider, 'detectNetwork')
-    .mockImplementation(async () => getNetwork('mainnet'));
-
   const testModules = async (imports: ModuleMetadata['imports']) => {
     const moduleRef = await Test.createTestingModule({ imports }).compile();
     const fetchService: RegistryFetchService =
@@ -47,12 +41,9 @@ describe('Async module initializing', () => {
   test('forRootAsync', async () => {
     await testModules([
       TestModule.forRoot(),
-      LidoContractModule.forRoot({ provider }),
-      RegistryContractModule.forRoot({ provider }),
       RegistryFetchModule.forRootAsync({
-        async useFactory(/* testService: TestService */) {
-          // TODO: config
-          return {};
+        async useFactory(testService: TestService) {
+          return { provider: testService.provider };
         },
         inject: [TestService],
       }),
@@ -62,12 +53,9 @@ describe('Async module initializing', () => {
   test('forFeatureAsync', async () => {
     await testModules([
       TestModule.forRoot(),
-      LidoContractModule.forRoot({ provider }),
-      RegistryContractModule.forRoot({ provider }),
       RegistryFetchModule.forFeatureAsync({
-        async useFactory(/* testService: TestService */) {
-          // TODO: config
-          return {};
+        async useFactory(testService: TestService) {
+          return { provider: testService.provider };
         },
         inject: [TestService],
       }),
