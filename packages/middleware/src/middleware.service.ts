@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/ban-types */
 import { Inject, Injectable, Optional, Scope } from '@nestjs/common';
 import {
   MiddlewareModuleOptions,
@@ -7,22 +8,24 @@ import {
 import { MIDDLEWARE_OPTIONS_TOKEN } from './middleware.constants';
 
 @Injectable({ scope: Scope.TRANSIENT })
-export class MiddlewareService<T> {
+export class MiddlewareService<Next, Payload extends object = {}> {
   constructor(
     @Optional()
     @Inject(MIDDLEWARE_OPTIONS_TOKEN)
-    private options: MiddlewareModuleOptions<T> | undefined,
+    private options: MiddlewareModuleOptions<Next, Payload> | undefined,
   ) {
     this.options?.middlewares?.forEach((middleware) => {
       this.use(middleware);
     });
   }
 
-  use(callback: MiddlewareCallback<T>) {
-    this.go = ((stack) => (next) => {
-      return stack(callback.bind(this, next.bind(this)));
-    })(this.go);
+  use(callback: MiddlewareCallback<Next, Payload>) {
+    const old = this.go;
+
+    this.go = (next, payload) =>
+      old(callback.bind(this, next.bind(this, payload), payload), payload);
   }
 
-  go = (next: MiddlewareNext<T>) => next();
+  go = (next: MiddlewareNext<Next, Payload>, payload?: Payload) =>
+    next(payload);
 }
