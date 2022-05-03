@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/ban-types */
 import { Inject, Injectable, Optional, Scope } from '@nestjs/common';
+
 import {
   MiddlewareModuleOptions,
   MiddlewareCallback,
@@ -12,7 +13,7 @@ export class MiddlewareService<Next, Payload extends object = {}> {
   constructor(
     @Optional()
     @Inject(MIDDLEWARE_OPTIONS_TOKEN)
-    private options: MiddlewareModuleOptions<Next, Payload> | undefined,
+    private options: MiddlewareModuleOptions<Next, Payload>,
   ) {
     this.options?.middlewares?.forEach((middleware) => {
       this.use(middleware);
@@ -20,12 +21,33 @@ export class MiddlewareService<Next, Payload extends object = {}> {
   }
 
   use(callback: MiddlewareCallback<Next, Payload>) {
-    const old = this.go;
+    this.go = this.wrap(this.go, callback);
+  }
 
-    this.go = (next, payload) =>
-      old(callback.bind(this, next.bind(this, payload), payload), payload);
+  private wrap(
+    original: MiddlewareCallback<Next, Payload>,
+    callback: MiddlewareCallback<Next, Payload>,
+  ) {
+    const old = original;
+    return (next: MiddlewareNext<Next, Payload>, payload?: Payload) =>
+      old(callback.bind(null, next.bind(null, payload), payload), payload);
   }
 
   go = (next: MiddlewareNext<Next, Payload>, payload?: Payload) =>
     next(payload);
+
+  run(
+    callbacks: ((
+      next: MiddlewareNext<Next, Payload>,
+      payload?: Payload,
+    ) => Next)[],
+    cb: MiddlewareNext<Next, Payload>,
+    payload?: Payload,
+  ) {
+    const chain = callbacks.reduce(
+      (acc, callback) => this.wrap(acc, callback),
+      this.go,
+    );
+    return chain(cb, payload);
+  }
 }

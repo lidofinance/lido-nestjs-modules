@@ -4,15 +4,23 @@ import { ModuleMetadata } from '@nestjs/common';
 import { MiddlewareCallback } from '@lido-nestjs/middleware';
 export { RequestInfo } from 'node-fetch';
 
+type Cb<P> = (payload: P) => Cb<P>;
+
+type LocalPayload = {
+  response: Response;
+  data: unknown;
+};
+
 export interface FetchModuleOptions {
   baseUrls?: string[];
   retryPolicy?: RequestRetryPolicy;
-  middlewares?: MiddlewareCallback<Promise<unknown>>[];
+  middlewares?: MiddlewareCallback<Promise<Cb<LocalPayload>>, LocalPayload>[];
 }
 
-export interface RequestInit<Opts> extends RequestInitSource {
+export interface RequestInit<Payload extends object = never>
+  extends RequestInitSource {
   retryPolicy?: RequestRetryPolicy;
-  serializer?: (response: Opts) => Promise<Opts>;
+  middlewares?: MiddlewareCallback<Promise<Cb<Payload>>, LocalPayload>[];
 }
 
 export interface RequestRetryPolicy {
@@ -28,5 +36,5 @@ export interface FetchModuleAsyncOptions
 
 export type ResponseSerializer<T> = (
   response: Response,
-  init?: RequestInit<T>,
+  init?: RequestInit,
 ) => Promise<T>;

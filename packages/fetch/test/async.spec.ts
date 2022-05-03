@@ -44,7 +44,7 @@ describe('Async module initializing', () => {
     const testService = await moduleRef.resolve(TestService);
 
     expect(testService.foo).toBeCalledTimes(0);
-    fetchService.fetchJson('/foo');
+    await fetchService.fetchJson('/foo');
     expect(testService.foo).toBeCalledTimes(1);
   };
 

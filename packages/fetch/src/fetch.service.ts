@@ -13,6 +13,13 @@ import {
   FetchModuleOptions,
   ResponseSerializer,
 } from './interfaces/fetch.interface';
+
+type Cb<P> = (payload: P) => Cb<P>;
+
+type LocalPayload = {
+  response: Response;
+  data: unknown;
+};
 @Injectable()
 export class FetchService {
   constructor(
@@ -20,7 +27,10 @@ export class FetchService {
     @Inject(FETCH_GLOBAL_OPTIONS_TOKEN)
     public options: FetchModuleOptions | null,
 
-    private middlewareService: MiddlewareService<Promise<unknown>>,
+    private middlewareService: MiddlewareService<
+      Promise<Cb<LocalPayload>>,
+      LocalPayload
+    >,
   ) {
     this.options?.middlewares?.forEach((middleware) => {
       middlewareService.use(middleware);
@@ -29,13 +39,13 @@ export class FetchService {
 
   public async fetchJson<T>(
     url: RequestInfo,
-    init?: RequestInit<T>,
-  ): Promise<T> {
-    return this.wrappedRequest(
+    init?: RequestInit,
+  ): Promise<T | undefined> {
+    return this.request(
       url,
-      async (response: Response, init?: RequestInit<T>) => {
+      async (response: Response, init?: RequestInit) => {
         const json = (await response.json()) as T;
-        return this.serialize(json, init);
+        return this.runMiddlewares<T>({ response, data: json }, init);
       },
       init,
     );
@@ -43,33 +53,22 @@ export class FetchService {
 
   public async fetchText(
     url: RequestInfo,
-    init?: RequestInit<string>,
-  ): Promise<string> {
-    return this.wrappedRequest<string>(
+    init?: RequestInit,
+  ): Promise<string | undefined> {
+    return this.request(
       url,
-      async (response: Response, init?: RequestInit<string>) => {
+      async (response: Response, init?: RequestInit) => {
         const text = await response.text();
-        return this.serialize(text, init);
+        return this.runMiddlewares<string>({ response, data: text }, init);
       },
       init,
     );
   }
 
-  protected async wrappedRequest<T>(
-    url: RequestInfo,
-    responseSerializer: ResponseSerializer<T>,
-    init?: RequestInit<T>,
-  ): Promise<T> {
-    return this.middlewareService.go(
-      () => this.request(url, responseSerializer, init),
-      // TODO fix it
-    ) as unknown as T;
-  }
-
   protected async request<T>(
     url: RequestInfo,
     responseSerializer: ResponseSerializer<T>,
-    init?: RequestInit<T>,
+    init?: RequestInit,
     attempt = 0,
   ): Promise<T> {
     attempt++;
@@ -78,11 +77,6 @@ export class FetchService {
       const baseUrl = this.getBaseUrl(attempt);
       const fullUrl = this.getUrl(baseUrl, url);
       const response = await fetch(fullUrl, init);
-
-      if (!response.ok) {
-        const errorBody = await this.extractErrorBody(response);
-        throw new HttpException(errorBody, response.status);
-      }
       const result = await responseSerializer(response, init);
       return result;
     } catch (error) {
@@ -94,29 +88,34 @@ export class FetchService {
     }
   }
 
-  protected async delay<T>(init?: RequestInit<T>): Promise<void> {
+  protected async delay(init?: RequestInit): Promise<void> {
     const timeout = this.getDelayTimeout(init);
     if (timeout <= 0) return;
     return new Promise((resolve) => setTimeout(resolve, timeout));
   }
 
-  protected async extractErrorBody(
-    response: Response,
-  ): Promise<string | Record<string, unknown>> {
-    try {
-      return await response.json();
-    } catch (error) {
-      return response.statusText;
-    }
+  protected async runMiddlewares<T>(
+    payload: LocalPayload,
+    init?: RequestInit,
+  ): Promise<T | undefined> {
+    const middlewares = init?.middlewares || [];
+    return (await this.middlewareService.run(
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore
+      middlewares,
+      async (payload) => {
+        if (!payload) return;
+        const data = payload.data as T;
+        if (!payload.response.ok) {
+          throw new HttpException(data, payload.response.status);
+        }
+        return data;
+      },
+      payload,
+    )) as unknown as T; // TODO
   }
 
-  protected async serialize<T>(response: T, init?: RequestInit<T>) {
-    const callback = init?.serializer;
-    if (!callback) return response;
-    return callback(response);
-  }
-
-  protected getRetryAttempts<T>(init?: RequestInit<T>): number {
+  protected getRetryAttempts(init?: RequestInit): number {
     const localAttempts = init?.retryPolicy?.attempts;
     const globalAttempts = this.options?.retryPolicy?.attempts;
 
@@ -125,7 +124,7 @@ export class FetchService {
     return FETCH_GLOBAL_RETRY_DEFAULT_ATTEMPTS;
   }
 
-  protected getDelayTimeout<T>(init?: RequestInit<T>): number {
+  protected getDelayTimeout(init?: RequestInit): number {
     const localDelay = init?.retryPolicy?.delay;
     const globalDelay = this.options?.retryPolicy?.delay;
 

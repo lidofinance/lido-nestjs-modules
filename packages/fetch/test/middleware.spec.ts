@@ -42,8 +42,8 @@ describe('Middleware', () => {
 
     await fetchService.fetchJson('2');
     expect(mockFetch).toBeCalledTimes(2);
-    expect(mockFetch.mock.calls[0][0]).toBe('1');
-    expect(mockFetch.mock.calls[1][0]).toBe('2');
+    expect(mockFetch.mock.calls[0][0]).toBe('2');
+    expect(mockFetch.mock.calls[1][0]).toBe('1');
   });
 
   test('After', async () => {
@@ -56,6 +56,23 @@ describe('Middleware', () => {
     ]);
 
     await fetchService.fetchJson('1');
+    expect(mockFetch).toBeCalledTimes(2);
+    expect(mockFetch.mock.calls[0][0]).toBe('1');
+    expect(mockFetch.mock.calls[1][0]).toBe('2');
+  });
+
+  test('With local middlewares', async () => {
+    await initModule();
+
+    await fetchService.fetchJson('1', {
+      middlewares: [
+        async (next) => {
+          const result = await next();
+          mockFetch('2');
+          return result;
+        },
+      ],
+    });
     expect(mockFetch).toBeCalledTimes(2);
     expect(mockFetch.mock.calls[0][0]).toBe('1');
     expect(mockFetch.mock.calls[1][0]).toBe('2');
