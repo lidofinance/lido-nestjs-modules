@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/ban-ts-comment */
 jest.mock('node-fetch');
 
 import { Test } from '@nestjs/testing';
@@ -46,9 +47,11 @@ describe('Base urls', () => {
           attempts: 1,
           delay: 0,
         },
-        serializer: async () => {
-          throw new Error('Request limit');
-        },
+        middlewares: [
+          () => {
+            throw new Error('Request limit');
+          },
+        ],
       });
       // eslint-disable-next-line no-empty
     } catch (e) {}
@@ -68,9 +71,11 @@ describe('Base urls', () => {
           attempts: 1,
           delay: 0,
         },
-        serializer: async () => {
-          throw new Error('Request limit');
-        },
+        middlewares: [
+          () => {
+            throw new Error('Request limit');
+          },
+        ],
       });
       // eslint-disable-next-line no-empty
     } catch (e) {}
@@ -90,11 +95,18 @@ describe('Base urls', () => {
           attempts: 1,
           delay: 0,
         },
-        serializer: async (data) => {
-          mockFetch.mockImplementation(setupFetchStub({ test: 200 }) as never);
-          if (data.test === 100) throw new Error('Request limit');
-          return data;
-        },
+        middlewares: [
+          (next, payload) => {
+            mockFetch.mockImplementation(
+              setupFetchStub({ test: 200 }) as never,
+            );
+            // @ts-ignore
+            if (payload && payload.data.test === 100) {
+              throw new Error('Request limit');
+            }
+            return next();
+          },
+        ],
       });
       // eslint-disable-next-line no-empty
     } catch (e) {}
