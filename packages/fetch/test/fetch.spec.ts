@@ -114,17 +114,7 @@ describe('Data fetching', () => {
         const res = new Response(JSON.stringify(expectedBody), expectedInit);
         return Promise.resolve(res);
       });
-      await expect(
-        fetchService.fetchJson(url, {
-          middlewares: [
-            (next, payload) => {
-              if (!payload) return next();
-              console.log(payload);
-              return next();
-            },
-          ],
-        }),
-      ).rejects.toThrow(HttpException);
+      await expect(fetchService.fetchJson(url)).rejects.toThrow(HttpException);
       // await expect(fetchService.fetchJson(url)).rejects.toMatchObject({
       //   message:
       //     'invalid json response body at  reason: Unexpected end of JSON input',

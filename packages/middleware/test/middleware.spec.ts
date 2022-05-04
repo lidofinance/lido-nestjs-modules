@@ -91,4 +91,38 @@ describe('Middleware', () => {
     );
     expect(result).toEqual({ test: 11 });
   });
+
+  test('Try catch order', async () => {
+    class MidError extends Error {}
+    const middleware = () =>
+      middlewareService.run(
+        [
+          async (next, payload) => {
+            let res;
+            try {
+              res = await next();
+            } catch (e) {
+              // @ts-ignore
+              expect(payload.test).toBe(11);
+              throw new MidError('test');
+            }
+            return res;
+          },
+          async (next, payload) => {
+            //@ts-ignore
+            payload.test = 11;
+            return next();
+          },
+          async () => {
+            throw new Error('test');
+          },
+        ],
+        (payload) => {
+          return payload;
+        },
+        { test: 22 },
+      );
+    await expect(middleware()).rejects.toThrow(MidError);
+    expect.assertions(2);
+  });
 });

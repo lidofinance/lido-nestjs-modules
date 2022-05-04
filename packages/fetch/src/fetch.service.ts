@@ -11,14 +11,16 @@ import {
   RequestInfo,
   RequestInit,
   FetchModuleOptions,
-  ResponseSerializer,
 } from './interfaces/fetch.interface';
+import { MiddlewareCallback } from '@lido-nestjs/middleware';
 
 type Cb<P> = (payload: P) => Cb<P>;
 
 type LocalPayload = {
   response: Response;
-  data: unknown;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  data: any;
+  statusCode?: number;
 };
 @Injectable()
 export class FetchService {
@@ -41,11 +43,12 @@ export class FetchService {
     url: RequestInfo,
     init?: RequestInit,
   ): Promise<T | undefined> {
-    return this.request(
+    return await this.runMiddlewares<T>(
       url,
-      async (response: Response, init?: RequestInit) => {
-        const json = (await response.json()) as T;
-        return this.runMiddlewares<T>({ response, data: json }, init);
+      async (next, payload) => {
+        if (!payload) return await next();
+        payload.data = await payload.response.json();
+        return await next();
       },
       init,
     );
@@ -55,37 +58,15 @@ export class FetchService {
     url: RequestInfo,
     init?: RequestInit,
   ): Promise<string | undefined> {
-    return this.request(
+    return await this.runMiddlewares<string>(
       url,
-      async (response: Response, init?: RequestInit) => {
-        const text = await response.text();
-        return this.runMiddlewares<string>({ response, data: text }, init);
+      async (next, payload) => {
+        if (!payload) return await next();
+        payload.data = await payload.response.text();
+        return await next();
       },
       init,
     );
-  }
-
-  protected async request<T>(
-    url: RequestInfo,
-    responseSerializer: ResponseSerializer<T>,
-    init?: RequestInit,
-    attempt = 0,
-  ): Promise<T> {
-    attempt++;
-
-    try {
-      const baseUrl = this.getBaseUrl(attempt);
-      const fullUrl = this.getUrl(baseUrl, url);
-      const response = await fetch(fullUrl, init);
-      const result = await responseSerializer(response, init);
-      return result;
-    } catch (error) {
-      const possibleAttempt = this.getRetryAttempts(init);
-      if (attempt > possibleAttempt) throw error;
-
-      await this.delay(init);
-      return await this.request(url, responseSerializer, init, attempt);
-    }
   }
 
   protected async delay(init?: RequestInit): Promise<void> {
@@ -95,24 +76,56 @@ export class FetchService {
   }
 
   protected async runMiddlewares<T>(
-    payload: LocalPayload,
+    url: RequestInfo,
+    middleware: MiddlewareCallback<Promise<Cb<T>>, LocalPayload>,
     init?: RequestInit,
-  ): Promise<T | undefined> {
+    attempt = 0,
+  ): Promise<T> {
+    attempt++;
     const middlewares = init?.middlewares || [];
-    return (await this.middlewareService.run(
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-ignore
-      middlewares,
-      async (payload) => {
-        if (!payload) return;
-        const data = payload.data as T;
-        if (!payload.response.ok) {
-          throw new HttpException(data, payload.response.status);
-        }
-        return data;
-      },
-      payload,
-    )) as unknown as T; // TODO
+
+    try {
+      return (await this.middlewareService.run(
+        [
+          // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+          // @ts-ignore
+          async (next, payload) => {
+            const baseUrl = this.getBaseUrl(attempt);
+            const fullUrl = this.getUrl(baseUrl, url);
+            const response = await fetch(fullUrl, init);
+            if (payload) payload.response = response;
+            return await next();
+          },
+          // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+          // @ts-ignore
+          middleware,
+          // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+          // @ts-ignore
+          ...middlewares,
+        ],
+        async (payload) => {
+          if (!payload) return;
+          const data = payload.data as T;
+          if (!payload.response.ok) {
+            throw new HttpException(data, payload.response.status);
+          }
+          return data;
+        },
+        {},
+      )) as unknown as T;
+    } catch (error) {
+      // if (!(error instanceof HttpException)) throw error;
+      const possibleAttempt = this.getRetryAttempts(init);
+      if (attempt > possibleAttempt) throw error;
+      await this.delay(init);
+      const attempts = await this.runMiddlewares<T>(
+        url,
+        middleware,
+        init,
+        attempt,
+      );
+      return attempts as T;
+    }
   }
 
   protected getRetryAttempts(init?: RequestInit): number {

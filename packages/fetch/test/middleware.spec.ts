@@ -42,8 +42,8 @@ describe('Middleware', () => {
 
     await fetchService.fetchJson('2');
     expect(mockFetch).toBeCalledTimes(2);
-    expect(mockFetch.mock.calls[0][0]).toBe('2');
-    expect(mockFetch.mock.calls[1][0]).toBe('1');
+    expect(mockFetch.mock.calls[0][0]).toBe('1');
+    expect(mockFetch.mock.calls[1][0]).toBe('2');
   });
 
   test('After', async () => {
