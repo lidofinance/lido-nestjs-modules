@@ -36,12 +36,20 @@ export class RegistryService {
     private readonly entityManager: EntityManager,
   ) {}
 
-  public async subscribeToUpdates() {
+  public async subscribeToUsedKeysUpdates() {
+    // TODO
+  }
+
+  public async subscribeToAllKeysUpdates() {
+    // TODO
+  }
+
+  public async updateUsedKeys() {
     // TODO
   }
 
   /** collects changed data from the contract and store it to the db */
-  public async update(blockHashOrBlockTag: string | number) {
+  public async updateAllKeys(blockHashOrBlockTag: string | number) {
     const prevMeta = await this.getMetaDataFromStorage();
     const currMeta = await this.getMetaDataFromContract(blockHashOrBlockTag);
     const isSameContractState = compareMeta(prevMeta, currMeta);
