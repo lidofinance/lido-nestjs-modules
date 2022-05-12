@@ -1,4 +1,4 @@
-import { compareMeta } from '../../src/utils/meta.utils';
+import { compareAllMeta } from '../../src/utils/meta.utils';
 
 describe('Compare meta util', () => {
   const metaOne = {
@@ -16,19 +16,19 @@ describe('Compare meta util', () => {
   };
 
   test('null - null', async () => {
-    expect(compareMeta(null, null)).toBe(false);
+    expect(compareAllMeta(null, null)).toBe(false);
   });
 
   test('null - meta', async () => {
-    expect(compareMeta(null, metaOne)).toBe(false);
+    expect(compareAllMeta(null, metaOne)).toBe(false);
   });
 
   test('meta - null', async () => {
-    expect(compareMeta(metaOne, null)).toBe(false);
+    expect(compareAllMeta(metaOne, null)).toBe(false);
   });
 
   test('meta - another meta', async () => {
-    expect(compareMeta(metaOne, metaTwo)).toBe(false);
+    expect(compareAllMeta(metaOne, metaTwo)).toBe(false);
   });
 
   test('meta - partial same meta', async () => {
@@ -37,11 +37,11 @@ describe('Compare meta util', () => {
       unbufferedBlockNumber: metaTwo.unbufferedBlockNumber,
     };
 
-    expect(compareMeta(metaOne, partialMeta)).toBe(false);
+    expect(compareAllMeta(metaOne, partialMeta)).toBe(false);
   });
 
   test('meta - same meta', async () => {
-    expect(compareMeta(metaOne, metaOne)).toBe(true);
-    expect(compareMeta(metaTwo, metaTwo)).toBe(true);
+    expect(compareAllMeta(metaOne, metaOne)).toBe(true);
+    expect(compareAllMeta(metaTwo, metaTwo)).toBe(true);
   });
 });

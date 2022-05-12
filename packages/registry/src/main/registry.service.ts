@@ -3,6 +3,8 @@ import { Registry, REGISTRY_CONTRACT_TOKEN } from '@lido-nestjs/contracts';
 import { EntityManager } from '@mikro-orm/sqlite';
 import { LOGGER_PROVIDER } from '@lido-nestjs/logger';
 
+import EventEmmiter from 'events';
+
 import { RegistryMetaFetchService } from '../fetch/meta.fetch';
 import { RegistryKeyFetchService } from '../fetch/key.fetch';
 import { RegistryOperatorFetchService } from '../fetch/operator.fetch';
@@ -15,11 +17,12 @@ import { RegistryMeta } from '../storage/meta.entity';
 import { RegistryKey } from '../storage/key.entity';
 import { RegistryOperator } from '../storage/operator.entity';
 
-import { compareMeta } from '../utils/meta.utils';
+import { compareAllMeta, compareUsedMeta } from '../utils/meta.utils';
 import { compareOperators } from '../utils/operator.utils';
 
 @Injectable()
 export class RegistryService {
+  eventEmmiter: EventEmmiter;
   constructor(
     @Inject(REGISTRY_CONTRACT_TOKEN) private registryContract: Registry,
     @Inject(LOGGER_PROVIDER) private logger: LoggerService,
@@ -34,25 +37,49 @@ export class RegistryService {
     private readonly operatorStorage: RegistryOperatorStorageService,
 
     private readonly entityManager: EntityManager,
-  ) {}
-
-  public async subscribeToUsedKeysUpdates() {
-    // TODO
+  ) {
+    this.eventEmmiter = new EventEmmiter();
   }
 
-  public async subscribeToAllKeysUpdates() {
-    // TODO
+  public subscribeToUsedKeysUpdates(
+    cb: (payload: RegistryKey[] | undefined) => void,
+  ) {
+    this.eventEmmiter.on('updateUsedKeys', cb);
+    return () => this.eventEmmiter.off('updateUsedKeys', cb);
   }
 
-  public async updateUsedKeys() {
-    // TODO
+  public async subscribeToAllKeysUpdates(
+    cb: (payload: RegistryKey[] | undefined) => void,
+  ) {
+    this.eventEmmiter.on('updateAllKeys', cb);
+    return () => this.eventEmmiter.off('updateAllKeys', cb);
   }
 
-  /** collects changed data from the contract and store it to the db */
+  public async updateUsedKeys(blockHashOrBlockTag: string | number) {
+    const updatedKeys = await this.updateKeys(
+      blockHashOrBlockTag,
+      compareUsedMeta,
+    );
+
+    this.eventEmmiter.emit('updateUsedKeys', updatedKeys);
+  }
+
   public async updateAllKeys(blockHashOrBlockTag: string | number) {
+    const updatedKeys = await this.updateKeys(
+      blockHashOrBlockTag,
+      compareAllMeta,
+    );
+
+    this.eventEmmiter.emit('updateAllKeys', updatedKeys);
+  }
+  /** collects changed data from the contract and store it to the db */
+  private async updateKeys(
+    blockHashOrBlockTag: string | number,
+    compareCb: typeof compareAllMeta | typeof compareUsedMeta,
+  ) {
     const prevMeta = await this.getMetaDataFromStorage();
     const currMeta = await this.getMetaDataFromContract(blockHashOrBlockTag);
-    const isSameContractState = compareMeta(prevMeta, currMeta);
+    const isSameContractState = compareCb(prevMeta, currMeta);
 
     this.logger.log('Collected metadata', { prevMeta, currMeta });
 
@@ -112,6 +139,8 @@ export class RegistryService {
       updatedKeys: updatedKeys.length,
       currMeta,
     });
+
+    return updatedKeys;
   }
 
   /** contract */
