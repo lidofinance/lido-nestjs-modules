@@ -3,8 +3,6 @@ import { Registry, REGISTRY_CONTRACT_TOKEN } from '@lido-nestjs/contracts';
 import { EntityManager } from '@mikro-orm/sqlite';
 import { LOGGER_PROVIDER } from '@lido-nestjs/logger';
 
-import EventEmmiter from 'events';
-
 import { RegistryMetaFetchService } from '../fetch/meta.fetch';
 import { RegistryKeyFetchService } from '../fetch/key.fetch';
 import { RegistryOperatorFetchService } from '../fetch/operator.fetch';
@@ -19,10 +17,10 @@ import { RegistryOperator } from '../storage/operator.entity';
 
 import { compareAllMeta, compareUsedMeta } from '../utils/meta.utils';
 import { compareOperators } from '../utils/operator.utils';
+import { loop } from '../utils/loop.utils';
 
 @Injectable()
 export class RegistryService {
-  eventEmmiter: EventEmmiter;
   constructor(
     @Inject(REGISTRY_CONTRACT_TOKEN) private registryContract: Registry,
     @Inject(LOGGER_PROVIDER) private logger: LoggerService,
@@ -37,22 +35,36 @@ export class RegistryService {
     private readonly operatorStorage: RegistryOperatorStorageService,
 
     private readonly entityManager: EntityManager,
-  ) {
-    this.eventEmmiter = new EventEmmiter();
-  }
+  ) {}
 
   public subscribeToUsedKeysUpdates(
-    cb: (payload: RegistryKey[] | undefined) => void,
+    cb: (error: null | Error, payload?: RegistryKey[]) => void,
+    interval = 10000,
+    errorTimeout?: number,
   ) {
-    this.eventEmmiter.on('updateUsedKeys', cb);
-    return () => this.eventEmmiter.off('updateUsedKeys', cb);
+    return loop(
+      interval,
+      async () => {
+        cb(null, await this.updateUsedKeys('latest'));
+      },
+      cb,
+      errorTimeout,
+    );
   }
 
-  public async subscribeToAllKeysUpdates(
-    cb: (payload: RegistryKey[] | undefined) => void,
+  public subscribeToAllKeysUpdates(
+    cb: (error: null | Error, payload?: RegistryKey[]) => void,
+    interval = 10000,
+    errorTimeout?: number,
   ) {
-    this.eventEmmiter.on('updateAllKeys', cb);
-    return () => this.eventEmmiter.off('updateAllKeys', cb);
+    return loop(
+      interval,
+      async () => {
+        cb(null, await this.updateAllKeys('latest'));
+      },
+      cb,
+      errorTimeout,
+    );
   }
 
   public async updateUsedKeys(blockHashOrBlockTag: string | number) {
@@ -61,7 +73,7 @@ export class RegistryService {
       compareUsedMeta,
     );
 
-    this.eventEmmiter.emit('updateUsedKeys', updatedKeys);
+    return updatedKeys;
   }
 
   public async updateAllKeys(blockHashOrBlockTag: string | number) {
@@ -70,7 +82,7 @@ export class RegistryService {
       compareAllMeta,
     );
 
-    this.eventEmmiter.emit('updateAllKeys', updatedKeys);
+    return updatedKeys;
   }
   /** collects changed data from the contract and store it to the db */
   private async updateKeys(
