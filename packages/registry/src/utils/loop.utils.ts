@@ -6,7 +6,7 @@ export const loop = <T extends () => void>(
   iterval: number,
   cb: T,
   onError?: (error: Error) => void,
-  errorTimeout = 10 ** 3,
+  errorTimeout = 30 * 60000,
 ) => {
   let blocked = false;
   let timer: NodeJS.Timeout;
