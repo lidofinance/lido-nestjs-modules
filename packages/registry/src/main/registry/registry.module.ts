@@ -6,6 +6,7 @@ import {
 import { RegistryService } from './registry.service';
 import { RegistryStorageModule } from '../../storage/registry-storage.module';
 import { RegistryFetchModule } from '../../fetch/registry-fetch.module';
+import { REGISTRY_GLOBAL_OPTIONS_TOKEN } from '../constants';
 
 @Module({
   imports: [RegistryStorageModule],
@@ -34,6 +35,12 @@ export class RegistryModule {
         ...(options?.imports || []),
         RegistryFetchModule.forFeature(options),
       ],
+      providers: [
+        {
+          provide: REGISTRY_GLOBAL_OPTIONS_TOKEN,
+          useValue: options,
+        },
+      ],
     };
   }
 
@@ -45,6 +52,12 @@ export class RegistryModule {
       imports: [
         ...(options.imports || []),
         RegistryFetchModule.forFeatureAsync(options),
+      ],
+      providers: [
+        {
+          provide: REGISTRY_GLOBAL_OPTIONS_TOKEN,
+          useValue: options,
+        },
       ],
     };
   }

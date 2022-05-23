@@ -1,4 +1,4 @@
-import { Inject, Injectable, LoggerService } from '@nestjs/common';
+import { Inject, Injectable, LoggerService, Optional } from '@nestjs/common';
 import { Registry, REGISTRY_CONTRACT_TOKEN } from '@lido-nestjs/contracts';
 import { EntityManager } from '@mikro-orm/sqlite';
 import { LOGGER_PROVIDER } from '@lido-nestjs/logger';
@@ -20,6 +20,8 @@ import { RegistryOperator } from '../storage/operator.entity';
 import { compareAllMeta } from '../utils/meta.utils';
 import { compareOperators } from '../utils/operator.utils';
 import { loop } from '../utils/loop.utils';
+import { REGISTRY_GLOBAL_OPTIONS_TOKEN } from './constants';
+import { RegistryFetchOptions } from '../fetch/interfaces/module.interface';
 
 @Injectable()
 export class AbstractService {
@@ -39,6 +41,10 @@ export class AbstractService {
     private readonly operatorStorage: RegistryOperatorStorageService,
 
     private readonly entityManager: EntityManager,
+
+    @Optional()
+    @Inject(REGISTRY_GLOBAL_OPTIONS_TOKEN)
+    public options?: RegistryFetchOptions,
   ) {
     this.eventEmmiter = new EventEmmiter();
   }
@@ -46,7 +52,7 @@ export class AbstractService {
     if (this.activeLoop) return;
 
     const unsub = loop(
-      10000, // TODO CONF
+      this.options?.subscribeInterval || 10_000,
       async () => {
         try {
           const result = await this.update('latest');
