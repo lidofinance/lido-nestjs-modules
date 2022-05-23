@@ -6,8 +6,8 @@ import {
   ExtendedJsonRpcBatchProvider,
 } from '@lido-nestjs/execution';
 
-import { RegistryModule } from '../../src/main/registry.module';
-import { RegistryService } from '../../src/main/registry.service';
+import { RegistryModule } from '../../src/main/registry/registry.module';
+import { RegistryService } from '../../src/main/registry/registry.service';
 import { RegistryStorageService } from '../../src/storage/registry-storage.service';
 
 describe('Registry', () => {
@@ -42,7 +42,7 @@ describe('Registry', () => {
     await storageService.onModuleDestroy();
   });
 
-  test.skip('Key fetching', async () => {
+  test('Key fetching', async () => {
     await registryService.update(13_600_000);
     const operators = await registryService.getOperatorsFromStorage();
     const keys = await registryService.getAllKeysFromStorage();

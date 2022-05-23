@@ -17,15 +17,14 @@ import { RegistryMeta } from '../storage/meta.entity';
 import { RegistryKey } from '../storage/key.entity';
 import { RegistryOperator } from '../storage/operator.entity';
 
-import { compareAllMeta, compareUsedMeta } from '../utils/meta.utils';
+import { compareAllMeta } from '../utils/meta.utils';
 import { compareOperators } from '../utils/operator.utils';
 import { loop } from '../utils/loop.utils';
 
 @Injectable()
-export class RegistryService {
+export class AbstractService {
   eventEmmiter: EventEmmiter;
-  allKeysLoop?: () => void;
-  updatedKeysLoop?: () => void;
+  activeLoop?: () => void;
   constructor(
     @Inject(REGISTRY_CONTRACT_TOKEN) private registryContract: Registry,
     @Inject(LOGGER_PROVIDER) private logger: LoggerService,
@@ -43,96 +42,56 @@ export class RegistryService {
   ) {
     this.eventEmmiter = new EventEmmiter();
   }
-  private createLoop(loopType: 'all' | 'updated') {
-    if (loopType === 'updated' && this.allKeysLoop) return;
-    if (loopType === 'all' && this.updatedKeysLoop) {
-      this.updatedKeysLoop();
-    }
+  private createLoop() {
+    if (this.activeLoop) return;
 
-    if (loopType === 'all' && !this.allKeysLoop) {
-      this.allKeysLoop = loop(
-        10000, // TODO CONF
-        async () => {
-          try {
-            const result = await this.updateAllKeys('latest');
-            if (!result) return;
-            this.eventEmmiter.emit('result', result);
-          } catch (error) {
-            this.eventEmmiter.emit('error', error);
-          }
-        },
-        (loopError) => this.eventEmmiter.emit('error', loopError),
-      );
-    }
+    const unsub = loop(
+      10000, // TODO CONF
+      async () => {
+        try {
+          const result = await this.update('latest');
+          if (!result) return;
+          this.eventEmmiter.emit('result', result);
+        } catch (error) {
+          this.eventEmmiter.emit('error', error);
+        }
+      },
+      (loopError) => this.eventEmmiter.emit('error', loopError),
+    );
 
-    if (loopType === 'updated' && !this.updatedKeysLoop) {
-      this.updatedKeysLoop = loop(
-        10000, // TODO CONF
-        async () => {
-          try {
-            const result = await this.updateUsedKeys('latest');
-            if (!result) return;
-            this.eventEmmiter.emit('result', result);
-          } catch (error) {
-            this.eventEmmiter.emit('error', error);
-          }
-        },
-        (loopError) => this.eventEmmiter.emit('error', loopError),
-      );
-    }
+    this.activeLoop = () => {
+      unsub();
+      delete this.activeLoop;
+    };
   }
 
-  public subscribeToUsedKeysUpdates(
-    cb: (error: null | Error, payload: RegistryKey[]) => void,
-  ) {
-    this.createLoop('updated');
+  private collectListenerCount() {
+    return (
+      this.eventEmmiter.listenerCount('result') +
+      this.eventEmmiter.listenerCount('error')
+    );
+  }
+
+  public subscribe(cb: (error: null | Error, payload: RegistryKey[]) => void) {
+    this.createLoop();
     const resultCb = (result: RegistryKey[]) => cb(null, result);
     this.eventEmmiter.addListener('result', resultCb);
     this.eventEmmiter.addListener('error', cb);
     return () => {
       this.eventEmmiter.off('result', resultCb);
       this.eventEmmiter.off('error', cb);
+      if (!this.collectListenerCount() && this.activeLoop) {
+        this.activeLoop();
+      }
     };
   }
 
-  public subscribeToAllKeysUpdates(
-    cb: (error: null | Error, payload?: RegistryKey[]) => void,
-  ) {
-    this.createLoop('all');
-    const resultCb = (result: RegistryKey[]) => cb(null, result);
-    this.eventEmmiter.addListener('result', resultCb);
-    this.eventEmmiter.addListener('error', cb);
-    return () => {
-      this.eventEmmiter.off('result', resultCb);
-      this.eventEmmiter.off('error', cb);
-    };
-  }
-
-  public async updateUsedKeys(blockHashOrBlockTag: string | number) {
-    const updatedKeys = await this.updateKeys(
-      blockHashOrBlockTag,
-      compareUsedMeta,
-    );
-
-    return updatedKeys;
-  }
-
-  public async updateAllKeys(blockHashOrBlockTag: string | number) {
-    const updatedKeys = await this.updateKeys(
-      blockHashOrBlockTag,
-      compareAllMeta,
-    );
-
-    return updatedKeys;
-  }
+  public compareMeta = compareAllMeta;
   /** collects changed data from the contract and store it to the db */
-  private async updateKeys(
-    blockHashOrBlockTag: string | number,
-    compareCb: typeof compareAllMeta | typeof compareUsedMeta,
-  ) {
+  async update(blockHashOrBlockTag: string | number) {
     const prevMeta = await this.getMetaDataFromStorage();
     const currMeta = await this.getMetaDataFromContract(blockHashOrBlockTag);
-    const isSameContractState = compareCb(prevMeta, currMeta);
+    const isSameContractState = this.compareMeta(prevMeta, currMeta);
 
     this.logger.log('Collected metadata', { prevMeta, currMeta });
 
@@ -229,6 +188,10 @@ export class RegistryService {
     return await this.operatorFetch.fetch(0, -1, overrides);
   }
 
+  public getLastKey(prevOperator: RegistryOperator) {
+    return prevOperator.totalSigningKeys;
+  }
+
   /** returns updated keys from the contract */
   public async getUpdatedKeysFromContract(
     previousOperators: RegistryOperator[],
@@ -248,7 +211,7 @@ export class RegistryService {
         // skip updating keys from 0 to `usedSigningKeys` of previous collected data
         // since the contract guarantees that these keys cannot be changed
         const unchangedKeysMaxIndex = isSameOperator
-          ? prevOperator.usedSigningKeys
+          ? this.getLastKey(prevOperator)
           : 0;
 
         const fromIndex = unchangedKeysMaxIndex;
