@@ -5,8 +5,8 @@ import { getNetwork } from '@ethersproject/networks';
 import { getDefaultProvider, Provider } from '@ethersproject/providers';
 import { Test } from '@nestjs/testing';
 import {
-  RegistryModule,
-  RegistryService,
+  ValidatorRegistryModule,
+  ValidatorRegistryService,
   RegistryStorageService,
 } from '../../src';
 
@@ -19,7 +19,9 @@ describe('Sync module initializing', () => {
 
   const testModules = async (metadata: ModuleMetadata) => {
     const moduleRef = await Test.createTestingModule(metadata).compile();
-    const registryService: RegistryService = moduleRef.get(RegistryService);
+    const registryService: ValidatorRegistryService = moduleRef.get(
+      ValidatorRegistryService,
+    );
     const storageService = moduleRef.get(RegistryStorageService);
 
     await storageService.onModuleInit();
@@ -36,7 +38,7 @@ describe('Sync module initializing', () => {
         entities: ['./packages/registry/**/*.entity.ts'],
       }),
       LoggerModule.forRoot({ transports: [nullTransport()] }),
-      RegistryModule.forRoot({ provider }),
+      ValidatorRegistryModule.forRoot({ provider }),
     ];
     await testModules({ imports });
   });
@@ -50,7 +52,7 @@ describe('Sync module initializing', () => {
         entities: ['./packages/registry/**/*.entity.ts'],
       }),
       LoggerModule.forRoot({ transports: [nullTransport()] }),
-      RegistryModule.forFeature({ provider }),
+      ValidatorRegistryModule.forFeature({ provider }),
     ];
     await testModules({ imports });
   });
@@ -64,7 +66,7 @@ describe('Sync module initializing', () => {
         entities: ['./packages/registry/**/*.entity.ts'],
       }),
       LoggerModule.forRoot({ transports: [nullTransport()] }),
-      RegistryModule.forFeature(),
+      ValidatorRegistryModule.forFeature(),
     ];
 
     const metadata = {
