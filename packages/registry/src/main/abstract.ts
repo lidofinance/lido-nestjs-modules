@@ -26,10 +26,10 @@ export class AbstractService {
   eventEmmiter: EventEmmiter;
   activeLoop?: () => void;
   constructor(
-    @Inject(REGISTRY_CONTRACT_TOKEN) private registryContract: Registry,
+    @Inject(REGISTRY_CONTRACT_TOKEN) protected registryContract: Registry,
     @Inject(LOGGER_PROVIDER) private logger: LoggerService,
 
-    private readonly metaFetch: RegistryMetaFetchService,
+    protected readonly metaFetch: RegistryMetaFetchService,
     private readonly metaStorage: RegistryMetaStorageService,
 
     private readonly keyFetch: RegistryKeyFetchService,
@@ -158,7 +158,9 @@ export class AbstractService {
   /** contract */
 
   /** returns the meta data from the contract */
-  public async getMetaDataFromContract(blockHashOrBlockTag: string | number) {
+  public async getMetaDataFromContract(
+    blockHashOrBlockTag: string | number,
+  ): Promise<RegistryMeta> {
     const { provider } = this.registryContract;
     const block = await provider.getBlock(blockHashOrBlockTag);
     const blockHash = block.hash;
