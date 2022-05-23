@@ -197,7 +197,7 @@ export class AbstractService {
   }
 
   public getLastKey(prevOperator: RegistryOperator) {
-    return prevOperator.totalSigningKeys;
+    return prevOperator.usedSigningKeys;
   }
 
   /** returns updated keys from the contract */

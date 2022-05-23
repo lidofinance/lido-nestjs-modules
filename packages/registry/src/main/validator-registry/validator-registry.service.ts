@@ -4,7 +4,7 @@ import { AbstractService } from '../abstract';
 
 export class ValidatorRegistryService extends AbstractService {
   public getLastKey(prevOperator: RegistryOperator) {
-    return prevOperator.usedSigningKeys;
+    return prevOperator.totalSigningKeys;
   }
   public compareMeta = compareUsedMeta;
 
