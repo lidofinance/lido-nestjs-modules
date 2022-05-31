@@ -38,7 +38,7 @@ describe('Async module initializing', () => {
       LoggerModule.forRoot({ transports: [nullTransport()] }),
       RegistryModule.forRootAsync({
         async useFactory() {
-          return { provider };
+          return { provider, subscribeInterval: '*/12 * * * * *' };
         },
       }),
     ]);
@@ -55,7 +55,7 @@ describe('Async module initializing', () => {
       LoggerModule.forRoot({ transports: [nullTransport()] }),
       RegistryModule.forFeatureAsync({
         async useFactory() {
-          return { provider };
+          return { provider, subscribeInterval: '*/12 * * * * *' };
         },
       }),
     ]);

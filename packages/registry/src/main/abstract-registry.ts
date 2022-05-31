@@ -23,7 +23,7 @@ import { compareAllMeta } from '../utils/meta.utils';
 import { compareOperators } from '../utils/operator.utils';
 
 import { REGISTRY_GLOBAL_OPTIONS_TOKEN } from './constants';
-import { RegistryFetchOptions } from '../fetch/interfaces/module.interface';
+import { RegistryOptions } from './interfaces/module.interface';
 
 @Injectable()
 export class AbstractRegistryService {
@@ -46,10 +46,13 @@ export class AbstractRegistryService {
 
     @Optional()
     @Inject(REGISTRY_GLOBAL_OPTIONS_TOKEN)
-    public options?: RegistryFetchOptions,
+    public options?: RegistryOptions,
   ) {
     this.eventEmmiter = new EventEmmiter();
-    this.cronJob = new CronJob('*/10 * * * * *', this.cronHandler);
+    this.cronJob = new CronJob(
+      options?.subscribeInterval || '*/10 * * * * *',
+      this.cronHandler,
+    );
   }
 
   @OneAtTime()

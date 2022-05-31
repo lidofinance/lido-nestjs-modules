@@ -7,7 +7,6 @@ export interface RegistryFetchOptions {
   registryAddress?: string;
   lidoAddress?: string;
   provider?: Provider | Signer;
-  subscribeInterval?: number;
 }
 
 export interface RegistryFetchModuleSyncOptions

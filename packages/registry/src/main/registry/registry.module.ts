@@ -56,7 +56,7 @@ export class RegistryModule {
       providers: [
         {
           provide: REGISTRY_GLOBAL_OPTIONS_TOKEN,
-          useValue: options,
+          useFactory: options.useFactory,
         },
       ],
     };

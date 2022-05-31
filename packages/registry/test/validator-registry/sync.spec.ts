@@ -38,7 +38,10 @@ describe('Sync module initializing', () => {
         entities: ['./packages/registry/**/*.entity.ts'],
       }),
       LoggerModule.forRoot({ transports: [nullTransport()] }),
-      ValidatorRegistryModule.forRoot({ provider }),
+      ValidatorRegistryModule.forRoot({
+        provider,
+        subscribeInterval: '*/12 * * * * *',
+      }),
     ];
     await testModules({ imports });
   });
@@ -52,7 +55,10 @@ describe('Sync module initializing', () => {
         entities: ['./packages/registry/**/*.entity.ts'],
       }),
       LoggerModule.forRoot({ transports: [nullTransport()] }),
-      ValidatorRegistryModule.forFeature({ provider }),
+      ValidatorRegistryModule.forFeature({
+        provider,
+        subscribeInterval: '*/12 * * * * *',
+      }),
     ];
     await testModules({ imports });
   });
@@ -66,7 +72,9 @@ describe('Sync module initializing', () => {
         entities: ['./packages/registry/**/*.entity.ts'],
       }),
       LoggerModule.forRoot({ transports: [nullTransport()] }),
-      ValidatorRegistryModule.forFeature(),
+      ValidatorRegistryModule.forFeature({
+        subscribeInterval: '*/12 * * * * *',
+      }),
     ];
 
     const metadata = {
