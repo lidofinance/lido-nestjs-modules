@@ -1,3 +1,3 @@
-import { AbstractService } from '../abstract';
+import { AbstractRegistryService } from '../abstract-registry';
 
-export class RegistryService extends AbstractService {}
+export class RegistryService extends AbstractRegistryService {}

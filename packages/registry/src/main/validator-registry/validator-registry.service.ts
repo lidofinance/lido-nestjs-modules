@@ -1,10 +1,10 @@
 import { RegistryOperator } from '../../storage/operator.entity';
 import { compareUsedMeta } from '../../utils/meta.utils';
-import { AbstractService } from '../abstract';
+import { AbstractRegistryService } from '../abstract-registry';
 
-export class ValidatorRegistryService extends AbstractService {
-  public getLastKey(prevOperator: RegistryOperator) {
-    return prevOperator.totalSigningKeys;
+export class ValidatorRegistryService extends AbstractRegistryService {
+  public getToIndex(currOperator: RegistryOperator) {
+    return currOperator.usedSigningKeys;
   }
   public compareMeta = compareUsedMeta;
 
@@ -23,6 +23,7 @@ export class ValidatorRegistryService extends AbstractService {
       blockNumber: block.number,
       blockHash,
       unbufferedBlockNumber,
+      timestamp: block.timestamp,
     };
   }
 }

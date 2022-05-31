@@ -4,6 +4,7 @@ import { EntityManager } from '@mikro-orm/sqlite';
 import { LOGGER_PROVIDER } from '@lido-nestjs/logger';
 
 import EventEmmiter from 'events';
+import { CronJob } from 'cron';
 
 import { RegistryMetaFetchService } from '../fetch/meta.fetch';
 import { RegistryKeyFetchService } from '../fetch/key.fetch';
@@ -19,14 +20,13 @@ import { RegistryOperator } from '../storage/operator.entity';
 
 import { compareAllMeta } from '../utils/meta.utils';
 import { compareOperators } from '../utils/operator.utils';
-import { loop } from '../utils/loop.utils';
+
 import { REGISTRY_GLOBAL_OPTIONS_TOKEN } from './constants';
 import { RegistryFetchOptions } from '../fetch/interfaces/module.interface';
-
 @Injectable()
-export class AbstractService {
+export class AbstractRegistryService {
   eventEmmiter: EventEmmiter;
-  activeLoop?: () => void;
+  cronJob: CronJob;
   constructor(
     @Inject(REGISTRY_CONTRACT_TOKEN) protected registryContract: Registry,
     @Inject(LOGGER_PROVIDER) private logger: LoggerService,
@@ -47,28 +47,17 @@ export class AbstractService {
     public options?: RegistryFetchOptions,
   ) {
     this.eventEmmiter = new EventEmmiter();
+    this.cronJob = new CronJob('*/10 * * * * *', this.cronHandler);
   }
-  private createLoop() {
-    if (this.activeLoop) return;
 
-    const unsub = loop(
-      this.options?.subscribeInterval || 10_000,
-      async () => {
-        try {
-          const result = await this.update('latest');
-          if (!result) return;
-          this.eventEmmiter.emit('result', result);
-        } catch (error) {
-          this.eventEmmiter.emit('error', error);
-        }
-      },
-      (loopError) => this.eventEmmiter.emit('error', loopError),
-    );
-
-    this.activeLoop = () => {
-      unsub();
-      delete this.activeLoop;
-    };
+  private async cronHandler() {
+    try {
+      const result = await this.update('latest');
+      if (!result) return;
+      this.eventEmmiter.emit('result', result);
+    } catch (error) {
+      this.eventEmmiter.emit('error', error);
+    }
   }
 
   private collectListenerCount() {
@@ -79,15 +68,15 @@ export class AbstractService {
   }
 
   public subscribe(cb: (error: null | Error, payload: RegistryKey[]) => void) {
-    this.createLoop();
+    this.cronJob.start();
     const resultCb = (result: RegistryKey[]) => cb(null, result);
     this.eventEmmiter.addListener('result', resultCb);
     this.eventEmmiter.addListener('error', cb);
     return () => {
       this.eventEmmiter.off('result', resultCb);
       this.eventEmmiter.off('error', cb);
-      if (!this.collectListenerCount() && this.activeLoop) {
-        this.activeLoop();
+      if (!this.collectListenerCount()) {
+        this.cronJob.stop();
       }
     };
   }
@@ -187,6 +176,7 @@ export class AbstractService {
       blockHash,
       keysOpIndex,
       unbufferedBlockNumber,
+      timestamp: block.timestamp,
     };
   }
 
@@ -196,8 +186,8 @@ export class AbstractService {
     return await this.operatorFetch.fetch(0, -1, overrides);
   }
 
-  public getLastKey(prevOperator: RegistryOperator) {
-    return prevOperator.usedSigningKeys;
+  public getToIndex(currOperator: RegistryOperator) {
+    return currOperator.totalSigningKeys;
   }
 
   /** returns updated keys from the contract */
@@ -219,11 +209,11 @@ export class AbstractService {
         // skip updating keys from 0 to `usedSigningKeys` of previous collected data
         // since the contract guarantees that these keys cannot be changed
         const unchangedKeysMaxIndex = isSameOperator
-          ? this.getLastKey(prevOperator)
+          ? prevOperator.usedSigningKeys
           : 0;
 
         const fromIndex = unchangedKeysMaxIndex;
-        const toIndex = currOperator.totalSigningKeys;
+        const toIndex = this.getToIndex(currOperator);
         const operatorIndex = currOperator.index;
         const overrides = { blockTag: { blockHash } };
 

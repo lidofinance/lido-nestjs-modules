@@ -6,6 +6,7 @@ describe('Compare meta util', () => {
     blockHash: '0x01',
     keysOpIndex: 1,
     unbufferedBlockNumber: 1,
+    timestamp: 1,
   };
 
   const metaTwo = {
@@ -13,6 +14,7 @@ describe('Compare meta util', () => {
     blockHash: '0x02',
     keysOpIndex: 2,
     unbufferedBlockNumber: 2,
+    timestamp: 2,
   };
 
   test('null - null', async () => {

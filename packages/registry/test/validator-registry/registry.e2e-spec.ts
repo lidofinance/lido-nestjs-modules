@@ -42,7 +42,7 @@ describe('Registry', () => {
     await storageService.onModuleDestroy();
   });
 
-  test('Key fetching', async () => {
+  test.skip('Key fetching', async () => {
     await registryService.update(13_600_000);
     const operators = await registryService.getOperatorsFromStorage();
     const keys = await registryService.getAllKeysFromStorage();
