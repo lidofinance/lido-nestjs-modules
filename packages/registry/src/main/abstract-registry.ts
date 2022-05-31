@@ -2,6 +2,7 @@ import { Inject, Injectable, LoggerService, Optional } from '@nestjs/common';
 import { Registry, REGISTRY_CONTRACT_TOKEN } from '@lido-nestjs/contracts';
 import { EntityManager } from '@mikro-orm/sqlite';
 import { LOGGER_PROVIDER } from '@lido-nestjs/logger';
+import { OneAtTime } from '@lido-nestjs/utils';
 
 import EventEmmiter from 'events';
 import { CronJob } from 'cron';
@@ -23,6 +24,7 @@ import { compareOperators } from '../utils/operator.utils';
 
 import { REGISTRY_GLOBAL_OPTIONS_TOKEN } from './constants';
 import { RegistryFetchOptions } from '../fetch/interfaces/module.interface';
+
 @Injectable()
 export class AbstractRegistryService {
   eventEmmiter: EventEmmiter;
@@ -50,6 +52,7 @@ export class AbstractRegistryService {
     this.cronJob = new CronJob('*/10 * * * * *', this.cronHandler);
   }
 
+  @OneAtTime()
   private async cronHandler() {
     try {
       const result = await this.update('latest');
