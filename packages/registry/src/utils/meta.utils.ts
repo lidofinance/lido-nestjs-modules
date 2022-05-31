@@ -30,9 +30,6 @@ export const compareAllMeta = (
   metaOne: RegistryMeta | null,
   metaTwo: RegistryMeta | null,
 ): boolean => {
-  if (metaOne == null) return false;
-  if (metaTwo == null) return false;
-
   return (
     compareOpIndex(metaOne, metaTwo) &&
     compareUnbufferedBlockNumber(metaOne, metaTwo)
