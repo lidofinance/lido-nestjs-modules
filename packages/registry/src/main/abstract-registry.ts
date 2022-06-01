@@ -19,7 +19,7 @@ import { RegistryMeta } from '../storage/meta.entity';
 import { RegistryKey } from '../storage/key.entity';
 import { RegistryOperator } from '../storage/operator.entity';
 
-import { compareAllMeta } from '../utils/meta.utils';
+import { compareMeta } from '../utils/meta.utils';
 import { compareOperators } from '../utils/operator.utils';
 
 import { REGISTRY_GLOBAL_OPTIONS_TOKEN } from './constants';
@@ -87,12 +87,11 @@ export class AbstractRegistryService {
     };
   }
 
-  public compareMeta = compareAllMeta;
   /** collects changed data from the contract and store it to the db */
   async update(blockHashOrBlockTag: string | number) {
     const prevMeta = await this.getMetaDataFromStorage();
     const currMeta = await this.getMetaDataFromContract(blockHashOrBlockTag);
-    const isSameContractState = this.compareMeta(prevMeta, currMeta);
+    const isSameContractState = compareMeta(prevMeta, currMeta);
 
     this.logger.log('Collected metadata', { prevMeta, currMeta });
 

@@ -1,6 +1,6 @@
 import { RegistryMeta } from '../storage/meta.entity';
 
-const compareOpIndex = (
+export const compareMeta = (
   metaOne: RegistryMeta | null,
   metaTwo: RegistryMeta | null,
 ): boolean => {
@@ -11,37 +11,4 @@ const compareOpIndex = (
   const keysOpIndexTwo = metaTwo.keysOpIndex;
 
   return keysOpIndexOne === keysOpIndexTwo;
-};
-
-const compareUnbufferedBlockNumber = (
-  metaOne: RegistryMeta | null,
-  metaTwo: RegistryMeta | null,
-): boolean => {
-  if (metaOne == null) return false;
-  if (metaTwo == null) return false;
-
-  const unbufferedBlockOne = metaOne.unbufferedBlockNumber;
-  const unbufferedBlockTwo = metaTwo.unbufferedBlockNumber;
-
-  return unbufferedBlockOne === unbufferedBlockTwo;
-};
-
-export const compareAllMeta = (
-  metaOne: RegistryMeta | null,
-  metaTwo: RegistryMeta | null,
-): boolean => {
-  return (
-    compareOpIndex(metaOne, metaTwo) &&
-    compareUnbufferedBlockNumber(metaOne, metaTwo)
-  );
-};
-
-export const compareUsedMeta = (
-  metaOne: RegistryMeta | null,
-  metaTwo: RegistryMeta | null,
-): boolean => {
-  if (metaOne == null) return false;
-  if (metaTwo == null) return false;
-
-  return compareUnbufferedBlockNumber(metaOne, metaTwo);
 };
