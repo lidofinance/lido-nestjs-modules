@@ -127,6 +127,14 @@ export class ConsensusBeaconService extends ConsensusBaseService {
     throw new Error('Method is not implemented');
   }
 
+  /**
+   * Instructs the beacon node to use the components of the `SignedBlindedBeaconBlock` to construct and publish a
+   * `SignedBeaconBlock` by swapping out the `transactions_root` for the corresponding full list of `transactions`.
+   */
+  public async publishBlindedBlock(): ConsensusMethodResult<'publishBlindedBlock'> {
+    throw new Error('Method is not implemented');
+  }
+
   /** Returns the complete `SignedBeaconBlock` for a given block id. */
   public async getBlock(
     args: ConsensusMethodArgs<'getBlock'>,
