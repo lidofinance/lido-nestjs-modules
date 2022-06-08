@@ -156,6 +156,10 @@ describe('Beacon endpoints', () => {
     await expect(consensusService.publishBlock()).rejects.toThrow();
   });
 
+  test('publishBlindedBlock', async () => {
+    await expect(consensusService.publishBlindedBlock()).rejects.toThrow();
+  });
+
   test('getBlock', async () => {
     await consensusService.getBlock({ blockId: '1' });
 
