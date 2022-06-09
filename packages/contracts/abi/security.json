@@ -353,6 +353,19 @@
   },
   {
     "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "newLastDepositBlock",
+        "type": "uint256"
+      }
+    ],
+    "name": "setLastDepositBlock",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
       { "internalType": "uint256", "name": "newValue", "type": "uint256" }
     ],
     "name": "setMaxDeposits",
