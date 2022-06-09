@@ -8,7 +8,7 @@ import {
   EasyTrackContractModule,
   LdoContractModule,
   LidoContractModule,
-  MevVaultContractModule,
+  ExecutionRewardsVaultContractModule,
   OracleContractModule,
   RegistryContractModule,
   SecurityContractModule,
@@ -25,8 +25,8 @@ import {
   LDO_CONTRACT_TOKEN,
   LIDO_CONTRACT_ADDRESSES,
   LIDO_CONTRACT_TOKEN,
-  MEV_VAULT_CONTRACT_ADDRESSES,
-  MEV_VAULT_CONTRACT_TOKEN,
+  EXECUTION_REWARDS_VAULT_CONTRACT_ADDRESSES,
+  EXECUTION_REWARDS_VAULT_CONTRACT_TOKEN,
   ORACLE_CONTRACT_ADDRESSES,
   ORACLE_CONTRACT_TOKEN,
   REGISTRY_CONTRACT_ADDRESSES,
@@ -124,11 +124,11 @@ describe('Chains', () => {
     );
   });
 
-  test('mev vault', async () => {
+  test('execution rewards vault', async () => {
     await testAddress(
-      MevVaultContractModule,
-      MEV_VAULT_CONTRACT_TOKEN,
-      MEV_VAULT_CONTRACT_ADDRESSES,
+      ExecutionRewardsVaultContractModule,
+      EXECUTION_REWARDS_VAULT_CONTRACT_TOKEN,
+      EXECUTION_REWARDS_VAULT_CONTRACT_ADDRESSES,
     );
   });
 
