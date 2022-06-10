@@ -50,6 +50,18 @@ export class ConsensusValidatorService extends ConsensusBaseService {
     );
   }
 
+  /*** Requests a beacon node to produce a valid blinded block, which can then be signed by a validator. */
+  public async produceBlindedBlock(
+    args: ConsensusMethodArgs<'produceBlindedBlock'>,
+  ): ConsensusMethodResult<'produceBlindedBlock'> {
+    const { slot, randaoReveal, graffiti, options } = args;
+    const search = this.getSearchString({ randaoReveal, graffiti });
+    return await this.fetch(
+      `/eth/v1/validator/blinded_blocks/${slot}${search}`,
+      options,
+    );
+  }
+
   /** Requests that the beacon node produce an AttestationData. */
   public async produceAttestationData(
     args: ConsensusMethodArgs<'produceAttestationData'>,
@@ -110,6 +122,16 @@ export class ConsensusValidatorService extends ConsensusBaseService {
 
   /** Publish multiple signed sync committee contribution and proofs */
   public async publishContributionAndProofs(): ConsensusMethodResult<'publishContributionAndProofs'> {
+    throw new Error('Method is not implemented');
+  }
+
+  /** Prepares the beacon node for potential proposers by supplying information required when proposing blocks for the given validators. */
+  public async prepareBeaconProposer(): ConsensusMethodResult<'prepareBeaconProposer'> {
+    throw new Error('Method is not implemented');
+  }
+
+  /** Prepares the beacon node for engaging with external builders. */
+  public async registerValidator(): ConsensusMethodResult<'registerValidator'> {
     throw new Error('Method is not implemented');
   }
 }

@@ -72,6 +72,7 @@ export const fakeJsonRpc =
     blockNumber?: string,
     blockHash?: string,
     txHash?: string,
+    feeHistory?: any,
   ) =>
   (request: JsonRpcRequest): JsonRpcResponse => {
     switch (request.method) {
@@ -168,6 +169,31 @@ export const fakeJsonRpc =
             txHash ??
             '0xbdbda178dac948c2ff214526717069e4f4aaf8a550bd0335bfa2235412403489',
         };
+      case 'eth_feeHistory':
+        return {
+          jsonrpc: '2.0',
+          id: request.id,
+          result:
+            typeof feeHistory === 'undefined'
+              ? {
+                  baseFeePerGas: [
+                    '0x10ef1681f4',
+                    '0x130ce4a72e',
+                    '0x121f7cb0ce',
+                    '0x12be0e9af1',
+                  ],
+                  gasUsedRatio: [
+                    0.9999255060047089, 0.30528086666666665, 0.6367133494142969,
+                  ],
+                  oldestBlock: '0xdf9f65',
+                  reward: [
+                    ['0x59682f00', '0x59682f00', '0x59682f00'],
+                    ['0x3b9aca00', '0x3b9aca00', '0x3b9aca00'],
+                    ['0x3b9aca00', '0x3b9aca00', '0x59682f00'],
+                  ],
+                }
+              : feeHistory,
+        };
       default:
         return { jsonrpc: '2.0', id: request.id, result: {} };
     }
@@ -179,6 +205,7 @@ export const fakeFetchImpl =
     blockNumber?: number,
     blockHash?: string,
     txHash?: string,
+    feeHistory?: any,
   ) =>
   async (
     connection: string | ConnectionInfo,
@@ -191,6 +218,7 @@ export const fakeFetchImpl =
         blockNumber ? BigNumber.from(blockNumber).toHexString() : undefined,
         blockHash,
         txHash,
+        feeHistory,
       ),
     );
   };
@@ -297,4 +325,8 @@ export const makeFakeFetchImplThatFailsFirstNRequests = (
 
 export const makeFetchImplWithSpecificNetwork = (chainId: number) => {
   return fakeFetchImpl(chainId);
+};
+
+export const makeFetchImplWithSpecificFeeHistory = (feeHistory: any) => {
+  return fakeFetchImpl(undefined, undefined, undefined, undefined, feeHistory);
 };

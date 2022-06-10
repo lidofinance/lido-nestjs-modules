@@ -20,6 +20,7 @@ import { EventType, Listener } from '@ethersproject/abstract-provider';
 import { NoNewBlocksWhilePollingError } from '../error/no-new-blocks-while-polling.error';
 import { isErrorHasCode, nonRetryableErrors } from '../common/errors';
 import { AllProvidersFailedError } from '../error/all-providers-failed.error';
+import { FeeHistory, getFeeHistory } from '../ethers/fee-history';
 
 /**
  * EIP-1898 support
@@ -148,6 +149,14 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
     }
 
     return super.on(eventName, listener);
+  }
+
+  public async getFeeHistory(
+    blockCount: number,
+    newestBlock?: string | null | number,
+    rewardPercentiles?: number[],
+  ): Promise<FeeHistory> {
+    return getFeeHistory.call(this, blockCount, newestBlock, rewardPercentiles);
   }
 
   protected get provider(): FallbackProvider {
