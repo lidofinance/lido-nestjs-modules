@@ -5,7 +5,6 @@ describe('Compare meta util', () => {
     blockNumber: 1,
     blockHash: '0x01',
     keysOpIndex: 1,
-    unbufferedBlockNumber: 1,
     timestamp: 1,
   };
 
@@ -13,7 +12,6 @@ describe('Compare meta util', () => {
     blockNumber: 2,
     blockHash: '0x02',
     keysOpIndex: 2,
-    unbufferedBlockNumber: 2,
     timestamp: 2,
   };
 

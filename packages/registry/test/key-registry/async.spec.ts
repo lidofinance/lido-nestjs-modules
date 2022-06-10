@@ -5,8 +5,8 @@ import { nullTransport, LoggerModule } from '@lido-nestjs/logger';
 import { getNetwork } from '@ethersproject/networks';
 import { getDefaultProvider } from '@ethersproject/providers';
 import {
-  RegistryModule,
-  RegistryService,
+  KeyRegistryModule,
+  KeyRegistryService,
   RegistryStorageService,
 } from '../../src';
 
@@ -19,7 +19,8 @@ describe('Async module initializing', () => {
 
   const testModules = async (imports: ModuleMetadata['imports']) => {
     const moduleRef = await Test.createTestingModule({ imports }).compile();
-    const registryService: RegistryService = moduleRef.get(RegistryService);
+    const registryService: KeyRegistryService =
+      moduleRef.get(KeyRegistryService);
     const storageService = moduleRef.get(RegistryStorageService);
 
     await storageService.onModuleInit();
@@ -36,7 +37,7 @@ describe('Async module initializing', () => {
         entities: ['./packages/registry/**/*.entity.ts'],
       }),
       LoggerModule.forRoot({ transports: [nullTransport()] }),
-      RegistryModule.forRootAsync({
+      KeyRegistryModule.forRootAsync({
         async useFactory() {
           return { provider, subscribeInterval: '*/12 * * * * *' };
         },
@@ -53,7 +54,7 @@ describe('Async module initializing', () => {
         entities: ['./packages/registry/**/*.entity.ts'],
       }),
       LoggerModule.forRoot({ transports: [nullTransport()] }),
-      RegistryModule.forFeatureAsync({
+      KeyRegistryModule.forFeatureAsync({
         async useFactory() {
           return { provider, subscribeInterval: '*/12 * * * * *' };
         },

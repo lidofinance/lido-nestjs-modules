@@ -5,10 +5,11 @@ import {
   BatchProviderModule,
   ExtendedJsonRpcBatchProvider,
 } from '@lido-nestjs/execution';
-
-import { ValidatorRegistryModule } from '../../src/main/validator-registry/validator-registry.module';
-import { ValidatorRegistryService } from '../../src/main/validator-registry/validator-registry.service';
-import { RegistryStorageService } from '../../src/storage/registry-storage.service';
+import {
+  ValidatorRegistryModule,
+  ValidatorRegistryService,
+  RegistryStorageService,
+} from '../../src/';
 
 describe('Registry', () => {
   let registryService: ValidatorRegistryService;
@@ -45,10 +46,10 @@ describe('Registry', () => {
   test.skip('Key fetching', async () => {
     await registryService.update(13_600_000);
     const operators = await registryService.getOperatorsFromStorage();
-    const keys = await registryService.getAllKeysFromStorage();
+    const keys = await registryService.getValidatorsKeysFromStorage();
 
     expect(operators.length).toBe(14);
-    expect(keys.length).toBe(58250);
+    expect(keys.length).toBe(43976);
   }, 600_000);
 
   test('Update', async () => {

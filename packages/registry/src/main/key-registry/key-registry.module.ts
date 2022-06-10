@@ -1,19 +1,21 @@
+/* TODO: add tests */
+/* istanbul ignore file */
 import { DynamicModule, Module } from '@nestjs/common';
 import {
   RegistryModuleSyncOptions,
   RegistryModuleAsyncOptions,
 } from '../interfaces/module.interface';
-import { RegistryService } from './registry.service';
+import { KeyRegistryService } from './key-registry.service';
 import { RegistryStorageModule } from '../../storage/registry-storage.module';
 import { RegistryFetchModule } from '../../fetch/registry-fetch.module';
 import { REGISTRY_GLOBAL_OPTIONS_TOKEN } from '../constants';
 
 @Module({
   imports: [RegistryStorageModule],
-  providers: [RegistryService],
-  exports: [RegistryService],
+  providers: [KeyRegistryService],
+  exports: [KeyRegistryService],
 })
-export class RegistryModule {
+export class KeyRegistryModule {
   static forRoot(options?: RegistryModuleSyncOptions): DynamicModule {
     return {
       global: true,
@@ -30,7 +32,7 @@ export class RegistryModule {
 
   static forFeature(options?: RegistryModuleSyncOptions): DynamicModule {
     return {
-      module: RegistryModule,
+      module: KeyRegistryModule,
       imports: [
         ...(options?.imports || []),
         RegistryFetchModule.forFeature(options),
@@ -48,7 +50,7 @@ export class RegistryModule {
     options: RegistryModuleAsyncOptions,
   ): DynamicModule {
     return {
-      module: RegistryModule,
+      module: KeyRegistryModule,
       imports: [
         ...(options.imports || []),
         RegistryFetchModule.forFeatureAsync(options),

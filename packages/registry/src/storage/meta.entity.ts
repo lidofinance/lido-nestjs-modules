@@ -14,7 +14,6 @@ export class RegistryMeta {
     this.blockNumber = meta.blockNumber;
     this.blockHash = meta.blockHash.toLocaleLowerCase();
     this.keysOpIndex = meta.keysOpIndex;
-    this.unbufferedBlockNumber = meta.unbufferedBlockNumber;
     this.timestamp = meta.timestamp;
   }
 
@@ -25,10 +24,7 @@ export class RegistryMeta {
   blockHash!: string;
 
   @Property()
-  keysOpIndex?: number;
-
-  @Property()
-  unbufferedBlockNumber!: number;
+  keysOpIndex!: number;
 
   @Property()
   timestamp!: number;
