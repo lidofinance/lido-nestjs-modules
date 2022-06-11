@@ -7,6 +7,7 @@ import { MikroOrmModule } from '@mikro-orm/nestjs';
 import { key } from '../fixtures/key.fixture';
 import {
   RegistryKeyStorageService,
+  RegistryStorageService,
   ValidatorRegistryModule,
   ValidatorRegistryService,
 } from '../../src';
@@ -15,6 +16,7 @@ describe('Validator', () => {
   const provider = new JsonRpcBatchProvider(process.env.EL_RPC_URL);
   let validatorService: ValidatorRegistryService;
   let keyStorage: RegistryKeyStorageService;
+  let storageService: RegistryStorageService;
 
   const mockCall = jest
     .spyOn(provider, 'call')
@@ -38,10 +40,13 @@ describe('Validator', () => {
     const moduleRef = await Test.createTestingModule({ imports }).compile();
     validatorService = moduleRef.get(ValidatorRegistryService);
     keyStorage = moduleRef.get(RegistryKeyStorageService);
+    storageService = moduleRef.get(RegistryStorageService);
+    await storageService.onModuleInit();
   });
 
   afterEach(async () => {
     mockCall.mockReset();
+    await storageService.onModuleDestroy();
   });
 
   test('getToIndex', async () => {

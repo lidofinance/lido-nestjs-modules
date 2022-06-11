@@ -9,12 +9,14 @@ import {
   RegistryKeyStorageService,
   KeyRegistryModule,
   KeyRegistryService,
+  RegistryStorageService,
 } from '../../src';
 
 describe('Key', () => {
   const provider = new JsonRpcBatchProvider(process.env.EL_RPC_URL);
   let validatorService: KeyRegistryService;
   let keyStorage: RegistryKeyStorageService;
+  let storageService: RegistryStorageService;
 
   const mockCall = jest
     .spyOn(provider, 'call')
@@ -38,10 +40,13 @@ describe('Key', () => {
     const moduleRef = await Test.createTestingModule({ imports }).compile();
     validatorService = moduleRef.get(KeyRegistryService);
     keyStorage = moduleRef.get(RegistryKeyStorageService);
+    storageService = moduleRef.get(RegistryStorageService);
+    await storageService.onModuleInit();
   });
 
   afterEach(async () => {
     mockCall.mockReset();
+    await storageService.onModuleDestroy();
   });
 
   test('getToIndex', async () => {
