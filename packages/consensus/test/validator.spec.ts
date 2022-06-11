@@ -69,6 +69,20 @@ describe('Validator endpoints', () => {
     );
   });
 
+  test('produceBlindedBlock', async () => {
+    await consensusService.produceBlindedBlock({
+      slot: '1',
+      randaoReveal: '2',
+      graffiti: '3',
+    });
+
+    expect(mockFetch).toBeCalledTimes(1);
+    expect(mockFetch).toBeCalledWith(
+      '/eth/v1/validator/blinded_blocks/1?randao_reveal=2&graffiti=3',
+      undefined,
+    );
+  });
+
   test('produceAttestationData', async () => {
     await consensusService.produceAttestationData({
       slot: '1',
@@ -133,7 +147,11 @@ describe('Validator endpoints', () => {
     ).rejects.toThrow();
   });
 
-  test('eventstream', async () => {
-    await expect(consensusService.eventstream()).rejects.toThrow();
+  test('prepareBeaconProposer', async () => {
+    await expect(consensusService.prepareBeaconProposer()).rejects.toThrow();
+  });
+
+  test('registerValidator', async () => {
+    await expect(consensusService.registerValidator()).rejects.toThrow();
   });
 });

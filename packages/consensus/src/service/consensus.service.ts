@@ -17,7 +17,7 @@ function applyMixins(derivedCtor: any, constructors: any[]) {
       Object.defineProperty(
         derivedCtor.prototype,
         name,
-        /* istanbul ignore next */
+        /* istanbul ignore file */
         Object.getOwnPropertyDescriptor(baseCtor.prototype, name) ||
           Object.create(null),
       );

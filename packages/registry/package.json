@@ -29,11 +29,13 @@
   },
   "dependencies": {
     "@lido-nestjs/contracts": "workspace:*",
+    "@lido-nestjs/decorators": "workspace:*",
     "@lido-nestjs/logger": "workspace:*",
     "@lido-nestjs/utils": "workspace:*",
     "@mikro-orm/core": "^5.0.1",
     "@mikro-orm/nestjs": "^4.3.1",
-    "@mikro-orm/sqlite": "^5.0.3"
+    "@mikro-orm/sqlite": "^5.0.3",
+    "cron": "^2.0.0"
   },
   "peerDependencies": {
     "@nestjs/common": "^8.2.5",
@@ -47,6 +49,7 @@
     "@nestjs/common": "^8.2.5",
     "@nestjs/core": "^8.2.5",
     "@nestjs/testing": "^8.2.5",
+    "@types/cron": "^2",
     "reflect-metadata": "^0.1.13",
     "rxjs": "^7.5.2"
   }

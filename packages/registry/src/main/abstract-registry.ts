@@ -1,7 +1,13 @@
-import { Inject, Injectable, LoggerService } from '@nestjs/common';
+/* TODO: add tests */
+/* istanbul ignore file */
+import { Inject, Injectable, LoggerService, Optional } from '@nestjs/common';
 import { Registry, REGISTRY_CONTRACT_TOKEN } from '@lido-nestjs/contracts';
 import { EntityManager } from '@mikro-orm/sqlite';
 import { LOGGER_PROVIDER } from '@lido-nestjs/logger';
+import { OneAtTime } from '@lido-nestjs/decorators';
+
+import EventEmitter from 'events';
+import { CronJob } from 'cron';
 
 import { RegistryMetaFetchService } from '../fetch/meta.fetch';
 import { RegistryKeyFetchService } from '../fetch/key.fetch';
@@ -18,38 +24,74 @@ import { RegistryOperator } from '../storage/operator.entity';
 import { compareMeta } from '../utils/meta.utils';
 import { compareOperators } from '../utils/operator.utils';
 
+import { REGISTRY_GLOBAL_OPTIONS_TOKEN } from './constants';
+import { RegistryOptions } from './interfaces/module.interface';
+
 @Injectable()
-export class RegistryService {
+export abstract class AbstractRegistryService {
   constructor(
-    @Inject(REGISTRY_CONTRACT_TOKEN) private registryContract: Registry,
-    @Inject(LOGGER_PROVIDER) private logger: LoggerService,
+    @Inject(REGISTRY_CONTRACT_TOKEN) protected registryContract: Registry,
+    @Inject(LOGGER_PROVIDER) protected logger: LoggerService,
 
-    private readonly metaFetch: RegistryMetaFetchService,
-    private readonly metaStorage: RegistryMetaStorageService,
+    protected readonly metaFetch: RegistryMetaFetchService,
+    protected readonly metaStorage: RegistryMetaStorageService,
 
-    private readonly keyFetch: RegistryKeyFetchService,
-    private readonly keyStorage: RegistryKeyStorageService,
+    protected readonly keyFetch: RegistryKeyFetchService,
+    protected readonly keyStorage: RegistryKeyStorageService,
 
-    private readonly operatorFetch: RegistryOperatorFetchService,
-    private readonly operatorStorage: RegistryOperatorStorageService,
+    protected readonly operatorFetch: RegistryOperatorFetchService,
+    protected readonly operatorStorage: RegistryOperatorStorageService,
 
-    private readonly entityManager: EntityManager,
-  ) {}
+    protected readonly entityManager: EntityManager,
 
-  public async subscribeToUsedKeysUpdates() {
-    // TODO
+    @Optional()
+    @Inject(REGISTRY_GLOBAL_OPTIONS_TOKEN)
+    public options?: RegistryOptions,
+  ) {
+    this.eventEmitter = new EventEmitter();
+    this.cronJob = new CronJob(
+      options?.subscribeInterval || '*/10 * * * * *',
+      this.cronHandler,
+    );
   }
 
-  public async subscribeToAllKeysUpdates() {
-    // TODO
+  eventEmitter: EventEmitter;
+  cronJob: CronJob;
+
+  @OneAtTime()
+  protected async cronHandler() {
+    try {
+      const result = await this.update('latest');
+      if (!result) return;
+      this.eventEmitter.emit('result', result);
+    } catch (error) {
+      this.eventEmitter.emit('error', error);
+    }
   }
 
-  public async updateUsedKeys() {
-    // TODO
+  protected collectListenerCount() {
+    return (
+      this.eventEmitter.listenerCount('result') +
+      this.eventEmitter.listenerCount('error')
+    );
+  }
+
+  public subscribe(cb: (error: null | Error, payload: RegistryKey[]) => void) {
+    this.cronJob.start();
+    const resultCb = (result: RegistryKey[]) => cb(null, result);
+    this.eventEmitter.addListener('result', resultCb);
+    this.eventEmitter.addListener('error', cb);
+    return () => {
+      this.eventEmitter.off('result', resultCb);
+      this.eventEmitter.off('error', cb);
+      if (!this.collectListenerCount()) {
+        this.cronJob.stop();
+      }
+    };
   }
 
   /** collects changed data from the contract and store it to the db */
-  public async updateAllKeys(blockHashOrBlockTag: string | number) {
+  public async update(blockHashOrBlockTag: string | number) {
     const prevMeta = await this.getMetaDataFromStorage();
     const currMeta = await this.getMetaDataFromContract(blockHashOrBlockTag);
     const isSameContractState = compareMeta(prevMeta, currMeta);
@@ -112,32 +154,28 @@ export class RegistryService {
       updatedKeys: updatedKeys.length,
       currMeta,
     });
+
+    return updatedKeys;
   }
 
   /** contract */
 
   /** returns the meta data from the contract */
-  public async getMetaDataFromContract(blockHashOrBlockTag: string | number) {
+  public async getMetaDataFromContract(
+    blockHashOrBlockTag: string | number,
+  ): Promise<RegistryMeta> {
     const { provider } = this.registryContract;
     const block = await provider.getBlock(blockHashOrBlockTag);
     const blockHash = block.hash;
     const blockTag = { blockHash };
 
-    // we must collect keysOpIndex & lastUnbufferedLog,
-    // since `_increaseKeysOpIndex` in the contract does not occur on Unbuffer
-    // this will be fixed in the next version of the contract
-    const [keysOpIndex, lastUnbufferedLog] = await Promise.all([
-      this.metaFetch.fetchKeysOpIndex({ blockTag }),
-      this.metaFetch.fetchLastUnbufferedLog(block),
-    ]);
-
-    const unbufferedBlockNumber = lastUnbufferedLog.blockNumber;
+    const keysOpIndex = await this.metaFetch.fetchKeysOpIndex({ blockTag });
 
     return {
       blockNumber: block.number,
       blockHash,
       keysOpIndex,
-      unbufferedBlockNumber,
+      timestamp: block.timestamp,
     };
   }
 
@@ -146,6 +184,9 @@ export class RegistryService {
     const overrides = { blockTag: { blockHash } };
     return await this.operatorFetch.fetch(0, -1, overrides);
   }
+
+  /** returns the right border of the update keys range */
+  abstract getToIndex(currOperator: RegistryOperator): number;
 
   /** returns updated keys from the contract */
   public async getUpdatedKeysFromContract(
@@ -170,7 +211,7 @@ export class RegistryService {
           : 0;
 
         const fromIndex = unchangedKeysMaxIndex;
-        const toIndex = currOperator.totalSigningKeys;
+        const toIndex = this.getToIndex(currOperator);
         const operatorIndex = currOperator.index;
         const overrides = { blockTag: { blockHash } };
 
@@ -205,16 +246,6 @@ export class RegistryService {
   /** returns the latest operators data from the db */
   public async getOperatorsFromStorage() {
     return await this.operatorStorage.findAll();
-  }
-
-  /** returns all operators keys from the db */
-  public async getAllKeysFromStorage() {
-    return await this.keyStorage.findAll();
-  }
-
-  /** returns used keys from the db */
-  public async getUsedKeysFromStorage() {
-    return await this.keyStorage.findUsed();
   }
 
   /** clears the db */

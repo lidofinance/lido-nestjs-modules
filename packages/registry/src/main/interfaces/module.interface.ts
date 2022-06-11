@@ -2,7 +2,9 @@
 import { ModuleMetadata } from '@nestjs/common';
 import { RegistryFetchOptions } from '../../fetch/interfaces/module.interface';
 
-export interface RegistryOptions extends RegistryFetchOptions {}
+export interface RegistryOptions extends RegistryFetchOptions {
+  subscribeInterval?: string;
+}
 
 export interface RegistryModuleSyncOptions
   extends Pick<ModuleMetadata, 'imports'>,

@@ -10,12 +10,5 @@ export const compareMeta = (
   const keysOpIndexOne = metaOne.keysOpIndex;
   const keysOpIndexTwo = metaTwo.keysOpIndex;
 
-  if (keysOpIndexOne !== keysOpIndexTwo) return false;
-
-  const unbufferedBlockOne = metaOne.unbufferedBlockNumber;
-  const unbufferedBlockTwo = metaTwo.unbufferedBlockNumber;
-
-  if (unbufferedBlockOne !== unbufferedBlockTwo) return false;
-
-  return true;
+  return keysOpIndexOne === keysOpIndexTwo;
 };

@@ -24,5 +24,8 @@ export * from './storage/operator.entity';
 export * from './storage/operator.repository';
 export * from './storage/operator.storage';
 
-export * from './main/registry.service';
-export * from './main/registry.module';
+export * from './main/key-registry/key-registry.service';
+export * from './main/key-registry/key-registry.module';
+
+export * from './main/validator-registry/validator-registry.service';
+export * from './main/validator-registry/validator-registry.module';

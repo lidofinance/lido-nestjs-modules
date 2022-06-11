@@ -5,14 +5,14 @@ describe('Compare meta util', () => {
     blockNumber: 1,
     blockHash: '0x01',
     keysOpIndex: 1,
-    unbufferedBlockNumber: 1,
+    timestamp: 1,
   };
 
   const metaTwo = {
     blockNumber: 2,
     blockHash: '0x02',
     keysOpIndex: 2,
-    unbufferedBlockNumber: 2,
+    timestamp: 2,
   };
 
   test('null - null', async () => {
@@ -29,15 +29,6 @@ describe('Compare meta util', () => {
 
   test('meta - another meta', async () => {
     expect(compareMeta(metaOne, metaTwo)).toBe(false);
-  });
-
-  test('meta - partial same meta', async () => {
-    const partialMeta = {
-      ...metaOne,
-      unbufferedBlockNumber: metaTwo.unbufferedBlockNumber,
-    };
-
-    expect(compareMeta(metaOne, partialMeta)).toBe(false);
   });
 
   test('meta - same meta', async () => {
