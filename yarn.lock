@@ -2602,9 +2602,9 @@ __metadata:
     "@lido-nestjs/execution": "workspace:*"
     "@lido-nestjs/logger": "workspace:*"
     "@lido-nestjs/utils": "workspace:*"
-    "@mikro-orm/core": ^5.0.1
-    "@mikro-orm/nestjs": ^4.3.1
-    "@mikro-orm/sqlite": ^5.0.3
+    "@mikro-orm/core": ^5.2.0
+    "@mikro-orm/nestjs": ^5.0.2
+    "@mikro-orm/sqlite": ^5.2.0
     "@nestjs/common": ^8.2.5
     "@nestjs/core": ^8.2.5
     "@nestjs/testing": ^8.2.5
@@ -2613,6 +2613,8 @@ __metadata:
     reflect-metadata: ^0.1.13
     rxjs: ^7.5.2
   peerDependencies:
+    "@mikro-orm/core": ^5.2.0
+    "@mikro-orm/nestjs": ^5.0.2
     "@nestjs/common": ^8.2.5
     "@nestjs/core": ^8.2.5
     reflect-metadata: ^0.1.13
@@ -2714,7 +2716,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@mikro-orm/core@npm:^5.0.1":
+"@mikro-orm/core@npm:^5.2.0":
   version: 5.2.0
   resolution: "@mikro-orm/core@npm:5.2.0"
   dependencies:
@@ -2795,18 +2797,25 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@mikro-orm/nestjs@npm:^4.3.1":
-  version: 4.3.1
-  resolution: "@mikro-orm/nestjs@npm:4.3.1"
+"@mikro-orm/nestjs@npm:^5.0.2":
+  version: 5.0.2
+  resolution: "@mikro-orm/nestjs@npm:5.0.2"
   peerDependencies:
-    "@mikro-orm/core": ^4.0.0||^5.0.0-dev.0
-    "@nestjs/common": ^7.0.0||^8.0.0
-    "@nestjs/core": ^7.0.0||^8.0.0
-  checksum: 0424c9caca8a9b0df3521f4bde3ddc473ae21e697d8758ea6cfc7b2e40d466de48568c02769c6783d6edebed750acf4a94c0ce0f54a6562ae824e5614da9abb5
+    "@mikro-orm/core": ^5.0.0
+    "@mikro-orm/knex": ^5.0.0
+    "@mikro-orm/mongodb": ^5.0.0
+    "@nestjs/common": ^8.0.0
+    "@nestjs/core": ^8.0.0
+  peerDependenciesMeta:
+    "@mikro-orm/knex":
+      optional: true
+    "@mikro-orm/mongodb":
+      optional: true
+  checksum: 0d5b601fef96a813ade4275b1a812bf54f838908f555567052579b44a9ec2e0bc94dd93dff71c72aecc74e3b86d752fc853bea9fcfe9b28e4563115297d01543
   languageName: node
   linkType: hard
 
-"@mikro-orm/sqlite@npm:^5.0.3":
+"@mikro-orm/sqlite@npm:^5.2.0":
   version: 5.2.0
   resolution: "@mikro-orm/sqlite@npm:5.2.0"
   dependencies:
