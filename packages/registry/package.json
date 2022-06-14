@@ -34,7 +34,6 @@
     "@lido-nestjs/utils": "workspace:*",
     "@mikro-orm/core": "^5.0.1",
     "@mikro-orm/nestjs": "^4.3.1",
-    "@mikro-orm/sqlite": "^5.0.3",
     "cron": "^2.0.0"
   },
   "peerDependencies": {
@@ -46,6 +45,7 @@
   },
   "devDependencies": {
     "@lido-nestjs/execution": "workspace:*",
+    "@mikro-orm/sqlite": "^5.0.3",
     "@nestjs/common": "^8.2.5",
     "@nestjs/core": "^8.2.5",
     "@nestjs/testing": "^8.2.5",
