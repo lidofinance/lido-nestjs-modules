@@ -45,6 +45,28 @@ describe('Keys', () => {
     await expect(storageService.findOneByIndex(1, 2)).resolves.toEqual(keys[1]);
   });
 
+  test('find by pubkey', async () => {
+    const keys = [{ operatorIndex: 1, index: 1, ...key }];
+
+    await expect(storageService.findByPubkey(key.key)).resolves.toEqual([]);
+    await storageService.save(keys);
+    await expect(storageService.findByPubkey(key.key)).resolves.toEqual([
+      keys[0],
+    ]);
+  });
+
+  test('find by signature', async () => {
+    const keys = [{ operatorIndex: 1, index: 1, ...key }];
+
+    await expect(
+      storageService.findBySignature(key.depositSignature),
+    ).resolves.toEqual([]);
+    await storageService.save(keys);
+    await expect(
+      storageService.findBySignature(key.depositSignature),
+    ).resolves.toEqual([keys[0]]);
+  });
+
   test('find by operator', async () => {
     const keys = [
       { operatorIndex: 1, index: 1, ...key },

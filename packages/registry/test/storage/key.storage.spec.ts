@@ -77,6 +77,16 @@ describe('Keys', () => {
     expect(mockRegistryKeyRepository.findOne).toBeCalledTimes(1);
   });
 
+  test('findOneByPubkey', async () => {
+    await expect(storageService.findByPubkey('')).resolves.toEqual([]);
+    expect(mockRegistryKeyRepository.find).toBeCalledTimes(1);
+  });
+
+  test('findOneBySignature', async () => {
+    await expect(storageService.findBySignature('')).resolves.toEqual([]);
+    expect(mockRegistryKeyRepository.find).toBeCalledTimes(1);
+  });
+
   test('removeOneByIndex', async () => {
     await expect(
       storageService.removeOneByIndex(

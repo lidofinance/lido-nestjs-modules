@@ -43,7 +43,7 @@ export class RegistryOperatorStorageService {
       }),
     );
 
-    this.repository.flush();
+    await this.repository.flush();
     return result;
   }
 }
