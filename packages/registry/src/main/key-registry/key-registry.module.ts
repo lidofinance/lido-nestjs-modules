@@ -13,7 +13,7 @@ import { REGISTRY_GLOBAL_OPTIONS_TOKEN } from '../constants';
 @Module({
   imports: [RegistryStorageModule],
   providers: [KeyRegistryService],
-  exports: [KeyRegistryService],
+  exports: [KeyRegistryService, RegistryStorageModule],
 })
 export class KeyRegistryModule {
   static forRoot(options?: RegistryModuleSyncOptions): DynamicModule {
@@ -43,6 +43,7 @@ export class KeyRegistryModule {
           useValue: options,
         },
       ],
+      exports: [RegistryFetchModule],
     };
   }
 
@@ -61,6 +62,7 @@ export class KeyRegistryModule {
           useFactory: options.useFactory,
         },
       ],
+      exports: [RegistryFetchModule],
     };
   }
 }

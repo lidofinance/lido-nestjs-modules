@@ -13,7 +13,7 @@ import { REGISTRY_GLOBAL_OPTIONS_TOKEN } from '../constants';
 @Module({
   imports: [RegistryStorageModule],
   providers: [ValidatorRegistryService],
-  exports: [ValidatorRegistryService],
+  exports: [ValidatorRegistryService, RegistryStorageModule],
 })
 export class ValidatorRegistryModule {
   static forRoot(options?: RegistryModuleSyncOptions): DynamicModule {
@@ -43,6 +43,7 @@ export class ValidatorRegistryModule {
           useValue: options,
         },
       ],
+      exports: [RegistryFetchModule],
     };
   }
 
@@ -61,6 +62,7 @@ export class ValidatorRegistryModule {
           useFactory: options.useFactory,
         },
       ],
+      exports: [RegistryFetchModule],
     };
   }
 }
