@@ -2,7 +2,7 @@
 /* istanbul ignore file */
 import { Inject, Injectable, LoggerService, Optional } from '@nestjs/common';
 import { Registry, REGISTRY_CONTRACT_TOKEN } from '@lido-nestjs/contracts';
-import { EntityManager } from '@mikro-orm/sqlite';
+import { EntityManager } from '@mikro-orm/core';
 import { LOGGER_PROVIDER } from '@lido-nestjs/logger';
 import { OneAtTime } from '@lido-nestjs/decorators';
 
@@ -155,7 +155,7 @@ export abstract class AbstractRegistryService {
       currMeta,
     });
 
-    return updatedKeys;
+    return currMeta;
   }
 
   /** contract */
