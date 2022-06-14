@@ -21,6 +21,17 @@ export class RegistryKeyStorageService {
     return await this.repository.find({ operatorIndex });
   }
 
+  /** find key by pubkey */
+  async findByPubkey(key: string): Promise<RegistryKey[]> {
+    return await this.repository.find({ key: key.toLocaleLowerCase() });
+  }
+
+  /** find key by signature */
+  async findBySignature(depositSignature: string): Promise<RegistryKey[]> {
+    depositSignature = depositSignature.toLocaleLowerCase();
+    return await this.repository.find({ depositSignature });
+  }
+
   /** find key by index */
   async findOneByIndex(
     operatorIndex: number,
@@ -57,7 +68,7 @@ export class RegistryKeyStorageService {
       }),
     );
 
-    this.repository.flush();
+    await this.repository.flush();
     return result;
   }
 }
