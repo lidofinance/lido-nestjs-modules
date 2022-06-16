@@ -108,7 +108,14 @@ export abstract class AbstractRegistryService {
 
     if (isSameContractState) {
       this.logger.debug?.('Same state, no data update required', { currMeta });
-      await this.metaStorage.save(currMeta);
+
+      await this.entityManager.transactional(async (entityManager) => {
+        entityManager.nativeDelete(RegistryMeta, {});
+
+        const meta = new RegistryMeta(currMeta);
+        entityManager.persist(meta);
+      });
+
       this.logger.debug?.('Updated metadata in the DB', { currMeta });
       return;
     }
@@ -144,6 +151,8 @@ export abstract class AbstractRegistryService {
         const instance = new RegistryOperator(operator);
         entityManager.persist(instance);
       });
+
+      entityManager.nativeDelete(RegistryMeta, {});
 
       const meta = new RegistryMeta(currMeta);
       entityManager.persist(meta);
