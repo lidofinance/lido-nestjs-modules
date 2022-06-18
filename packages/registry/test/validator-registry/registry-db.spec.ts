@@ -57,6 +57,7 @@ describe('Registry', () => {
 
   afterEach(async () => {
     await registryService.clear();
+    await registryStorageService.onModuleDestroy();
   });
 
   test('db init is correct', async () => {
