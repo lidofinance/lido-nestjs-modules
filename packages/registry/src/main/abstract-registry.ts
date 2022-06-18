@@ -2,7 +2,7 @@
 /* istanbul ignore file */
 import { Inject, Injectable, LoggerService, Optional } from '@nestjs/common';
 import { Registry, REGISTRY_CONTRACT_TOKEN } from '@lido-nestjs/contracts';
-import { EntityManager } from '@mikro-orm/core';
+import { EntityManager } from '@mikro-orm/knex';
 import { LOGGER_PROVIDER } from '@lido-nestjs/logger';
 import { OneAtTime } from '@lido-nestjs/decorators';
 
@@ -94,6 +94,7 @@ export abstract class AbstractRegistryService {
   public async update(blockHashOrBlockTag: string | number) {
     const prevMeta = await this.getMetaDataFromStorage();
     const currMeta = await this.getMetaDataFromContract(blockHashOrBlockTag);
+
     const isSameContractState = compareMeta(prevMeta, currMeta);
 
     this.logger.log('Collected metadata', { prevMeta, currMeta });
@@ -110,10 +111,8 @@ export abstract class AbstractRegistryService {
       this.logger.debug?.('Same state, no data update required', { currMeta });
 
       await this.entityManager.transactional(async (entityManager) => {
-        entityManager.nativeDelete(RegistryMeta, {});
-
-        const meta = new RegistryMeta(currMeta);
-        entityManager.persist(meta);
+        await entityManager.nativeDelete(RegistryMeta, {});
+        await entityManager.persist(new RegistryMeta(currMeta));
       });
 
       this.logger.debug?.('Updated metadata in the DB', { currMeta });
@@ -140,23 +139,7 @@ export abstract class AbstractRegistryService {
       updatedKeys: updatedKeys.length,
     });
 
-    // save all data in a transaction
-    await this.entityManager.transactional(async (entityManager) => {
-      updatedKeys.forEach(async (operatorKey) => {
-        const instance = new RegistryKey(operatorKey);
-        entityManager.persist(instance);
-      });
-
-      currentOperators.forEach(async (operator) => {
-        const instance = new RegistryOperator(operator);
-        entityManager.persist(instance);
-      });
-
-      entityManager.nativeDelete(RegistryMeta, {});
-
-      const meta = new RegistryMeta(currMeta);
-      entityManager.persist(meta);
-    });
+    await this.save(updatedKeys, currentOperators, currMeta);
 
     this.logger.log('Saved data to the DB', {
       operators: currentOperators.length,
@@ -255,6 +238,36 @@ export abstract class AbstractRegistryService {
   /** returns the latest operators data from the db */
   public async getOperatorsFromStorage() {
     return await this.operatorStorage.findAll();
+  }
+
+  public async getOperatorsKeysFromStorage() {
+    return await this.keyStorage.findAll();
+  }
+
+  public async save(
+    updatedKeys: RegistryKey[],
+    currentOperators: RegistryOperator[],
+    currMeta: RegistryMeta,
+  ) {
+    // save all data in a transaction
+    await this.entityManager.transactional(async (entityManager) => {
+      await entityManager
+        .createQueryBuilder(RegistryKey)
+        .insert(updatedKeys)
+        .onConflict(['index', 'operator_index'])
+        .merge()
+        .execute();
+
+      await entityManager
+        .createQueryBuilder(RegistryOperator)
+        .insert(currentOperators)
+        .onConflict('index')
+        .merge()
+        .execute();
+
+      await entityManager.nativeDelete(RegistryMeta, {});
+      await entityManager.persist(new RegistryMeta(currMeta));
+    });
   }
 
   /** clears the db */

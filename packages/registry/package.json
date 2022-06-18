@@ -36,6 +36,7 @@
   },
   "peerDependencies": {
     "@mikro-orm/core": "^5.2.0",
+    "@mikro-orm/knex": "^5.2.0",
     "@mikro-orm/nestjs": "^5.0.2",
     "@nestjs/common": "^8.2.5",
     "@nestjs/core": "^8.2.5",
@@ -46,6 +47,7 @@
   "devDependencies": {
     "@lido-nestjs/execution": "workspace:*",
     "@mikro-orm/core": "^5.2.0",
+    "@mikro-orm/knex": "^5.2.0",
     "@mikro-orm/nestjs": "^5.0.2",
     "@mikro-orm/sqlite": "^5.2.0",
     "@nestjs/common": "^8.2.5",
