@@ -111,10 +111,8 @@ export abstract class AbstractRegistryService {
       this.logger.debug?.('Same state, no data update required', { currMeta });
 
       await this.entityManager.transactional(async (entityManager) => {
-        entityManager.nativeDelete(RegistryMeta, {});
-
-        const meta = new RegistryMeta(currMeta);
-        entityManager.persist(meta);
+        await entityManager.nativeDelete(RegistryMeta, {});
+        await entityManager.persist(new RegistryMeta(currMeta));
       });
 
       this.logger.debug?.('Updated metadata in the DB', { currMeta });
@@ -267,12 +265,8 @@ export abstract class AbstractRegistryService {
         .merge()
         .execute();
 
-      await entityManager
-        .createQueryBuilder(RegistryMeta)
-        .insert(currMeta)
-        .onConflict('block_number')
-        .merge()
-        .execute();
+      await entityManager.nativeDelete(RegistryMeta, {});
+      await entityManager.persist(new RegistryMeta(currMeta));
     });
   }
 
