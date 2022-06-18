@@ -1,10 +1,8 @@
 import { Test } from '@nestjs/testing';
 import { MikroOrmModule } from '@mikro-orm/nestjs';
-import { simpleTransport, LoggerModule } from '@lido-nestjs/logger';
-import {
-  BatchProviderModule,
-  ExtendedJsonRpcBatchProvider,
-} from '@lido-nestjs/execution';
+import { nullTransport, LoggerModule } from '@lido-nestjs/logger';
+import { getNetwork } from '@ethersproject/networks';
+import { JsonRpcBatchProvider } from '@ethersproject/providers';
 import {
   ValidatorRegistryModule,
   ValidatorRegistryService,
@@ -16,12 +14,22 @@ import {
 import { keys, meta, operators } from './mock-data';
 
 describe('Registry', () => {
+  const provider = new JsonRpcBatchProvider(process.env.EL_RPC_URL);
+
   let registryService: ValidatorRegistryService;
   let registryStorageService: RegistryStorageService;
 
   let keyStorageService: RegistryKeyStorageService;
   let metaStorageService: RegistryMetaStorageService;
   let operatorStorageService: RegistryOperatorStorageService;
+
+  const mockCall = jest
+    .spyOn(provider, 'call')
+    .mockImplementation(async () => '');
+
+  jest
+    .spyOn(provider, 'detectNetwork')
+    .mockImplementation(async () => getNetwork('mainnet'));
 
   beforeEach(async () => {
     const imports = [
@@ -31,14 +39,8 @@ describe('Registry', () => {
         allowGlobalContext: true,
         entities: ['./packages/registry/**/*.entity.ts'],
       }),
-      BatchProviderModule.forRoot({ url: process.env.EL_RPC_URL as string }),
-      LoggerModule.forRoot({ transports: [simpleTransport()] }),
-      ValidatorRegistryModule.forFeatureAsync({
-        inject: [ExtendedJsonRpcBatchProvider],
-        async useFactory(provider: ExtendedJsonRpcBatchProvider) {
-          return { provider };
-        },
-      }),
+      LoggerModule.forRoot({ transports: [nullTransport()] }),
+      ValidatorRegistryModule.forFeature({ provider }),
     ];
     const moduleRef = await Test.createTestingModule({ imports }).compile();
     registryService = moduleRef.get(ValidatorRegistryService);
@@ -56,6 +58,7 @@ describe('Registry', () => {
   });
 
   afterEach(async () => {
+    mockCall.mockReset();
     await registryService.clear();
     await registryStorageService.onModuleDestroy();
   });
