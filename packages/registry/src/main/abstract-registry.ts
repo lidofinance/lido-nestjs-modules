@@ -109,7 +109,14 @@ export abstract class AbstractRegistryService {
 
     if (isSameContractState) {
       this.logger.debug?.('Same state, no data update required', { currMeta });
-      await this.metaStorage.save(currMeta);
+
+      await this.entityManager.transactional(async (entityManager) => {
+        entityManager.nativeDelete(RegistryMeta, {});
+
+        const meta = new RegistryMeta(currMeta);
+        entityManager.persist(meta);
+      });
+
       this.logger.debug?.('Updated metadata in the DB', { currMeta });
       return;
     }
@@ -135,6 +142,12 @@ export abstract class AbstractRegistryService {
     });
 
     await this.save(updatedKeys, currentOperators, currMeta);
+
+    this.logger.log('Saved data to the DB', {
+      operators: currentOperators.length,
+      updatedKeys: updatedKeys.length,
+      currMeta,
+    });
 
     return currMeta;
   }
@@ -260,12 +273,6 @@ export abstract class AbstractRegistryService {
         .onConflict('block_number')
         .merge()
         .execute();
-    });
-
-    this.logger.log('Saved data to the DB', {
-      operators: currentOperators.length,
-      updatedKeys: updatedKeys.length,
-      currMeta,
     });
   }
 
