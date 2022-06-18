@@ -23,3 +23,5 @@ jobs:
         run: yarn test
       - name: Run e2e tests
         run: yarn test:e2e
+        env:
+          EL_RPC_URL: ${{ secrets.EL_RPC_URL }}
