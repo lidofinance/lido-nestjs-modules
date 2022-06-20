@@ -4,8 +4,8 @@ import { nullTransport, LoggerModule } from '@lido-nestjs/logger';
 import { getNetwork } from '@ethersproject/networks';
 import { JsonRpcBatchProvider } from '@ethersproject/providers';
 import {
-  ValidatorRegistryModule,
-  ValidatorRegistryService,
+  KeyRegistryModule,
+  KeyRegistryService,
   RegistryStorageService,
   RegistryKeyStorageService,
   RegistryMetaStorageService,
@@ -17,7 +17,7 @@ import { compareTestMeta } from '../testing.utils';
 describe('Registry', () => {
   const provider = new JsonRpcBatchProvider(process.env.EL_RPC_URL);
 
-  let registryService: ValidatorRegistryService;
+  let registryService: KeyRegistryService;
   let registryStorageService: RegistryStorageService;
 
   let keyStorageService: RegistryKeyStorageService;
@@ -41,10 +41,10 @@ describe('Registry', () => {
         entities: ['./packages/registry/**/*.entity.ts'],
       }),
       LoggerModule.forRoot({ transports: [nullTransport()] }),
-      ValidatorRegistryModule.forFeature({ provider }),
+      KeyRegistryModule.forFeature({ provider }),
     ];
     const moduleRef = await Test.createTestingModule({ imports }).compile();
-    registryService = moduleRef.get(ValidatorRegistryService);
+    registryService = moduleRef.get(KeyRegistryService);
     registryStorageService = moduleRef.get(RegistryStorageService);
 
     keyStorageService = moduleRef.get(RegistryKeyStorageService);
