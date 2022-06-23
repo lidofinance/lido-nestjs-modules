@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { RegistryKey, RegistryMeta, RegistryOperator } from '../src';
 import { AbstractRegistryService } from '../src/main/abstract-registry';
 
@@ -40,3 +41,14 @@ export const compareTestMeta = async (
   await compareTestMetaOperators(registryService, { operators });
   await compareTestMetaData(registryService, { meta });
 };
+
+export const fetchKeyMock = (
+  fromIndex = 0,
+  toIndex = 1,
+  expected: Array<any>,
+) => {
+  console.log(expected, fromIndex, toIndex);
+  return expected.splice(fromIndex, toIndex);
+};
+
+export const clone = <T>(obj: T) => JSON.parse(JSON.stringify(obj)) as T;

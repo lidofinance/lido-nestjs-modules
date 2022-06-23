@@ -88,3 +88,5 @@ export const newKey = {
     '0x967875a0104d1f674538e2ec0df4be0a61ef08061cdcfa83e5a63a43dadb772d29053368224e5d8e046ba1a78490f5fc0f0186f23af0465d0a82b2db2e7535782fe12e1fd1cd4f6eb77d8dc7a4f7ab0fde31435d5fa98a013e0a716c5e1ef6a2',
   used: true,
 };
+
+export const usedSigningKeys = [...keys.slice(1, 2), ...keys.slice(4, 5)];

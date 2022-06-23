@@ -251,19 +251,21 @@ export abstract class AbstractRegistryService {
   ) {
     // save all data in a transaction
     await this.entityManager.transactional(async (entityManager) => {
-      await entityManager
-        .createQueryBuilder(RegistryKey)
-        .insert(updatedKeys)
-        .onConflict(['index', 'operator_index'])
-        .merge()
-        .execute();
+      updatedKeys.length &&
+        (await entityManager
+          .createQueryBuilder(RegistryKey)
+          .insert(updatedKeys)
+          .onConflict(['index', 'operator_index'])
+          .merge()
+          .execute());
 
-      await entityManager
-        .createQueryBuilder(RegistryOperator)
-        .insert(currentOperators)
-        .onConflict('index')
-        .merge()
-        .execute();
+      currentOperators.length &&
+        (await entityManager
+          .createQueryBuilder(RegistryOperator)
+          .insert(currentOperators)
+          .onConflict('index')
+          .merge()
+          .execute());
 
       await entityManager.nativeDelete(RegistryMeta, {});
       await entityManager.persist(new RegistryMeta(currMeta));

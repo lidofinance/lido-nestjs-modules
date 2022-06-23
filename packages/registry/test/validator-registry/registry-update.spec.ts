@@ -11,9 +11,11 @@ import {
   RegistryMetaStorageService,
   RegistryOperatorStorageService,
   RegistryKeyFetchService,
+  RegistryKey,
 } from '../../src/';
 import { keys, meta, newKey, operators } from '../fixtures/db.fixture';
 import {
+  clone,
   compareTestMeta,
   compareTestMetaData,
   compareTestMetaKeys,
@@ -106,14 +108,21 @@ describe('Registry', () => {
       expect(saveRegistryMock).toBeCalledTimes(0);
     });
 
-    test('new key with keysOpIndex updating', async () => {
+    test('keys is not added', async () => {
       const newKeys = [...keys, newKey];
       const newMeta = {
         ...meta,
         keysOpIndex: meta.keysOpIndex + 1,
       };
       const saveRegistryMock = jest.spyOn(registryService, 'save');
-      jest.spyOn(fetchKey, 'fetch').mockImplementation(async () => newKeys);
+      jest
+        .spyOn(fetchKey, 'fetchOne')
+        .mockImplementation(async (operatorIndex, keyIndex) => {
+          return newKeys.find(
+            (key) =>
+              key.index === keyIndex && key.operatorIndex === operatorIndex,
+          ) as RegistryKey;
+        });
       jest
         .spyOn(registryService, 'getMetaDataFromContract')
         .mockImplementation(async () => newMeta);
@@ -124,12 +133,12 @@ describe('Registry', () => {
       await registryService.update(13_600_000);
       expect(saveRegistryMock).toBeCalledTimes(1);
       await compareTestMetaData(registryService, { meta: newMeta });
-      await compareTestMetaKeys(registryService, { keys: newKeys });
+      await compareTestMetaKeys(registryService, { keys });
       await compareTestMetaOperators(registryService, { operators });
     });
 
-    test('update existing key', async () => {
-      const newKeys = [...keys];
+    test('keys is not mutating', async () => {
+      const newKeys = clone(keys);
       newKeys[0].used = false;
 
       const newMeta = {
@@ -137,7 +146,16 @@ describe('Registry', () => {
         keysOpIndex: meta.keysOpIndex + 1,
       };
       const saveRegistryMock = jest.spyOn(registryService, 'save');
-      jest.spyOn(fetchKey, 'fetch').mockImplementation(async () => newKeys);
+
+      jest
+        .spyOn(fetchKey, 'fetchOne')
+        .mockImplementation(async (operatorIndex, keyIndex) => {
+          return newKeys.find(
+            (key) =>
+              key.index === keyIndex && key.operatorIndex === operatorIndex,
+          ) as RegistryKey;
+        });
+
       jest
         .spyOn(registryService, 'getMetaDataFromContract')
         .mockImplementation(async () => newMeta);
@@ -148,8 +166,46 @@ describe('Registry', () => {
       await registryService.update(13_600_000);
       expect(saveRegistryMock).toBeCalledTimes(1);
       await compareTestMetaData(registryService, { meta: newMeta });
-      await compareTestMetaKeys(registryService, { keys: newKeys });
+      await compareTestMetaKeys(registryService, { keys });
       await compareTestMetaOperators(registryService, { operators });
+    });
+
+    test('looking only for used keys', async () => {
+      const newKeys = clone([...keys, newKey]);
+
+      const newOperators = clone(operators);
+      newOperators[0].totalSigningKeys++;
+
+      const newMeta = {
+        ...meta,
+        keysOpIndex: meta.keysOpIndex + 1,
+      };
+
+      const saveRegistryMock = jest.spyOn(registryService, 'save');
+
+      jest
+        .spyOn(fetchKey, 'fetchOne')
+        .mockImplementation(async (operatorIndex, keyIndex) => {
+          return newKeys.find(
+            (key) =>
+              key.index === keyIndex && key.operatorIndex === operatorIndex,
+          ) as RegistryKey;
+        });
+
+      jest
+        .spyOn(registryService, 'getMetaDataFromContract')
+        .mockImplementation(async () => newMeta);
+      jest
+        .spyOn(registryService, 'getOperatorsFromContract')
+        .mockImplementation(async () => newOperators);
+
+      await registryService.update(13_600_000);
+      expect(saveRegistryMock).toBeCalledTimes(1);
+      await compareTestMetaData(registryService, { meta: newMeta });
+      await compareTestMetaKeys(registryService, { keys: keys });
+      await compareTestMetaOperators(registryService, {
+        operators: newOperators,
+      });
     });
   });
 });
