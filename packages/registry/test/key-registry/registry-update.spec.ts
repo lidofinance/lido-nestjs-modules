@@ -4,8 +4,8 @@ import { nullTransport, LoggerModule } from '@lido-nestjs/logger';
 import { getNetwork } from '@ethersproject/networks';
 import { JsonRpcBatchProvider } from '@ethersproject/providers';
 import {
-  ValidatorRegistryModule,
-  ValidatorRegistryService,
+  KeyRegistryModule,
+  KeyRegistryService,
   RegistryStorageService,
   RegistryKeyStorageService,
   RegistryMetaStorageService,
@@ -25,7 +25,7 @@ import {
 describe('Registry', () => {
   const provider = new JsonRpcBatchProvider(process.env.EL_RPC_URL);
 
-  let registryService: ValidatorRegistryService;
+  let registryService: KeyRegistryService;
   let registryStorageService: RegistryStorageService;
 
   let keyStorageService: RegistryKeyStorageService;
@@ -51,11 +51,11 @@ describe('Registry', () => {
         entities: ['./packages/registry/**/*.entity.ts'],
       }),
       LoggerModule.forRoot({ transports: [nullTransport()] }),
-      ValidatorRegistryModule.forFeature({ provider }),
+      KeyRegistryModule.forFeature({ provider }),
     ];
 
     const moduleRef = await Test.createTestingModule({ imports }).compile();
-    registryService = moduleRef.get(ValidatorRegistryService);
+    registryService = moduleRef.get(KeyRegistryService);
     registryStorageService = moduleRef.get(RegistryStorageService);
 
     keyStorageService = moduleRef.get(RegistryKeyStorageService);
@@ -171,7 +171,7 @@ describe('Registry', () => {
       await compareTestMetaOperators(registryService, { operators });
     });
 
-    test('looking only for used keys', async () => {
+    test('looking for totalSigningKeys', async () => {
       const newKeys = clone([...keys, newKey]);
 
       const newOperators = clone(operators);
@@ -203,7 +203,7 @@ describe('Registry', () => {
       await registryService.update(13_600_000);
       expect(saveRegistryMock).toBeCalledTimes(1);
       await compareTestMetaData(registryService, { meta: newMeta });
-      await compareTestMetaKeys(registryService, { keys: keys });
+      await compareTestMetaKeys(registryService, { keys: newKeys });
       await compareTestMetaOperators(registryService, {
         operators: newOperators,
       });
