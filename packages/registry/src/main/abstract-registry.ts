@@ -26,6 +26,7 @@ import { compareOperators } from '../utils/operator.utils';
 
 import { REGISTRY_GLOBAL_OPTIONS_TOKEN } from './constants';
 import { RegistryOptions } from './interfaces/module.interface';
+import { chunk } from '../utils/chunk.utils';
 
 @Injectable()
 export abstract class AbstractRegistryService {
@@ -251,25 +252,38 @@ export abstract class AbstractRegistryService {
   ) {
     // save all data in a transaction
     await this.entityManager.transactional(async (entityManager) => {
-      updatedKeys.length &&
-        (await entityManager
-          .createQueryBuilder(RegistryKey)
-          .insert(updatedKeys)
-          .onConflict(['index', 'operator_index'])
-          .merge()
-          .execute());
+      await Promise.all(
+        chunk(updatedKeys, 499).map(async (keysChunk) => {
+          keysChunk.length &&
+            (await entityManager
+              .createQueryBuilder(RegistryKey)
+              .insert(keysChunk)
+              .onConflict(['index', 'operator_index'])
+              .merge()
+              .execute());
+        }),
+      );
 
-      currentOperators.length &&
-        (await entityManager
-          .createQueryBuilder(RegistryOperator)
-          .insert(currentOperators)
-          .onConflict('index')
-          .merge()
-          .execute());
+      await Promise.all(
+        chunk(currentOperators, 499).map(async (operatorsChunk) => {
+          operatorsChunk.length &&
+            (await entityManager
+              .createQueryBuilder(RegistryOperator)
+              .insert(operatorsChunk)
+              .onConflict('index')
+              .merge()
+              .execute());
+        }),
+      );
 
       await entityManager.nativeDelete(RegistryMeta, {});
       await entityManager.persist(new RegistryMeta(currMeta));
     });
+  }
+
+  /** returns all operators keys from the db */
+  public async getAllKeysFromStorage() {
+    return await this.keyStorage.findAll();
   }
 
   /** clears the db */
