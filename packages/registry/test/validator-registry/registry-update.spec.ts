@@ -285,5 +285,41 @@ describe('Registry', () => {
         operators: newOperators,
       });
     });
+
+    test('delete keys from operator', async () => {
+      const newOperators = clone(operators);
+      newOperators[0].usedSigningKeys--;
+
+      const newMeta = {
+        ...meta,
+        keysOpIndex: meta.keysOpIndex + 1,
+      };
+
+      const saveRegistryMock = jest.spyOn(registryService, 'save');
+
+      jest
+        .spyOn(fetchKey, 'fetchOne')
+        .mockImplementation(async (operatorIndex, keyIndex) => {
+          return keys.find(
+            (key) =>
+              key.index === keyIndex && key.operatorIndex === operatorIndex,
+          ) as RegistryKey;
+        });
+
+      jest
+        .spyOn(registryService, 'getMetaDataFromContract')
+        .mockImplementation(async () => newMeta);
+      jest
+        .spyOn(registryService, 'getOperatorsFromContract')
+        .mockImplementation(async () => newOperators);
+
+      await registryService.update(13_600_000);
+      expect(saveRegistryMock).toBeCalledTimes(1);
+      await compareTestMetaData(registryService, { meta: newMeta });
+      await compareTestMetaKeys(registryService, { keys: keys });
+      await compareTestMetaOperators(registryService, {
+        operators: newOperators,
+      });
+    });
   });
 });

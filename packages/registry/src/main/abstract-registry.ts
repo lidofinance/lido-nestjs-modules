@@ -203,8 +203,9 @@ export abstract class AbstractRegistryService {
           ? prevOperator.usedSigningKeys
           : 0;
 
-        const fromIndex = unchangedKeysMaxIndex;
         const toIndex = this.getToIndex(currOperator);
+        const fromIndex =
+          unchangedKeysMaxIndex <= toIndex ? unchangedKeysMaxIndex : 0;
         const operatorIndex = currOperator.index;
         const overrides = { blockTag: { blockHash } };
 
