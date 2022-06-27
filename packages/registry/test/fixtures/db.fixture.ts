@@ -101,3 +101,14 @@ export const newOperator = {
   totalSigningKeys: 3,
   usedSigningKeys: 3,
 };
+
+export const operatorWithDefaultsRecords = {
+  index: 3,
+  active: true,
+  name: 'default',
+  rewardAddress: '0x8d689476eba46a1fb0065bffac32398ed7f89165',
+  stakingLimit: 0,
+  stoppedValidators: 0,
+  totalSigningKeys: 0,
+  usedSigningKeys: 0,
+};
