@@ -47,7 +47,6 @@ export const fetchKeyMock = (
   toIndex = 1,
   expected: Array<any>,
 ) => {
-  console.log(expected, fromIndex, toIndex);
   return expected.splice(fromIndex, toIndex);
 };
 

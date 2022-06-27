@@ -90,3 +90,14 @@ export const newKey = {
 };
 
 export const usedSigningKeys = [...keys.slice(1, 2), ...keys.slice(4, 5)];
+
+export const newOperator = {
+  index: 2,
+  active: true,
+  name: 'certus two',
+  rewardAddress: '0x8d689476eba46a1fb0065bffac32398ed7f89165',
+  stakingLimit: 1000,
+  stoppedValidators: 0,
+  totalSigningKeys: 3,
+  usedSigningKeys: 3,
+};

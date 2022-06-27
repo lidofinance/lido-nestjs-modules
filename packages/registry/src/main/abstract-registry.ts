@@ -225,7 +225,7 @@ export abstract class AbstractRegistryService {
       }),
     );
 
-    return keysByOperator.flat();
+    return keysByOperator.flat().filter((key) => key);
   }
 
   /** storage */
