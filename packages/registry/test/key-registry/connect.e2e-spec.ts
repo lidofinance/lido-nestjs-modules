@@ -1,6 +1,6 @@
 import { Test } from '@nestjs/testing';
 import { MikroOrmModule } from '@mikro-orm/nestjs';
-import { simpleTransport, LoggerModule } from '@lido-nestjs/logger';
+import { nullTransport, LoggerModule } from '@lido-nestjs/logger';
 import {
   BatchProviderModule,
   ExtendedJsonRpcBatchProvider,
@@ -37,7 +37,7 @@ describe('Registry', () => {
         entities: ['./packages/registry/**/*.entity.ts'],
       }),
       BatchProviderModule.forRoot({ url: process.env.EL_RPC_URL as string }),
-      LoggerModule.forRoot({ transports: [simpleTransport()] }),
+      LoggerModule.forRoot({ transports: [nullTransport()] }),
       KeyRegistryModule.forFeatureAsync({
         inject: [ExtendedJsonRpcBatchProvider],
         async useFactory(provider: ExtendedJsonRpcBatchProvider) {
