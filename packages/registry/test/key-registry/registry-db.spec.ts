@@ -67,15 +67,4 @@ describe('Registry', () => {
   test('db init is correct', async () => {
     await compareTestMeta(registryService, { keys, meta, operators });
   });
-
-  test('update existing key', async () => {
-    const updatedOne = { ...keys[0], used: false };
-    const updatedTwo = { ...keys[1], used: false };
-
-    await registryService.save([updatedOne, updatedTwo], operators, meta);
-    const keysFromStorage = await registryService.getOperatorsKeysFromStorage();
-
-    expect(updatedOne).toEqual(keysFromStorage[0]);
-    expect(updatedTwo).toEqual(keysFromStorage[1]);
-  });
 });
