@@ -26,7 +26,7 @@ import { compareOperators } from '../utils/operator.utils';
 
 import { REGISTRY_GLOBAL_OPTIONS_TOKEN } from './constants';
 import { RegistryOptions } from './interfaces/module.interface';
-import { chunk } from '../utils/chunk.utils';
+import { chunk } from '@lido-nestjs/utils';
 
 @Injectable()
 export abstract class AbstractRegistryService {
