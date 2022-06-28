@@ -95,7 +95,7 @@ describe('Registry', () => {
         .spyOn(registryService, 'getOperatorsFromContract')
         .mockImplementation(async () => operators);
 
-      await registryService.update(13_600_000);
+      await registryService.update('latest');
       expect(saveRegistryMock).toBeCalledTimes(0);
       await compareTestMeta(registryService, { keys, meta, operators });
     });
@@ -112,7 +112,7 @@ describe('Registry', () => {
         .spyOn(registryService, 'getOperatorsFromContract')
         .mockImplementation(async () => operators);
 
-      await registryService.update(13_600_000);
+      await registryService.update('latest');
       expect(saveRegistryMock).toBeCalledTimes(0);
     });
 
@@ -138,7 +138,7 @@ describe('Registry', () => {
         .spyOn(registryService, 'getOperatorsFromContract')
         .mockImplementation(async () => operators);
 
-      await registryService.update(13_600_000);
+      await registryService.update('latest');
       expect(saveRegistryMock).toBeCalledTimes(1);
       await compareTestMetaData(registryService, { meta: newMeta });
       await compareTestMetaKeys(registryService, { keys });
@@ -171,7 +171,7 @@ describe('Registry', () => {
         .spyOn(registryService, 'getOperatorsFromContract')
         .mockImplementation(async () => operators);
 
-      await registryService.update(13_600_000);
+      await registryService.update('latest');
       expect(saveRegistryMock).toBeCalledTimes(1);
       await compareTestMetaData(registryService, { meta: newMeta });
       await compareTestMetaKeys(registryService, { keys });
@@ -207,7 +207,7 @@ describe('Registry', () => {
         .spyOn(registryService, 'getOperatorsFromContract')
         .mockImplementation(async () => newOperators);
 
-      await registryService.update(13_600_000);
+      await registryService.update('latest');
       expect(saveRegistryMock).toBeCalledTimes(1);
       await compareTestMetaData(registryService, { meta: newMeta });
       await compareTestMetaKeys(registryService, { keys: keys });
@@ -242,7 +242,7 @@ describe('Registry', () => {
         .spyOn(registryService, 'getOperatorsFromContract')
         .mockImplementation(async () => newOperators);
 
-      await registryService.update(13_600_000);
+      await registryService.update('latest');
       expect(saveRegistryMock).toBeCalledTimes(1);
       await compareTestMetaData(registryService, { meta: newMeta });
       await compareTestMetaKeys(registryService, { keys: keys });
@@ -277,7 +277,7 @@ describe('Registry', () => {
         .spyOn(registryService, 'getOperatorsFromContract')
         .mockImplementation(async () => newOperators);
 
-      await registryService.update(13_600_000);
+      await registryService.update('latest');
       expect(saveRegistryMock).toBeCalledTimes(1);
       await compareTestMetaData(registryService, { meta: newMeta });
       await compareTestMetaKeys(registryService, { keys: keys });
@@ -313,7 +313,7 @@ describe('Registry', () => {
         .spyOn(registryService, 'getOperatorsFromContract')
         .mockImplementation(async () => newOperators);
 
-      await registryService.update(13_600_000);
+      await registryService.update('latest');
       expect(saveRegistryMock).toBeCalledTimes(1);
       await compareTestMetaData(registryService, { meta: newMeta });
       await compareTestMetaKeys(registryService, { keys: keys });
@@ -349,7 +349,7 @@ describe('Registry', () => {
         .spyOn(registryService, 'getOperatorsFromContract')
         .mockImplementation(async () => newOperators);
 
-      await registryService.update(13_600_000);
+      await registryService.update('latest');
       expect(saveRegistryMock).toBeCalledTimes(1);
       await compareTestMetaData(registryService, { meta: newMeta });
       await compareTestMetaOperators(registryService, {
