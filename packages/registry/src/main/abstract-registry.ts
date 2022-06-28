@@ -253,6 +253,19 @@ export abstract class AbstractRegistryService {
   ) {
     // save all data in a transaction
     await this.entityManager.transactional(async (entityManager) => {
+      // Unused keys can not be removed from the registry,
+      // but sometimes it could happen in test chains by upgrading the contract.
+      // This is not a complete solution and it should
+      // not be assumed that the code normally handles the removal of used keys.
+      await Promise.all(
+        currentOperators.map(async (operator) => {
+          await entityManager.nativeDelete(RegistryKey, {
+            index: { $gte: operator.totalSigningKeys },
+            operatorIndex: operator.index,
+          });
+        }),
+      );
+
       await Promise.all(
         chunk(updatedKeys, 499).map(async (keysChunk) => {
           keysChunk.length &&

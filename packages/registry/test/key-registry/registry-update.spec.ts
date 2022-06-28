@@ -321,5 +321,46 @@ describe('Registry', () => {
         operators: newOperators,
       });
     });
+
+    test('out of total signing keys limit', async () => {
+      const newOperators = clone(operators);
+      newOperators[0].totalSigningKeys--;
+
+      const newMeta = {
+        ...meta,
+        keysOpIndex: meta.keysOpIndex + 1,
+      };
+
+      const saveRegistryMock = jest.spyOn(registryService, 'save');
+
+      jest
+        .spyOn(fetchKey, 'fetchOne')
+        .mockImplementation(async (operatorIndex, keyIndex) => {
+          return keys.find(
+            (key) =>
+              key.index === keyIndex && key.operatorIndex === operatorIndex,
+          ) as RegistryKey;
+        });
+
+      jest
+        .spyOn(registryService, 'getMetaDataFromContract')
+        .mockImplementation(async () => newMeta);
+      jest
+        .spyOn(registryService, 'getOperatorsFromContract')
+        .mockImplementation(async () => newOperators);
+
+      await registryService.update(13_600_000);
+      expect(saveRegistryMock).toBeCalledTimes(1);
+      await compareTestMetaData(registryService, { meta: newMeta });
+      await compareTestMetaOperators(registryService, {
+        operators: newOperators,
+      });
+
+      const firstOperatorKeys = await (
+        await registryService.getAllKeysFromStorage()
+      ).filter(({ operatorIndex }) => operatorIndex === 0);
+
+      expect(firstOperatorKeys.length).toBe(newOperators[0].totalSigningKeys);
+    });
   });
 });
