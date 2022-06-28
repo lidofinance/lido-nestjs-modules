@@ -286,6 +286,10 @@ describe('Registry', () => {
       });
     });
 
+    /**
+     *  This case actual only for goerli net
+     *  In some cases, we remove keys in the test network
+     */
     test('delete keys from operator', async () => {
       const newOperators = clone(operators);
       newOperators[0].usedSigningKeys--;
