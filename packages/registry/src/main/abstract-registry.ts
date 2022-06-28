@@ -267,37 +267,32 @@ export abstract class AbstractRegistryService {
       );
 
       await Promise.all(
+        // 500 — SQLite limit in insert operation
         chunk(updatedKeys, 499).map(async (keysChunk) => {
-          keysChunk.length &&
-            (await entityManager
-              .createQueryBuilder(RegistryKey)
-              .insert(keysChunk)
-              .onConflict(['index', 'operator_index'])
-              .merge()
-              .execute());
+          await entityManager
+            .createQueryBuilder(RegistryKey)
+            .insert(keysChunk)
+            .onConflict(['index', 'operator_index'])
+            .merge()
+            .execute();
         }),
       );
 
       await Promise.all(
+        // 500 — SQLite limit in insert operation
         chunk(currentOperators, 499).map(async (operatorsChunk) => {
-          operatorsChunk.length &&
-            (await entityManager
-              .createQueryBuilder(RegistryOperator)
-              .insert(operatorsChunk)
-              .onConflict('index')
-              .merge()
-              .execute());
+          await entityManager
+            .createQueryBuilder(RegistryOperator)
+            .insert(operatorsChunk)
+            .onConflict('index')
+            .merge()
+            .execute();
         }),
       );
 
       await entityManager.nativeDelete(RegistryMeta, {});
       await entityManager.persist(new RegistryMeta(currMeta));
     });
-  }
-
-  /** returns all operators keys from the db */
-  public async getAllKeysFromStorage() {
-    return await this.keyStorage.findAll();
   }
 
   /** clears the db */

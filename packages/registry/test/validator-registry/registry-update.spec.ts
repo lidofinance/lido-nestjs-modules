@@ -357,7 +357,7 @@ describe('Registry', () => {
       });
 
       const firstOperatorKeys = await (
-        await registryService.getAllKeysFromStorage()
+        await registryService.getOperatorsKeysFromStorage()
       ).filter(({ operatorIndex }) => operatorIndex === 0);
 
       expect(firstOperatorKeys.length).toBe(newOperators[0].totalSigningKeys);
