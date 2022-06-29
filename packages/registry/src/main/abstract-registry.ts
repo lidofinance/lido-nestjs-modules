@@ -203,9 +203,15 @@ export abstract class AbstractRegistryService {
           ? prevOperator.usedSigningKeys
           : 0;
 
+        // get the right border up to which the keys should be updated
+        // it's different for different scenarios
         const toIndex = this.getToIndex(currOperator);
+
+        // fromIndex may become larger than toIndex if used keys are deleted
+        // this should not happen in mainnet, but sometimes keys can be deleted in testnet by modification of the contract
         const fromIndex =
           unchangedKeysMaxIndex <= toIndex ? unchangedKeysMaxIndex : 0;
+
         const operatorIndex = currOperator.index;
         const overrides = { blockTag: { blockHash } };
 
@@ -242,10 +248,12 @@ export abstract class AbstractRegistryService {
     return await this.operatorStorage.findAll();
   }
 
+  /** returns all the keys from storage */
   public async getOperatorsKeysFromStorage() {
     return await this.keyStorage.findAll();
   }
 
+  /** saves all the data to the db */
   public async save(
     updatedKeys: RegistryKey[],
     currentOperators: RegistryOperator[],
@@ -253,11 +261,9 @@ export abstract class AbstractRegistryService {
   ) {
     // save all data in a transaction
     await this.entityManager.transactional(async (entityManager) => {
-      // Unused keys can not be removed from the registry,
-      // but sometimes it could happen in test chains by upgrading the contract.
-      // This is not a complete solution and it should
-      // not be assumed that the code normally handles the removal of used keys.
       await Promise.all(
+        // remove all keys from the database that are greater than the total number of keys
+        // it's needed to clear the list in db when removing keys from the contract
         currentOperators.map(async (operator) => {
           await entityManager.nativeDelete(RegistryKey, {
             index: { $gte: operator.totalSigningKeys },
@@ -290,6 +296,7 @@ export abstract class AbstractRegistryService {
         }),
       );
 
+      // replace metadata with new one
       await entityManager.nativeDelete(RegistryMeta, {});
       await entityManager.persist(new RegistryMeta(currMeta));
     });
