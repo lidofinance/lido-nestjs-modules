@@ -1,5 +1,3 @@
-/* TODO: add tests */
-/* istanbul ignore file */
 import { Inject, Injectable, LoggerService, Optional } from '@nestjs/common';
 import { Registry, REGISTRY_CONTRACT_TOKEN } from '@lido-nestjs/contracts';
 import { EntityManager } from '@mikro-orm/knex';
@@ -52,7 +50,7 @@ export abstract class AbstractRegistryService {
     this.eventEmitter = new EventEmitter();
     this.cronJob = new CronJob(
       options?.subscribeInterval || '*/10 * * * * *',
-      this.cronHandler,
+      () => this.cronHandler(),
     );
   }
 
@@ -152,7 +150,7 @@ export abstract class AbstractRegistryService {
   }
 
   /** contract */
-
+  // coverage
   /** returns the meta data from the contract */
   public async getMetaDataFromContract(
     blockHashOrBlockTag: string | number,

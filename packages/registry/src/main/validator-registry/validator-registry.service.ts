@@ -1,5 +1,3 @@
-/* TODO: add tests */
-/* istanbul ignore file */
 import { RegistryOperator } from '../../storage/operator.entity';
 import { AbstractRegistryService } from '../abstract-registry';
 
