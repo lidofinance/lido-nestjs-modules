@@ -6,7 +6,7 @@ import {
   RegistryOperatorFetchService,
 } from '../src';
 import { RegistryKey, RegistryMeta, RegistryOperator } from '../src';
-import { JsonRpcBatchProvider } from '@ethersproject/providers';
+import { JsonRpcBatchProvider, Block } from '@ethersproject/providers';
 
 type Payload = {
   keys: RegistryKey[];
@@ -27,13 +27,16 @@ export const registryServiceMock = (
         (key) => key.index === keyIndex && key.operatorIndex === operatorIndex,
       ) as RegistryKey;
     });
-  // @ts-ignore
-  jest.spyOn(provider, 'getBlock').mockImplementation(async () => ({
-    hash: meta.blockHash,
-    number: meta.blockNumber,
-    parentHash: meta.blockHash,
-    timestamp: meta.timestamp,
-  }));
+
+  jest.spyOn(provider, 'getBlock').mockImplementation(
+    async () =>
+      ({
+        hash: meta.blockHash,
+        number: meta.blockNumber,
+        parentHash: meta.blockHash,
+        timestamp: meta.timestamp,
+      } as Block),
+  );
 
   const metaFetch = moduleRef.get(RegistryMetaFetchService);
 

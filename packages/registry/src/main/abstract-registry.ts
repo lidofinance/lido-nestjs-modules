@@ -150,7 +150,6 @@ export abstract class AbstractRegistryService {
   }
 
   /** contract */
-  // coverage
   /** returns the meta data from the contract */
   public async getMetaDataFromContract(
     blockHashOrBlockTag: string | number,

@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/ban-ts-comment */
 import { Test } from '@nestjs/testing';
 import { MikroOrmModule } from '@mikro-orm/nestjs';
 import { nullTransport, LoggerModule } from '@lido-nestjs/logger';
@@ -11,12 +10,13 @@ import {
   RegistryKeyStorageService,
   RegistryMetaStorageService,
   RegistryOperatorStorageService,
+  RegistryMeta,
 } from '../../src/';
 import { keys, meta, operators } from '../fixtures/db.fixture';
 
 const wait = (ms: number) => new Promise((res) => setTimeout(res, ms));
 
-describe('Registry', () => {
+describe('Subscribe with custom timer', () => {
   const provider = new JsonRpcBatchProvider(process.env.EL_RPC_URL);
 
   let registryService: ValidatorRegistryService;
@@ -72,29 +72,26 @@ describe('Registry', () => {
 
   describe('subscribe', () => {
     test('empty data', async () => {
-      //@ts-ignore
       jest.spyOn(registryService, 'update').mockImplementation(async () => {
-        return [];
+        return undefined;
       });
 
-      const unSub = registryService.subscribe((error, payload) => {
-        expect(error).toBe(null);
-        expect(payload).toEqual([]);
+      const unSub = registryService.subscribe(() => {
         unSub();
       });
       await wait(3000);
-      expect.assertions(2);
+      expect.assertions(0);
+      unSub();
     });
 
     test('some data', async () => {
-      //@ts-ignore
       jest.spyOn(registryService, 'update').mockImplementation(async () => {
-        return 1;
+        return {} as RegistryMeta;
       });
 
       const unSub = registryService.subscribe((error, payload) => {
         expect(error).toBe(null);
-        expect(payload).toEqual(1);
+        expect(payload).toEqual({});
         unSub();
       });
       await wait(3000);
@@ -102,7 +99,6 @@ describe('Registry', () => {
     });
 
     test('error', async () => {
-      //@ts-ignore
       jest.spyOn(registryService, 'update').mockImplementation(async () => {
         throw new Error('some error');
       });
@@ -115,5 +111,74 @@ describe('Registry', () => {
       await wait(3000);
       expect.assertions(2);
     });
+  });
+});
+
+describe('Subscribe without custom timer', () => {
+  const provider = new JsonRpcBatchProvider(process.env.EL_RPC_URL);
+
+  let registryService: ValidatorRegistryService;
+  let registryStorageService: RegistryStorageService;
+
+  let keyStorageService: RegistryKeyStorageService;
+  let metaStorageService: RegistryMetaStorageService;
+  let operatorStorageService: RegistryOperatorStorageService;
+
+  const mockCall = jest
+    .spyOn(provider, 'call')
+    .mockImplementation(async () => '');
+
+  jest
+    .spyOn(provider, 'detectNetwork')
+    .mockImplementation(async () => getNetwork('mainnet'));
+
+  beforeEach(async () => {
+    const imports = [
+      MikroOrmModule.forRoot({
+        dbName: ':memory:',
+        type: 'sqlite',
+        allowGlobalContext: true,
+        entities: ['./packages/registry/**/*.entity.ts'],
+      }),
+      LoggerModule.forRoot({ transports: [nullTransport()] }),
+      ValidatorRegistryModule.forFeature({
+        provider,
+      }),
+    ];
+
+    const moduleRef = await Test.createTestingModule({ imports }).compile();
+    registryService = moduleRef.get(ValidatorRegistryService);
+    registryStorageService = moduleRef.get(RegistryStorageService);
+
+    keyStorageService = moduleRef.get(RegistryKeyStorageService);
+    metaStorageService = moduleRef.get(RegistryMetaStorageService);
+    operatorStorageService = moduleRef.get(RegistryOperatorStorageService);
+
+    await registryStorageService.onModuleInit();
+
+    await keyStorageService.save(keys);
+    await metaStorageService.save(meta);
+    await operatorStorageService.save(operators);
+  });
+
+  afterEach(async () => {
+    mockCall.mockReset();
+    await registryService.clear();
+    await registryStorageService.onModuleDestroy();
+  });
+
+  describe('subscribe', () => {
+    test('empty data', async () => {
+      jest.spyOn(registryService, 'update').mockImplementation(async () => {
+        return undefined;
+      });
+
+      const unSub = registryService.subscribe(() => {
+        unSub();
+      });
+      await wait(10_000);
+      expect.assertions(0);
+      unSub();
+    }, 11_000);
   });
 });
