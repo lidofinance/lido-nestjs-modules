@@ -70,7 +70,7 @@ describe('Sync module initializing', () => {
         entities: ['./packages/registry/**/*.entity.ts'],
       }),
       LoggerModule.forRoot({ transports: [nullTransport()] }),
-      ValidatorRegistryModule.forFeature({}),
+      ValidatorRegistryModule.forFeature(),
     ];
 
     const metadata = {
