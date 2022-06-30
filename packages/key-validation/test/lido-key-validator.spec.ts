@@ -145,6 +145,6 @@ describe('LidoKeyValidator', () => {
     );
 
     expect(results.length).toBe(10000);
-    expect(time).toBeLessThan(30); // 30 seconds
+    expect(time).toBeLessThan(60); // 60 seconds
   });
 });
