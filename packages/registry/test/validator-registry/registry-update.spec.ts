@@ -1,6 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { MikroOrmModule } from '@mikro-orm/nestjs';
-import { nullTransport, LoggerModule } from '@lido-nestjs/logger';
+import {
+  nullTransport,
+  LoggerModule,
+  LOGGER_PROVIDER,
+} from '@lido-nestjs/logger';
 import { getNetwork } from '@ethersproject/networks';
 import { JsonRpcBatchProvider } from '@ethersproject/providers';
 import {
@@ -27,6 +31,11 @@ import {
   compareTestMetaOperators,
 } from '../testing.utils';
 import { registryServiceMock } from '../mock-utils';
+import {
+  WINSTON_MODULE_PROVIDER,
+  WINSTON_MODULE_NEST_PROVIDER,
+} from 'nest-winston';
+import { WinstonModule } from 'nest-winston';
 
 describe('Registry', () => {
   const provider = new JsonRpcBatchProvider(process.env.EL_RPC_URL);
@@ -313,5 +322,88 @@ describe('Registry', () => {
       await registryService.update('latest');
       expect(saveRegistryMock).toBeCalledTimes(0);
     });
+  });
+});
+
+describe('Empty registry', () => {
+  const provider = new JsonRpcBatchProvider(process.env.EL_RPC_URL);
+
+  let registryService: ValidatorRegistryService;
+  let registryStorageService: RegistryStorageService;
+
+  let moduleRef: TestingModule;
+
+  const mockCall = jest
+    .spyOn(provider, 'call')
+    .mockImplementation(async () => '');
+
+  jest
+    .spyOn(provider, 'detectNetwork')
+    .mockImplementation(async () => getNetwork('mainnet'));
+
+  beforeEach(async () => {
+    const providers = [
+      {
+        provide: WINSTON_MODULE_PROVIDER,
+        useFactory: () => ({}),
+      },
+      {
+        provide: WINSTON_MODULE_NEST_PROVIDER,
+        useFactory: () => {
+          return {
+            log: jest.fn(),
+            error: jest.fn(),
+            warn: jest.fn(),
+          };
+        },
+        inject: [WINSTON_MODULE_PROVIDER],
+      },
+    ];
+    const imports = [
+      MikroOrmModule.forRoot({
+        dbName: ':memory:',
+        type: 'sqlite',
+        allowGlobalContext: true,
+        entities: ['./packages/registry/**/*.entity.ts'],
+      }),
+      {
+        module: WinstonModule,
+        providers: providers,
+        exports: providers,
+      },
+      ValidatorRegistryModule.forFeature({ provider }),
+    ];
+
+    moduleRef = await Test.createTestingModule({
+      imports,
+      providers: [{ provide: LOGGER_PROVIDER, useValue: {} }],
+    }).compile();
+
+    registryService = moduleRef.get(ValidatorRegistryService);
+    registryStorageService = moduleRef.get(RegistryStorageService);
+
+    await registryStorageService.onModuleInit();
+  });
+
+  afterEach(async () => {
+    mockCall.mockReset();
+    await registryService.clear();
+    await registryStorageService.onModuleDestroy();
+  });
+
+  test('init on update', async () => {
+    const saveRegistryMock = jest.spyOn(registryService, 'save');
+
+    registryServiceMock(moduleRef, provider, {
+      keys,
+      meta,
+      operators,
+    });
+
+    await registryService.update('latest');
+    expect(saveRegistryMock).toBeCalledTimes(1);
+    await compareTestMeta(registryService, { keys, meta, operators });
+    await registryService.update('latest');
+    await compareTestMeta(registryService, { keys, meta, operators });
   });
 });

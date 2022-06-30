@@ -45,11 +45,11 @@ export abstract class AbstractRegistryService {
 
     @Optional()
     @Inject(REGISTRY_GLOBAL_OPTIONS_TOKEN)
-    public options?: RegistryOptions,
+    public options: RegistryOptions,
   ) {
     this.eventEmitter = new EventEmitter();
     this.cronJob = new CronJob(
-      options?.subscribeInterval || '*/10 * * * * *',
+      options.subscribeInterval || '*/10 * * * * *',
       () => this.cronHandler(),
     );
   }
