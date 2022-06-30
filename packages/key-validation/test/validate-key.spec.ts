@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
-import { validateLidoKeyForPossibleWc, PossibleWC } from '../src';
+import { validateLidoKeyForPossibleWC, PossibleWC } from '../src';
 import { CHAINS } from '@lido-nestjs/constants';
 import {
   currentWC,
@@ -16,7 +16,7 @@ describe('Validate', () => {
   };
 
   test('should validate a valid used key made with old WC for current WC and return false', async () => {
-    const res = validateLidoKeyForPossibleWc(
+    const res = validateLidoKeyForPossibleWC(
       possibleWC,
       validUsedKey,
       CHAINS.Mainnet,
@@ -27,7 +27,7 @@ describe('Validate', () => {
   });
 
   test('should validate used key made current WC for current WC and return true', async () => {
-    const res = validateLidoKeyForPossibleWc(
+    const res = validateLidoKeyForPossibleWC(
       possibleWC,
       validUsedKeyCurrentWC,
       CHAINS.Mainnet,
@@ -38,7 +38,7 @@ describe('Validate', () => {
   });
 
   test('should validate unused key made current WC for current WC and return true', async () => {
-    const res = validateLidoKeyForPossibleWc(
+    const res = validateLidoKeyForPossibleWC(
       possibleWC,
       validUnusedKeyCurrentWC,
       CHAINS.Mainnet,
@@ -49,7 +49,7 @@ describe('Validate', () => {
   });
 
   test('should validate unused key made with old WC for current WC and return false', async () => {
-    const res = validateLidoKeyForPossibleWc(
+    const res = validateLidoKeyForPossibleWC(
       possibleWC,
       invalidUnusedKey,
       CHAINS.Mainnet,

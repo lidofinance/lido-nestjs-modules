@@ -9,6 +9,7 @@ import {
   usedValidKeys as batchUsedKeys100,
   validUsedKey,
 } from './keys';
+import { getNetwork } from '@ethersproject/networks';
 
 describe('LidoKeyValidator', () => {
   function* positiveIterator(start: number, end: number) {
@@ -44,6 +45,10 @@ describe('LidoKeyValidator', () => {
     token: symbol,
   ) => {
     const provider = new JsonRpcProvider(process.env.EL_RPC_URL);
+
+    jest
+      .spyOn(provider, 'detectNetwork')
+      .mockImplementation(async () => getNetwork('mainnet'));
 
     const moduleRef = await Test.createTestingModule({
       imports: [Module.forRoot({ provider })],
@@ -96,7 +101,7 @@ describe('LidoKeyValidator', () => {
     await expect(
       async () => await keyValidator.validateKeys([validUsedKey], 400),
     ).rejects.toThrow(
-      `Genesis fork version is undefined for chain [400]. See key-validation/constants.ts`,
+      `Genesis fork version is undefined for chain [400]. See GENESIS_FORK_VERSION constant`,
     );
   });
 

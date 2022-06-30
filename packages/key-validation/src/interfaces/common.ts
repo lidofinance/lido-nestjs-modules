@@ -1,8 +1,20 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 export type Int = number;
-
 export type WithdrawalCredentialsHex = string;
 export type WithdrawalCredentialsBuffer = Buffer;
+export type Pubkey = string;
+
+export interface Key {
+  key: Pubkey;
+  depositSignature: string;
+}
+
+export interface LidoKey {
+  index?: Int;
+  key: Pubkey;
+  depositSignature: string;
+  used: boolean;
+}
 
 export type PossibleWC = {
   currentWC: [WithdrawalCredentialsHex, WithdrawalCredentialsBuffer];

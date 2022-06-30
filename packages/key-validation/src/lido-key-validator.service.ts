@@ -1,15 +1,11 @@
 import { Inject, Injectable } from '@nestjs/common';
-import {
-  LidoKeyValidatorInterface,
-  Key,
-  Pubkey,
-} from './interfaces/lido-key-validator.interface';
+import { LidoKeyValidatorInterface } from './interfaces/lido-key-validator.interface';
 import { Lido, LIDO_CONTRACT_TOKEN } from '@lido-nestjs/contracts';
 import { bufferFromHexString } from './common/buffer-hex';
 import { WITHDRAWAL_CREDENTIALS } from './constants/constants';
-import { validateLidoKeyForPossibleWc } from './common/validate';
+import { validateLidoKeyForPossibleWC } from './common/validate';
 import { CHAINS } from '@lido-nestjs/constants/src';
-import { PossibleWC } from './interfaces/common';
+import { LidoKey, PossibleWC, Pubkey } from './interfaces/common';
 
 @Injectable()
 export class LidoKeyValidator implements LidoKeyValidatorInterface {
@@ -22,37 +18,37 @@ export class LidoKeyValidator implements LidoKeyValidatorInterface {
   ) {}
 
   public async validateKey(
-    key: Key,
+    lidoKey: LidoKey,
     chainId: CHAINS,
   ): Promise<[Pubkey, boolean]> {
     const possibleWC = await this.getPossibleWithdrawalCredentialsCached(
       chainId,
     );
 
-    return validateLidoKeyForPossibleWc(possibleWC, key, chainId);
+    return validateLidoKeyForPossibleWC(possibleWC, lidoKey, chainId);
   }
 
   public async validateKeys(
-    keys: Key[],
+    lidoKeys: LidoKey[],
     chainId: CHAINS,
   ): Promise<[Pubkey, boolean][]> {
-    if (keys.length === 0) {
+    if (lidoKeys.length === 0) {
       return [];
     }
 
-    return this.validateKeysSingleThreaded(keys, chainId);
+    return this.validateKeysSingleThreaded(lidoKeys, chainId);
   }
 
   protected async validateKeysSingleThreaded(
-    keys: Key[],
+    lidoKeys: LidoKey[],
     chainId: CHAINS,
   ): Promise<[Pubkey, boolean][]> {
     const possibleWC = await this.getPossibleWithdrawalCredentialsCached(
       chainId,
     );
 
-    return keys.map((key) =>
-      validateLidoKeyForPossibleWc(possibleWC, key, chainId),
+    return lidoKeys.map((key) =>
+      validateLidoKeyForPossibleWC(possibleWC, key, chainId),
     );
   }
 

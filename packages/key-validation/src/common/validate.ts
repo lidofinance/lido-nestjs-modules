@@ -1,4 +1,3 @@
-import { Key, Pubkey } from '../interfaces/lido-key-validator.interface';
 import { CHAINS } from '@lido-nestjs/constants/src';
 import {
   DOMAIN_DEPOSIT,
@@ -10,7 +9,13 @@ import { computeDomain } from './domain';
 import { computeSigningRoot } from './compute-signing-root';
 import { DepositMessage } from '../ssz';
 import { CoordType, PublicKey, Signature, verify } from '@chainsafe/blst';
-import { PossibleWC, WithdrawalCredentialsBuffer } from '../interfaces/common';
+import {
+  Key,
+  LidoKey,
+  PossibleWC,
+  Pubkey,
+  WithdrawalCredentialsBuffer,
+} from '../interfaces/common';
 
 export const getDepositMessage = (
   publicKey: Buffer,
@@ -28,7 +33,7 @@ export const getDepositMessage = (
 };
 
 export const validateKey = (
-  key: Omit<Key, 'used' | 'index'>,
+  key: Key,
   withdrawalCredentials: WithdrawalCredentialsBuffer,
   genesisForkVersion: Buffer,
 ) => {
@@ -53,39 +58,39 @@ export const validateKey = (
   }
 };
 
-export const validateLidoKeyForPossibleWc = (
+export const validateLidoKeyForPossibleWC = (
   possibleWC: PossibleWC,
-  key: Key,
+  lidoKey: LidoKey,
   chainId: CHAINS,
 ): [Pubkey, boolean] => {
   const genesisForkVersion = GENESIS_FORK_VERSION[chainId];
 
   if (!genesisForkVersion) {
     throw new Error(
-      `Genesis fork version is undefined for chain [${chainId}]. See key-validation/constants.ts`,
+      `Genesis fork version is undefined for chain [${chainId}]. See GENESIS_FORK_VERSION constant`,
     );
   }
 
-  if (!key.used) {
+  if (!lidoKey.used) {
     return [
-      key.key,
-      validateKey(key, possibleWC.currentWC[1], genesisForkVersion),
+      lidoKey.key,
+      validateKey(lidoKey, possibleWC.currentWC[1], genesisForkVersion),
     ];
   }
 
   const resultsForCurrentWC = validateKey(
-    key,
+    lidoKey,
     possibleWC.currentWC[1],
     genesisForkVersion,
   );
 
   if (resultsForCurrentWC) {
-    return [key.key, resultsForCurrentWC];
+    return [lidoKey.key, resultsForCurrentWC];
   }
 
   const resultsForOldWC = possibleWC.previousWC.map((wc) =>
-    validateKey(key, wc[1], genesisForkVersion),
+    validateKey(lidoKey, wc[1], genesisForkVersion),
   );
 
-  return [key.key, resultsForOldWC.some((x) => x)];
+  return [lidoKey.key, resultsForOldWC.some((x) => x)];
 };
