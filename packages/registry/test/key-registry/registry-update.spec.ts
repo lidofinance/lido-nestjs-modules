@@ -1,4 +1,4 @@
-import { Test } from '@nestjs/testing';
+import { Test, TestingModule } from '@nestjs/testing';
 import { MikroOrmModule } from '@mikro-orm/nestjs';
 import { nullTransport, LoggerModule } from '@lido-nestjs/logger';
 import { getNetwork } from '@ethersproject/networks';
@@ -10,8 +10,6 @@ import {
   RegistryKeyStorageService,
   RegistryMetaStorageService,
   RegistryOperatorStorageService,
-  RegistryKeyFetchService,
-  RegistryKey,
 } from '../../src/';
 import {
   keys,
@@ -28,6 +26,7 @@ import {
   compareTestMetaKeys,
   compareTestMetaOperators,
 } from '../testing.utils';
+import { registryServiceMock } from '../mock-utils';
 
 describe('Registry', () => {
   const provider = new JsonRpcBatchProvider(process.env.EL_RPC_URL);
@@ -39,7 +38,7 @@ describe('Registry', () => {
   let metaStorageService: RegistryMetaStorageService;
   let operatorStorageService: RegistryOperatorStorageService;
 
-  let fetchKey: RegistryKeyFetchService;
+  let moduleRef: TestingModule;
 
   const mockCall = jest
     .spyOn(provider, 'call')
@@ -61,15 +60,13 @@ describe('Registry', () => {
       KeyRegistryModule.forFeature({ provider }),
     ];
 
-    const moduleRef = await Test.createTestingModule({ imports }).compile();
+    moduleRef = await Test.createTestingModule({ imports }).compile();
     registryService = moduleRef.get(KeyRegistryService);
     registryStorageService = moduleRef.get(RegistryStorageService);
 
     keyStorageService = moduleRef.get(RegistryKeyStorageService);
     metaStorageService = moduleRef.get(RegistryMetaStorageService);
     operatorStorageService = moduleRef.get(RegistryOperatorStorageService);
-
-    fetchKey = moduleRef.get(RegistryKeyFetchService);
 
     await registryStorageService.onModuleInit();
 
@@ -87,13 +84,12 @@ describe('Registry', () => {
   describe('update', () => {
     test('same data', async () => {
       const saveRegistryMock = jest.spyOn(registryService, 'save');
-      jest.spyOn(fetchKey, 'fetch').mockImplementation(async () => keys);
-      jest
-        .spyOn(registryService, 'getMetaDataFromContract')
-        .mockImplementation(async () => meta);
-      jest
-        .spyOn(registryService, 'getOperatorsFromContract')
-        .mockImplementation(async () => operators);
+
+      registryServiceMock(moduleRef, provider, {
+        keys,
+        meta,
+        operators,
+      });
 
       await registryService.update('latest');
       expect(saveRegistryMock).toBeCalledTimes(0);
@@ -102,15 +98,12 @@ describe('Registry', () => {
 
     test('new key without keysOpIndex updating', async () => {
       const saveRegistryMock = jest.spyOn(registryService, 'save');
-      jest
-        .spyOn(fetchKey, 'fetch')
-        .mockImplementation(async () => [...keys, newKey]);
-      jest
-        .spyOn(registryService, 'getMetaDataFromContract')
-        .mockImplementation(async () => meta);
-      jest
-        .spyOn(registryService, 'getOperatorsFromContract')
-        .mockImplementation(async () => operators);
+
+      registryServiceMock(moduleRef, provider, {
+        keys: [...keys, newKey],
+        meta,
+        operators,
+      });
 
       await registryService.update('latest');
       expect(saveRegistryMock).toBeCalledTimes(0);
@@ -123,20 +116,12 @@ describe('Registry', () => {
         keysOpIndex: meta.keysOpIndex + 1,
       };
       const saveRegistryMock = jest.spyOn(registryService, 'save');
-      jest
-        .spyOn(fetchKey, 'fetchOne')
-        .mockImplementation(async (operatorIndex, keyIndex) => {
-          return newKeys.find(
-            (key) =>
-              key.index === keyIndex && key.operatorIndex === operatorIndex,
-          ) as RegistryKey;
-        });
-      jest
-        .spyOn(registryService, 'getMetaDataFromContract')
-        .mockImplementation(async () => newMeta);
-      jest
-        .spyOn(registryService, 'getOperatorsFromContract')
-        .mockImplementation(async () => operators);
+
+      registryServiceMock(moduleRef, provider, {
+        keys: newKeys,
+        meta: newMeta,
+        operators,
+      });
 
       await registryService.update('latest');
       expect(saveRegistryMock).toBeCalledTimes(1);
@@ -155,21 +140,11 @@ describe('Registry', () => {
       };
       const saveRegistryMock = jest.spyOn(registryService, 'save');
 
-      jest
-        .spyOn(fetchKey, 'fetchOne')
-        .mockImplementation(async (operatorIndex, keyIndex) => {
-          return newKeys.find(
-            (key) =>
-              key.index === keyIndex && key.operatorIndex === operatorIndex,
-          ) as RegistryKey;
-        });
-
-      jest
-        .spyOn(registryService, 'getMetaDataFromContract')
-        .mockImplementation(async () => newMeta);
-      jest
-        .spyOn(registryService, 'getOperatorsFromContract')
-        .mockImplementation(async () => operators);
+      registryServiceMock(moduleRef, provider, {
+        keys: newKeys,
+        meta: newMeta,
+        operators,
+      });
 
       await registryService.update('latest');
       expect(saveRegistryMock).toBeCalledTimes(1);
@@ -191,21 +166,11 @@ describe('Registry', () => {
 
       const saveRegistryMock = jest.spyOn(registryService, 'save');
 
-      jest
-        .spyOn(fetchKey, 'fetchOne')
-        .mockImplementation(async (operatorIndex, keyIndex) => {
-          return newKeys.find(
-            (key) =>
-              key.index === keyIndex && key.operatorIndex === operatorIndex,
-          ) as RegistryKey;
-        });
-
-      jest
-        .spyOn(registryService, 'getMetaDataFromContract')
-        .mockImplementation(async () => newMeta);
-      jest
-        .spyOn(registryService, 'getOperatorsFromContract')
-        .mockImplementation(async () => newOperators);
+      registryServiceMock(moduleRef, provider, {
+        keys: newKeys,
+        meta: newMeta,
+        operators: newOperators,
+      });
 
       await registryService.update('latest');
       expect(saveRegistryMock).toBeCalledTimes(1);
@@ -226,21 +191,11 @@ describe('Registry', () => {
 
       const saveRegistryMock = jest.spyOn(registryService, 'save');
 
-      jest
-        .spyOn(fetchKey, 'fetchOne')
-        .mockImplementation(async (operatorIndex, keyIndex) => {
-          return keys.find(
-            (key) =>
-              key.index === keyIndex && key.operatorIndex === operatorIndex,
-          ) as RegistryKey;
-        });
-
-      jest
-        .spyOn(registryService, 'getMetaDataFromContract')
-        .mockImplementation(async () => newMeta);
-      jest
-        .spyOn(registryService, 'getOperatorsFromContract')
-        .mockImplementation(async () => newOperators);
+      registryServiceMock(moduleRef, provider, {
+        keys,
+        meta: newMeta,
+        operators: newOperators,
+      });
 
       await registryService.update('latest');
       expect(saveRegistryMock).toBeCalledTimes(1);
@@ -261,21 +216,11 @@ describe('Registry', () => {
 
       const saveRegistryMock = jest.spyOn(registryService, 'save');
 
-      jest
-        .spyOn(fetchKey, 'fetchOne')
-        .mockImplementation(async (operatorIndex, keyIndex) => {
-          return keys.find(
-            (key) =>
-              key.index === keyIndex && key.operatorIndex === operatorIndex,
-          ) as RegistryKey;
-        });
-
-      jest
-        .spyOn(registryService, 'getMetaDataFromContract')
-        .mockImplementation(async () => newMeta);
-      jest
-        .spyOn(registryService, 'getOperatorsFromContract')
-        .mockImplementation(async () => newOperators);
+      registryServiceMock(moduleRef, provider, {
+        keys,
+        meta: newMeta,
+        operators: newOperators,
+      });
 
       await registryService.update('latest');
       expect(saveRegistryMock).toBeCalledTimes(1);
@@ -297,21 +242,11 @@ describe('Registry', () => {
 
       const saveRegistryMock = jest.spyOn(registryService, 'save');
 
-      jest
-        .spyOn(fetchKey, 'fetchOne')
-        .mockImplementation(async (operatorIndex, keyIndex) => {
-          return keys.find(
-            (key) =>
-              key.index === keyIndex && key.operatorIndex === operatorIndex,
-          ) as RegistryKey;
-        });
-
-      jest
-        .spyOn(registryService, 'getMetaDataFromContract')
-        .mockImplementation(async () => newMeta);
-      jest
-        .spyOn(registryService, 'getOperatorsFromContract')
-        .mockImplementation(async () => newOperators);
+      registryServiceMock(moduleRef, provider, {
+        keys,
+        meta: newMeta,
+        operators: newOperators,
+      });
 
       await registryService.update('latest');
       expect(saveRegistryMock).toBeCalledTimes(1);
@@ -333,21 +268,11 @@ describe('Registry', () => {
 
       const saveRegistryMock = jest.spyOn(registryService, 'save');
 
-      jest
-        .spyOn(fetchKey, 'fetchOne')
-        .mockImplementation(async (operatorIndex, keyIndex) => {
-          return keys.find(
-            (key) =>
-              key.index === keyIndex && key.operatorIndex === operatorIndex,
-          ) as RegistryKey;
-        });
-
-      jest
-        .spyOn(registryService, 'getMetaDataFromContract')
-        .mockImplementation(async () => newMeta);
-      jest
-        .spyOn(registryService, 'getOperatorsFromContract')
-        .mockImplementation(async () => newOperators);
+      registryServiceMock(moduleRef, provider, {
+        keys,
+        meta: newMeta,
+        operators: newOperators,
+      });
 
       await registryService.update('latest');
       expect(saveRegistryMock).toBeCalledTimes(1);
