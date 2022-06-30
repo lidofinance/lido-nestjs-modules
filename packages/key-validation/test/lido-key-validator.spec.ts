@@ -1,15 +1,15 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { CHAINS } from '@lido-nestjs/constants';
 import { LidoKeyValidator } from '../src';
-import { JsonRpcProvider } from '@ethersproject/providers';
-import { Test } from '@nestjs/testing';
-import { Lido, LidoContractModule } from '@lido-nestjs/contracts';
+import { Lido } from '@lido-nestjs/contracts';
 import {
+  currentWC,
   invalidUsedKey,
   usedValidKeys as batchUsedKeys100,
   validUsedKey,
 } from './keys';
-import { getNetwork } from '@ethersproject/networks';
+import { performance } from 'perf_hooks';
 
 describe('LidoKeyValidator', () => {
   function* positiveIterator(start: number, end: number) {
@@ -40,28 +40,16 @@ describe('LidoKeyValidator', () => {
 
   const chainId: CHAINS = CHAINS.Mainnet;
 
-  const getContract = async (
-    Module: typeof LidoContractModule,
-    token: symbol,
-  ) => {
-    const provider = new JsonRpcProvider(process.env.EL_RPC_URL);
+  const getLidoContract = async () => {
+    const contract = {
+      getWithdrawalCredentials: async () => currentWC,
+    };
 
-    jest
-      .spyOn(provider, 'detectNetwork')
-      .mockImplementation(async () => getNetwork('mainnet'));
-
-    const moduleRef = await Test.createTestingModule({
-      imports: [Module.forRoot({ provider })],
-    }).compile();
-
-    return moduleRef.get(token);
+    return <Lido>(<any>contract);
   };
 
   test('should validate empty array', async () => {
-    const lido: Lido = await getContract(
-      LidoContractModule,
-      LidoContractModule.contractToken,
-    );
+    const lido: Lido = await getLidoContract();
     const keyValidator = new LidoKeyValidator(lido);
 
     const [res, time] = await withTimer(() =>
@@ -73,10 +61,7 @@ describe('LidoKeyValidator', () => {
   });
 
   test('should validate one valid used key', async () => {
-    const lido: Lido = await getContract(
-      LidoContractModule,
-      LidoContractModule.contractToken,
-    );
+    const lido: Lido = await getLidoContract();
     const keyValidator = new LidoKeyValidator(lido);
 
     // WC cache warm up
@@ -92,10 +77,7 @@ describe('LidoKeyValidator', () => {
   });
 
   test('should throw error for unsupported chain', async () => {
-    const lido: Lido = await getContract(
-      LidoContractModule,
-      LidoContractModule.contractToken,
-    );
+    const lido: Lido = await getLidoContract();
     const keyValidator = new LidoKeyValidator(lido);
 
     await expect(
@@ -106,10 +88,7 @@ describe('LidoKeyValidator', () => {
   });
 
   test('should work with valid keys', async () => {
-    const lido: Lido = await getContract(
-      LidoContractModule,
-      LidoContractModule.contractToken,
-    );
+    const lido: Lido = await getLidoContract();
 
     const keyValidator = new LidoKeyValidator(lido);
     const [results, time] = await withTimer(() =>
@@ -121,10 +100,7 @@ describe('LidoKeyValidator', () => {
   });
 
   test('should return false on invalid key', async () => {
-    const lido: Lido = await getContract(
-      LidoContractModule,
-      LidoContractModule.contractToken,
-    );
+    const lido: Lido = await getLidoContract();
 
     const keyValidator = new LidoKeyValidator(lido);
     const [results, time] = await withTimer(() =>
@@ -139,10 +115,7 @@ describe('LidoKeyValidator', () => {
   });
 
   test('should return true on valid key', async () => {
-    const lido: Lido = await getContract(
-      LidoContractModule,
-      LidoContractModule.contractToken,
-    );
+    const lido: Lido = await getLidoContract();
 
     const keyValidator = new LidoKeyValidator(lido);
     const [results, time] = await withTimer(() =>
@@ -157,10 +130,7 @@ describe('LidoKeyValidator', () => {
   });
 
   test('should benchmark 10k keys', async () => {
-    const lido: Lido = await getContract(
-      LidoContractModule,
-      LidoContractModule.contractToken,
-    );
+    const lido: Lido = await getLidoContract();
 
     const keyValidator = new LidoKeyValidator(lido);
     const keys = range(0, 100)
