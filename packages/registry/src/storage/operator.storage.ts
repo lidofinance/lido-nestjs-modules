@@ -1,3 +1,4 @@
+import { QueryOrder } from '@mikro-orm/core';
 import { Injectable } from '@nestjs/common';
 import { RegistryOperator } from './operator.entity';
 import { RegistryOperatorRepository } from './operator.repository';
@@ -8,7 +9,9 @@ export class RegistryOperatorStorageService {
 
   /** find all operators */
   async findAll(): Promise<RegistryOperator[]> {
-    return await this.repository.findAll();
+    return await this.repository.findAll({
+      orderBy: [{ index: QueryOrder.ASC }],
+    });
   }
 
   /** find operator by index */
