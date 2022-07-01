@@ -1,3 +1,4 @@
+import { QueryOrder } from '@mikro-orm/core';
 import { Injectable } from '@nestjs/common';
 import { RegistryKey } from './key.entity';
 import { RegistryKeyRepository } from './key.repository';
@@ -8,7 +9,9 @@ export class RegistryKeyStorageService {
 
   /** find all keys */
   async findAll(): Promise<RegistryKey[]> {
-    return await this.repository.findAll();
+    return await this.repository.findAll({
+      orderBy: [{ operatorIndex: QueryOrder.ASC }, { index: QueryOrder.ASC }],
+    });
   }
 
   /** find used keys */

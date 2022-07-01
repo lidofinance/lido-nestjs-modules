@@ -1,5 +1,3 @@
-/* TODO: add tests */
-/* istanbul ignore file */
 import { Inject, Injectable, LoggerService, Optional } from '@nestjs/common';
 import { Registry, REGISTRY_CONTRACT_TOKEN } from '@lido-nestjs/contracts';
 import { EntityManager } from '@mikro-orm/knex';
@@ -26,6 +24,7 @@ import { compareOperators } from '../utils/operator.utils';
 
 import { REGISTRY_GLOBAL_OPTIONS_TOKEN } from './constants';
 import { RegistryOptions } from './interfaces/module.interface';
+import { chunk } from '@lido-nestjs/utils';
 
 @Injectable()
 export abstract class AbstractRegistryService {
@@ -51,7 +50,7 @@ export abstract class AbstractRegistryService {
     this.eventEmitter = new EventEmitter();
     this.cronJob = new CronJob(
       options?.subscribeInterval || '*/10 * * * * *',
-      this.cronHandler,
+      () => this.cronHandler(),
     );
   }
 
@@ -151,7 +150,6 @@ export abstract class AbstractRegistryService {
   }
 
   /** contract */
-
   /** returns the meta data from the contract */
   public async getMetaDataFromContract(
     blockHashOrBlockTag: string | number,
@@ -202,8 +200,15 @@ export abstract class AbstractRegistryService {
           ? prevOperator.usedSigningKeys
           : 0;
 
-        const fromIndex = unchangedKeysMaxIndex;
+        // get the right border up to which the keys should be updated
+        // it's different for different scenarios
         const toIndex = this.getToIndex(currOperator);
+
+        // fromIndex may become larger than toIndex if used keys are deleted
+        // this should not happen in mainnet, but sometimes keys can be deleted in testnet by modification of the contract
+        const fromIndex =
+          unchangedKeysMaxIndex <= toIndex ? unchangedKeysMaxIndex : 0;
+
         const operatorIndex = currOperator.index;
         const overrides = { blockTag: { blockHash } };
 
@@ -225,7 +230,7 @@ export abstract class AbstractRegistryService {
       }),
     );
 
-    return keysByOperator.flat();
+    return keysByOperator.flat().filter((key) => key);
   }
 
   /** storage */
@@ -240,10 +245,12 @@ export abstract class AbstractRegistryService {
     return await this.operatorStorage.findAll();
   }
 
+  /** returns all the keys from storage */
   public async getOperatorsKeysFromStorage() {
     return await this.keyStorage.findAll();
   }
 
+  /** saves all the data to the db */
   public async save(
     updatedKeys: RegistryKey[],
     currentOperators: RegistryOperator[],
@@ -251,20 +258,42 @@ export abstract class AbstractRegistryService {
   ) {
     // save all data in a transaction
     await this.entityManager.transactional(async (entityManager) => {
-      await entityManager
-        .createQueryBuilder(RegistryKey)
-        .insert(updatedKeys)
-        .onConflict(['index', 'operator_index'])
-        .merge()
-        .execute();
+      await Promise.all(
+        // remove all keys from the database that are greater than the total number of keys
+        // it's needed to clear the list in db when removing keys from the contract
+        currentOperators.map(async (operator) => {
+          await entityManager.nativeDelete(RegistryKey, {
+            index: { $gte: operator.totalSigningKeys },
+            operatorIndex: operator.index,
+          });
+        }),
+      );
 
-      await entityManager
-        .createQueryBuilder(RegistryOperator)
-        .insert(currentOperators)
-        .onConflict('index')
-        .merge()
-        .execute();
+      await Promise.all(
+        // 500 — SQLite limit in insert operation
+        chunk(updatedKeys, 499).map(async (keysChunk) => {
+          await entityManager
+            .createQueryBuilder(RegistryKey)
+            .insert(keysChunk)
+            .onConflict(['index', 'operator_index'])
+            .merge()
+            .execute();
+        }),
+      );
 
+      await Promise.all(
+        // 500 — SQLite limit in insert operation
+        chunk(currentOperators, 499).map(async (operatorsChunk) => {
+          await entityManager
+            .createQueryBuilder(RegistryOperator)
+            .insert(operatorsChunk)
+            .onConflict('index')
+            .merge()
+            .execute();
+        }),
+      );
+
+      // replace metadata with new one
       await entityManager.nativeDelete(RegistryMeta, {});
       await entityManager.persist(new RegistryMeta(currMeta));
     });

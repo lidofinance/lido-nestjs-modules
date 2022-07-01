@@ -71,7 +71,7 @@ describe('Sync module initializing', () => {
         entities: ['./packages/registry/**/*.entity.ts'],
       }),
       LoggerModule.forRoot({ transports: [nullTransport()] }),
-      KeyRegistryModule.forFeature({ subscribeInterval: '*/12 * * * * *' }),
+      KeyRegistryModule.forFeature(),
     ];
 
     const metadata = {

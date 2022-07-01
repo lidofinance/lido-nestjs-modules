@@ -1,18 +1,26 @@
 import { Test } from '@nestjs/testing';
 import { MikroOrmModule } from '@mikro-orm/nestjs';
-import { simpleTransport, LoggerModule } from '@lido-nestjs/logger';
+import { nullTransport, LoggerModule } from '@lido-nestjs/logger';
 import {
   BatchProviderModule,
   ExtendedJsonRpcBatchProvider,
 } from '@lido-nestjs/execution';
+
 import {
-  ValidatorRegistryModule,
-  ValidatorRegistryService,
+  KeyRegistryModule,
+  KeyRegistryService,
   RegistryStorageService,
 } from '../../src/';
 
+import {
+  compareTestMetaData,
+  compareTestMetaOperators,
+} from '../testing.utils';
+
+import { meta, operators } from '../fixtures/connect.fixture';
+
 describe('Registry', () => {
-  let registryService: ValidatorRegistryService;
+  let registryService: KeyRegistryService;
   let storageService: RegistryStorageService;
 
   beforeEach(async () => {
@@ -24,8 +32,8 @@ describe('Registry', () => {
         entities: ['./packages/registry/**/*.entity.ts'],
       }),
       BatchProviderModule.forRoot({ url: process.env.EL_RPC_URL as string }),
-      LoggerModule.forRoot({ transports: [simpleTransport()] }),
-      ValidatorRegistryModule.forFeatureAsync({
+      LoggerModule.forRoot({ transports: [nullTransport()] }),
+      KeyRegistryModule.forFeatureAsync({
         inject: [ExtendedJsonRpcBatchProvider],
         async useFactory(provider: ExtendedJsonRpcBatchProvider) {
           return { provider };
@@ -33,26 +41,27 @@ describe('Registry', () => {
       }),
     ];
     const moduleRef = await Test.createTestingModule({ imports }).compile();
-    registryService = moduleRef.get(ValidatorRegistryService);
+    registryService = moduleRef.get(KeyRegistryService);
     storageService = moduleRef.get(RegistryStorageService);
 
     await storageService.onModuleInit();
   });
 
   afterEach(async () => {
+    await registryService.clear();
     await storageService.onModuleDestroy();
   });
 
-  test.skip('Key fetching', async () => {
-    await registryService.update(13_600_000);
-    const operators = await registryService.getOperatorsFromStorage();
-    const keys = await registryService.getValidatorsKeysFromStorage();
-
-    expect(operators.length).toBe(14);
-    expect(keys.length).toBe(43976);
-  }, 600_000);
-
   test('Update', async () => {
-    // TODO: mock fetch data, test updating
-  });
+    await registryService.update(6912872);
+
+    await compareTestMetaData(registryService, { meta: meta });
+
+    await compareTestMetaOperators(registryService, {
+      operators: operators,
+    });
+
+    const keys = await registryService.getOperatorsKeysFromStorage();
+    expect(keys).toHaveLength(1036);
+  }, 200_000);
 });
