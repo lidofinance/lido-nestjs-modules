@@ -17,12 +17,7 @@ import {
   compareTestMetaOperators,
 } from '../testing.utils';
 
-import {
-  firstKey,
-  lastKey,
-  meta,
-  operators,
-} from '../fixtures/connect.fixture';
+import { meta, operators } from '../fixtures/connect.fixture';
 
 describe('Registry', () => {
   let registryService: KeyRegistryService;
@@ -53,6 +48,7 @@ describe('Registry', () => {
   });
 
   afterEach(async () => {
+    await registryService.clear();
     await storageService.onModuleDestroy();
   });
 
@@ -65,12 +61,7 @@ describe('Registry', () => {
       operators: operators,
     });
 
-    const keys = await registryService.getAllKeysFromStorage();
-
-    const firstKeyFromDB = keys[0];
-    const lastKeyFromDB = keys[keys.length - 1];
-
-    expect(firstKeyFromDB).toEqual(firstKey);
-    expect(lastKeyFromDB).toEqual(lastKey);
+    const keys = await registryService.getOperatorsKeysFromStorage();
+    expect(keys).toHaveLength(1036);
   }, 200_000);
 });

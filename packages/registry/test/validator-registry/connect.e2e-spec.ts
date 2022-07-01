@@ -7,8 +7,8 @@ import {
 } from '@lido-nestjs/execution';
 
 import {
-  KeyRegistryModule,
-  KeyRegistryService,
+  ValidatorRegistryModule,
+  ValidatorRegistryService,
   RegistryStorageService,
 } from '../../src/';
 
@@ -17,15 +17,10 @@ import {
   compareTestMetaOperators,
 } from '../testing.utils';
 
-import {
-  firstKey,
-  lastKey,
-  meta,
-  operators,
-} from '../fixtures/connect.fixture';
+import { meta, operators } from '../fixtures/connect.fixture';
 
 describe('Registry', () => {
-  let registryService: KeyRegistryService;
+  let registryService: ValidatorRegistryService;
   let storageService: RegistryStorageService;
 
   beforeEach(async () => {
@@ -38,7 +33,7 @@ describe('Registry', () => {
       }),
       BatchProviderModule.forRoot({ url: process.env.EL_RPC_URL as string }),
       LoggerModule.forRoot({ transports: [nullTransport()] }),
-      KeyRegistryModule.forFeatureAsync({
+      ValidatorRegistryModule.forFeatureAsync({
         inject: [ExtendedJsonRpcBatchProvider],
         async useFactory(provider: ExtendedJsonRpcBatchProvider) {
           return { provider };
@@ -46,13 +41,14 @@ describe('Registry', () => {
       }),
     ];
     const moduleRef = await Test.createTestingModule({ imports }).compile();
-    registryService = moduleRef.get(KeyRegistryService);
+    registryService = moduleRef.get(ValidatorRegistryService);
     storageService = moduleRef.get(RegistryStorageService);
 
     await storageService.onModuleInit();
   });
 
   afterEach(async () => {
+    await registryService.clear();
     await storageService.onModuleDestroy();
   });
 
@@ -65,12 +61,7 @@ describe('Registry', () => {
       operators: operators,
     });
 
-    const keys = await registryService.getAllKeysFromStorage();
-
-    const firstKeyFromDB = keys[0];
-    const lastKeyFromDB = keys[keys.length - 1];
-
-    expect(firstKeyFromDB).toEqual(firstKey);
-    expect(lastKeyFromDB).toEqual(lastKey);
+    const keys = await registryService.getOperatorsKeysFromStorage();
+    expect(keys).toHaveLength(250);
   }, 200_000);
 });
