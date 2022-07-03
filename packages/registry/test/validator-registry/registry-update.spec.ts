@@ -4,7 +4,7 @@ import {
   nullTransport,
   LoggerModule,
   LOGGER_PROVIDER,
-  createMockLogger,
+  MockLoggerModule,
 } from '@lido-nestjs/logger';
 import { getNetwork } from '@ethersproject/networks';
 import { JsonRpcBatchProvider } from '@ethersproject/providers';
@@ -324,7 +324,7 @@ describe('Empty registry', () => {
         allowGlobalContext: true,
         entities: ['./packages/registry/**/*.entity.ts'],
       }),
-      createMockLogger({
+      MockLoggerModule.forRoot({
         log: jest.fn(),
         error: jest.fn(),
         warn: jest.fn(),
