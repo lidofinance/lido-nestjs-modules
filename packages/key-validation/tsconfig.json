@@ -1,3 +1,4 @@
 {
-  "extends": "../../tsconfig.json"
+  "extends": "../../tsconfig.json",
+  "files": ["./src/worker/lido-key-validator.worker.ts"]
 }

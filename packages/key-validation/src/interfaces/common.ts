@@ -9,6 +9,12 @@ export interface Key {
   depositSignature: string;
 }
 
+export interface KeyWithWC {
+  key: Pubkey;
+  depositSignature: string;
+  wc: WithdrawalCredentialsHex;
+}
+
 export interface LidoKey {
   index?: Int;
   key: Pubkey;

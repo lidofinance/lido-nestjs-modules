@@ -1,16 +1,22 @@
+import * as path from 'path';
 import { Inject, Injectable } from '@nestjs/common';
 import { LidoKeyValidatorInterface } from './interfaces/lido-key-validator.interface';
 import { Lido, LIDO_CONTRACT_TOKEN } from '@lido-nestjs/contracts';
 import { bufferFromHexString } from './common/buffer-hex';
 import { WITHDRAWAL_CREDENTIALS } from './constants/constants';
-import { validateLidoKeyForPossibleWC } from './common/validate-one';
 import { CHAINS } from '@lido-nestjs/constants/src';
 import { LidoKey, PossibleWC, Pubkey } from './interfaces/common';
+import Piscina from 'piscina';
+import { partition } from './common/partition';
+import worker from './worker/lido-key-validator.worker';
+import * as os from 'os';
 import { ImplementsAtRuntime } from '@lido-nestjs/di';
 
 @Injectable()
 @ImplementsAtRuntime(LidoKeyValidatorInterface)
-export class LidoKeyValidator implements LidoKeyValidatorInterface {
+export class MultithreadedLidoKeyValidator
+  implements LidoKeyValidatorInterface
+{
   private possibleWithdrawalCredentialsCache: {
     [chainId: number]: Promise<PossibleWC> | undefined;
   } = {};
@@ -27,7 +33,7 @@ export class LidoKeyValidator implements LidoKeyValidatorInterface {
       chainId,
     );
 
-    return validateLidoKeyForPossibleWC(possibleWC, lidoKey, chainId);
+    return worker({ lidoKeys: [lidoKey], chainId, possibleWC })[0];
   }
 
   public async validateKeys(
@@ -38,10 +44,10 @@ export class LidoKeyValidator implements LidoKeyValidatorInterface {
       return [];
     }
 
-    return this.validateKeysSingleThreaded(lidoKeys, chainId);
+    return this.validateKeysMultiThreaded(lidoKeys, chainId);
   }
 
-  protected async validateKeysSingleThreaded(
+  protected async validateKeysMultiThreaded(
     lidoKeys: LidoKey[],
     chainId: CHAINS,
   ): Promise<[Pubkey, boolean][]> {
@@ -49,9 +55,26 @@ export class LidoKeyValidator implements LidoKeyValidatorInterface {
       chainId,
     );
 
-    return lidoKeys.map((key) =>
-      validateLidoKeyForPossibleWC(possibleWC, key, chainId),
+    const partitions = partition(lidoKeys, os.cpus().length, 100);
+
+    /* istanbul ignore next */
+    const filename = process.env.TS_JEST
+      ? path.resolve(__dirname, '../dist/worker/lido-key-validator.worker.js')
+      : path.resolve(__dirname, './worker/lido-key-validator.worker.js');
+
+    const threadPool = new Piscina({
+      filename: filename,
+    });
+
+    const result = await Promise.all(
+      partitions.map((lidoKeysPart) =>
+        threadPool.run({ possibleWC, lidoKeys: lidoKeysPart, chainId }),
+      ),
     );
+
+    await threadPool.destroy();
+
+    return result.reduce((acc, x) => [...acc, ...x], []);
   }
 
   protected async getPossibleWithdrawalCredentialsCached(

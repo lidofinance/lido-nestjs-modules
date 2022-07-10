@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { CHAINS } from '@lido-nestjs/constants';
-import { LidoKeyValidator } from '../src';
+import { MultithreadedLidoKeyValidator } from '../src';
 import { Lido } from '@lido-nestjs/contracts';
 import {
   currentWC,
@@ -11,7 +11,9 @@ import {
 } from './keys';
 import { range, withTimer } from './utils';
 
-describe('LidoKeyValidator', () => {
+describe('MultithreadedLidoKeyValidator', () => {
+  jest.setTimeout(10000);
+
   const chainId: CHAINS = CHAINS.Mainnet;
 
   const getLidoContract = async () => {
@@ -24,7 +26,7 @@ describe('LidoKeyValidator', () => {
 
   test('should validate empty array immediately', async () => {
     const lido: Lido = await getLidoContract();
-    const keyValidator = new LidoKeyValidator(lido);
+    const keyValidator = new MultithreadedLidoKeyValidator(lido);
 
     const [res, time] = await withTimer(() =>
       keyValidator.validateKeys([], chainId),
@@ -36,7 +38,7 @@ describe('LidoKeyValidator', () => {
 
   test('should validate one valid used key', async () => {
     const lido: Lido = await getLidoContract();
-    const keyValidator = new LidoKeyValidator(lido);
+    const keyValidator = new MultithreadedLidoKeyValidator(lido);
 
     // WC cache warm up
     await keyValidator.validateKey(validUsedKey, chainId);
@@ -52,7 +54,7 @@ describe('LidoKeyValidator', () => {
 
   test('should throw error for unsupported chain', async () => {
     const lido: Lido = await getLidoContract();
-    const keyValidator = new LidoKeyValidator(lido);
+    const keyValidator = new MultithreadedLidoKeyValidator(lido);
 
     await expect(
       async () => await keyValidator.validateKeys([validUsedKey], 400),
@@ -64,7 +66,7 @@ describe('LidoKeyValidator', () => {
   test('should work with valid keys', async () => {
     const lido: Lido = await getLidoContract();
 
-    const keyValidator = new LidoKeyValidator(lido);
+    const keyValidator = new MultithreadedLidoKeyValidator(lido);
     const [results, time] = await withTimer(() =>
       keyValidator.validateKeys(batchUsedKeys100, chainId),
     );
@@ -76,7 +78,7 @@ describe('LidoKeyValidator', () => {
   test('should return false on invalid key', async () => {
     const lido: Lido = await getLidoContract();
 
-    const keyValidator = new LidoKeyValidator(lido);
+    const keyValidator = new MultithreadedLidoKeyValidator(lido);
     const [results, time] = await withTimer(() =>
       keyValidator.validateKeys([invalidUsedKey], chainId),
     );
@@ -91,7 +93,7 @@ describe('LidoKeyValidator', () => {
   test('should return true on valid key', async () => {
     const lido: Lido = await getLidoContract();
 
-    const keyValidator = new LidoKeyValidator(lido);
+    const keyValidator = new MultithreadedLidoKeyValidator(lido);
     const [results, time] = await withTimer(() =>
       keyValidator.validateKeys([validUsedKey], chainId),
     );
@@ -106,7 +108,7 @@ describe('LidoKeyValidator', () => {
   test('should benchmark 10k keys', async () => {
     const lido: Lido = await getLidoContract();
 
-    const keyValidator = new LidoKeyValidator(lido);
+    const keyValidator = new MultithreadedLidoKeyValidator(lido);
     const keys = range(0, 100)
       .map(() => batchUsedKeys100)
       .flat(1);
@@ -119,6 +121,6 @@ describe('LidoKeyValidator', () => {
     );
 
     expect(results.length).toBe(10000);
-    expect(time).toBeLessThan(60); // 60 seconds
+    expect(time).toBeLessThan(10); // 10 seconds
   });
 });

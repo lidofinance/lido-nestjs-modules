@@ -9,7 +9,7 @@ import {
   validUsedKeyCurrentWC,
 } from './keys';
 
-describe('Validate', () => {
+describe('validateKey function', () => {
   const possibleWC: PossibleWC = {
     currentWC: [currentWC, Buffer.from(currentWC.replace('0x', ''), 'hex')],
     previousWC: [],
