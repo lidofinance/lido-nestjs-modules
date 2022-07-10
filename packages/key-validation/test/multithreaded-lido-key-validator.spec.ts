@@ -12,7 +12,7 @@ import {
 import { range, withTimer } from './utils';
 
 describe('MultithreadedLidoKeyValidator', () => {
-  jest.setTimeout(10000);
+  jest.setTimeout(30000);
 
   const chainId: CHAINS = CHAINS.Mainnet;
 
@@ -121,6 +121,6 @@ describe('MultithreadedLidoKeyValidator', () => {
     );
 
     expect(results.length).toBe(10000);
-    expect(time).toBeLessThan(10); // 10 seconds
+    expect(time).toBeLessThan(30); // 30 seconds
   });
 });

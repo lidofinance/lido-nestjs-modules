@@ -5,6 +5,8 @@ import { range, withTimer } from './utils';
 import { GENESIS_FORK_VERSION, KeyWithWC, validateKeys } from '../src';
 
 describe('validateKeys function', () => {
+  jest.setTimeout(30000);
+
   const forkVersion: Buffer =
     GENESIS_FORK_VERSION[CHAINS.Mainnet] ?? Buffer.of(0);
 
@@ -40,6 +42,6 @@ describe('validateKeys function', () => {
     );
 
     expect(res.length).toBe(10000);
-    expect(time).toBeLessThan(10); // 10 seconds
+    expect(time).toBeLessThan(30); // 30 seconds
   });
 });

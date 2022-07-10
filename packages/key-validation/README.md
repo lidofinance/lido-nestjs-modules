@@ -111,7 +111,7 @@ import {
 } from '@lido-nestjs/key-validation';
 
 @Module({
-  imports: [LidoKeyValidatorModule.forRoot()],
+  imports: [LidoKeyValidatorModule.forRoot({ multithreaded: true })],
   providers: [MyService],
 })
 export class MyModule {}
