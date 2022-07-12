@@ -109,27 +109,6 @@ describe('Registry', () => {
       expect(saveRegistryMock).toBeCalledTimes(0);
     });
 
-    test('keys is not added', async () => {
-      const newKeys = [...keys, newKey];
-      const newMeta = {
-        ...meta,
-        keysOpIndex: meta.keysOpIndex + 1,
-      };
-      const saveRegistryMock = jest.spyOn(registryService, 'save');
-
-      registryServiceMock(moduleRef, provider, {
-        keys: newKeys,
-        meta: newMeta,
-        operators,
-      });
-
-      await registryService.update('latest');
-      expect(saveRegistryMock).toBeCalledTimes(1);
-      await compareTestMetaData(registryService, { meta: newMeta });
-      await compareTestMetaKeys(registryService, { keys });
-      await compareTestMetaOperators(registryService, { operators });
-    });
-
     test('keys is not mutating', async () => {
       const newKeys = clone(keys);
       newKeys[0].used = false;

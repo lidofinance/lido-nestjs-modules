@@ -4,6 +4,7 @@ import {
   nullTransport,
   LoggerModule,
   LOGGER_PROVIDER,
+  MockLoggerModule,
 } from '@lido-nestjs/logger';
 import { getNetwork } from '@ethersproject/networks';
 import { JsonRpcBatchProvider } from '@ethersproject/providers';
@@ -31,11 +32,6 @@ import {
   compareTestMetaOperators,
 } from '../testing.utils';
 import { registryServiceMock } from '../mock-utils';
-import {
-  WINSTON_MODULE_PROVIDER,
-  WINSTON_MODULE_NEST_PROVIDER,
-} from 'nest-winston';
-import { WinstonModule } from 'nest-winston';
 
 describe('Registry', () => {
   const provider = new JsonRpcBatchProvider(process.env.EL_RPC_URL);
@@ -116,27 +112,6 @@ describe('Registry', () => {
 
       await registryService.update('latest');
       expect(saveRegistryMock).toBeCalledTimes(0);
-    });
-
-    test('keys is not added', async () => {
-      const newKeys = [...keys, newKey];
-      const newMeta = {
-        ...meta,
-        keysOpIndex: meta.keysOpIndex + 1,
-      };
-      const saveRegistryMock = jest.spyOn(registryService, 'save');
-
-      registryServiceMock(moduleRef, provider, {
-        keys: newKeys,
-        meta: newMeta,
-        operators,
-      });
-
-      await registryService.update('latest');
-      expect(saveRegistryMock).toBeCalledTimes(1);
-      await compareTestMetaData(registryService, { meta: newMeta });
-      await compareTestMetaKeys(registryService, { keys });
-      await compareTestMetaOperators(registryService, { operators });
     });
 
     test('keys is not mutating', async () => {
@@ -342,23 +317,6 @@ describe('Empty registry', () => {
     .mockImplementation(async () => getNetwork('mainnet'));
 
   beforeEach(async () => {
-    const providers = [
-      {
-        provide: WINSTON_MODULE_PROVIDER,
-        useFactory: () => ({}),
-      },
-      {
-        provide: WINSTON_MODULE_NEST_PROVIDER,
-        useFactory: () => {
-          return {
-            log: jest.fn(),
-            error: jest.fn(),
-            warn: jest.fn(),
-          };
-        },
-        inject: [WINSTON_MODULE_PROVIDER],
-      },
-    ];
     const imports = [
       MikroOrmModule.forRoot({
         dbName: ':memory:',
@@ -366,11 +324,11 @@ describe('Empty registry', () => {
         allowGlobalContext: true,
         entities: ['./packages/registry/**/*.entity.ts'],
       }),
-      {
-        module: WinstonModule,
-        providers: providers,
-        exports: providers,
-      },
+      MockLoggerModule.forRoot({
+        log: jest.fn(),
+        error: jest.fn(),
+        warn: jest.fn(),
+      }),
       ValidatorRegistryModule.forFeature({ provider }),
     ];
 
