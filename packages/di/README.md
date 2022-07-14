@@ -14,8 +14,8 @@ yarn add @lido-nestjs/di
 This module exists to solve following things:
 
 1. the lack of runtime interfaces in Typescript
-2. necessity of `@Inject` decorators for constructor arguments
-3. use of `Symbol` to point to specific implementation.
+2. necessity of `@Inject` decorators for constructor arguments when working with NestJS
+3. use of `Symbol` to point to specific implementation when working with NestJS
 
 ## The problem
 
