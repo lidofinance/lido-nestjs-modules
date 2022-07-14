@@ -19,7 +19,7 @@ This module exists to solve following things:
 
 ## The problem
 
-When working with Nest.js in case you need two different implementations of one interface,
+When working with NestJS in case you need two different implementations of one interface,
 you have to introduce multiple tokens (symbols), which point to different implementations.
 
 ```ts
