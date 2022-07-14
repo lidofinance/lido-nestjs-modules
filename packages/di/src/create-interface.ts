@@ -10,7 +10,7 @@ import { INTERFACE_MAP_KEY, INTERFACE_TAG } from './constants';
  *
  * Example:
  *
- * export interface FooInterface = {
+ * export interface FooInterface {
  *    bar(): string;
  * }
  * export const FooInterface = createInterface<FooInterface>('FooInterface');

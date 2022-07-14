@@ -137,8 +137,6 @@ describe(`ImplementsAtRuntime decorator`, () => {
       }
     }
 
-    const obj: any = {};
-
     expect(() => {
       ImplementsAtRuntime(<any>{})(Foo);
     }).toThrow(`'interfaceTag' must be a special anonymous class constructor`);
