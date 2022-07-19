@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
 import { CHAINS } from '@lido-nestjs/constants';
 import { currentWC, usedValidKeys as batchUsedKeys100 } from './keys';
-import { range, withTimer } from './utils';
+import { range, withTimer } from '@lido-nestjs/utils';
 import { GENESIS_FORK_VERSION, KeyWithWC, validateKeys } from '../src';
 
 describe('validateKeys function', () => {

@@ -7,10 +7,10 @@ import { isClass } from './is-class';
 /**
  * Checks that target implements specific interface tag
  */
-export function doesImplement<T>(
+export const doesImplement = <T>(
   target: T | any,
   interfaceTag: InterfaceTag<any>,
-): target is T {
+): target is T => {
   if (typeof target === 'undefined' || target === null) {
     return false;
   }
@@ -32,4 +32,4 @@ export function doesImplement<T>(
   }
 
   return false;
-}
+};

@@ -9,7 +9,7 @@ import {
   usedValidKeys as batchUsedKeys100,
   validUsedKey,
 } from './keys';
-import { range, withTimer } from './utils';
+import { range, withTimer } from '@lido-nestjs/utils';
 
 describe('LidoKeyValidator', () => {
   const chainId: CHAINS = CHAINS.Mainnet;

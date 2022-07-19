@@ -9,7 +9,6 @@ import { LidoKey, PossibleWC, Pubkey } from './interfaces/common';
 import Piscina from 'piscina';
 import { partition } from './common/partition';
 import worker from './worker/lido-key-validator.worker';
-import * as os from 'os';
 import { ImplementsAtRuntime } from '@lido-nestjs/di';
 
 @Injectable()
@@ -55,8 +54,6 @@ export class MultithreadedLidoKeyValidator
       chainId,
     );
 
-    const partitions = partition(lidoKeys, os.cpus().length, 100);
-
     /* istanbul ignore next */
     const filename = process.env.TS_JEST
       ? path.resolve(__dirname, '../dist/worker/lido-key-validator.worker.js')
@@ -66,6 +63,8 @@ export class MultithreadedLidoKeyValidator
       filename: filename,
     });
 
+    const partitions = partition(lidoKeys, threadPool.threads.length, 100);
+
     const result = await Promise.all(
       partitions.map((lidoKeysPart) =>
         threadPool.run({ possibleWC, lidoKeys: lidoKeysPart, chainId }),
@@ -74,7 +73,7 @@ export class MultithreadedLidoKeyValidator
 
     await threadPool.destroy();
 
-    return result.reduce((acc, x) => [...acc, ...x], []);
+    return result.flat();
   }
 
   protected async getPossibleWithdrawalCredentialsCached(

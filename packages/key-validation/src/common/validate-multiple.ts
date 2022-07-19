@@ -1,4 +1,3 @@
-import os from 'os';
 import path from 'path';
 import { KeyWithWC, Pubkey } from '../interfaces/common';
 import { partition } from './partition';
@@ -11,8 +10,6 @@ export const validateKeys = async (
   options?: { multithreaded: boolean },
 ): Promise<[Pubkey, boolean][]> => {
   if (options?.multithreaded) {
-    const partitions = partition(keys, os.cpus().length, 100);
-
     /* istanbul ignore next */
     const filename = process.env.TS_JEST
       ? path.resolve(__dirname, '../../dist/worker/key-validator.worker.js')
@@ -22,6 +19,8 @@ export const validateKeys = async (
       filename: filename,
     });
 
+    const partitions = partition(keys, threadPool.threads.length, 100);
+
     const result = await Promise.all(
       partitions.map((keysPart) =>
         threadPool.run({ keys: keysPart, genesisForkVersion }),
@@ -30,7 +29,7 @@ export const validateKeys = async (
 
     await threadPool.destroy();
 
-    return result.reduce((acc, x) => [...acc, ...x], []);
+    return result.flat();
   }
 
   return worker({ keys, genesisForkVersion });

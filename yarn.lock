@@ -2627,6 +2627,7 @@ __metadata:
     "@lido-nestjs/constants": "workspace:*"
     "@lido-nestjs/contracts": "workspace:*"
     "@lido-nestjs/di": "workspace:*"
+    "@lido-nestjs/utils": "workspace:*"
     "@nestjs/common": ^8.2.5
     "@nestjs/core": ^8.2.5
     "@nestjs/testing": ^8.2.5

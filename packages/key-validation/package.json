@@ -44,6 +44,7 @@
   },
   "devDependencies": {
     "@ethersproject/providers": "^5.5.3",
+    "@lido-nestjs/utils": "workspace:*",
     "@nestjs/common": "^8.2.5",
     "@nestjs/core": "^8.2.5",
     "@nestjs/testing": "^8.2.5",
