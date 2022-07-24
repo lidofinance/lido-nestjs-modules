@@ -1,4 +1,5 @@
 import { Test } from '@nestjs/testing';
+import { QueryOrder } from '@mikro-orm/core';
 import { MikroOrmModule } from '@mikro-orm/nestjs';
 import { key } from '../fixtures/key.fixture';
 import {
@@ -31,6 +32,22 @@ describe('Keys', () => {
 
   afterEach(async () => {
     await registryService.onModuleDestroy();
+  });
+
+  test('find', async () => {
+    const keys = [
+      { operatorIndex: 1, index: 1, ...key },
+      { operatorIndex: 1, index: 2, ...key },
+    ];
+
+    await expect(storageService.findAll()).resolves.toEqual([]);
+    await storageService.save(keys);
+    await expect(
+      storageService.find(
+        { operatorIndex: 1 },
+        { limit: 1, orderBy: { index: QueryOrder.DESC } },
+      ),
+    ).resolves.toEqual([keys[1]]);
   });
 
   test('find by index', async () => {

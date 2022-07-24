@@ -1,4 +1,5 @@
 import { QueryOrder } from '@mikro-orm/core';
+import { FilterQuery, FindOptions } from '@mikro-orm/core';
 import { Injectable } from '@nestjs/common';
 import { RegistryKey } from './key.entity';
 import { RegistryKeyRepository } from './key.repository';
@@ -6,6 +7,14 @@ import { RegistryKeyRepository } from './key.repository';
 @Injectable()
 export class RegistryKeyStorageService {
   constructor(private readonly repository: RegistryKeyRepository) {}
+
+  /** find keys */
+  async find<P extends string = never>(
+    where: FilterQuery<RegistryKey>,
+    options?: FindOptions<RegistryKey, P>,
+  ): Promise<RegistryKey[]> {
+    return await this.repository.find(where, options);
+  }
 
   /** find all keys */
   async findAll(): Promise<RegistryKey[]> {

@@ -12,6 +12,9 @@ describe('Operators', () => {
     findAll: jest.fn().mockImplementation(() => {
       return Promise.resolve([]);
     }),
+    find: jest.fn().mockImplementation(() => {
+      return Promise.resolve([]);
+    }),
     findOne: jest.fn().mockImplementation(() => {
       return Promise.resolve(registryOperator);
     }),
@@ -51,6 +54,17 @@ describe('Operators', () => {
     Object.values(mockRegistryOperatorRepository).forEach((mockCall) => {
       mockCall.mockClear();
     });
+  });
+
+  test('find', async () => {
+    await expect(
+      storageService.find({ active: true }, { limit: 1 }),
+    ).resolves.toEqual([]);
+    expect(mockRegistryOperatorRepository.find).toBeCalledTimes(1);
+    expect(mockRegistryOperatorRepository.find).toBeCalledWith(
+      { active: true },
+      { limit: 1 },
+    );
   });
 
   test('findAll', async () => {
