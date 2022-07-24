@@ -1,4 +1,5 @@
 import { QueryOrder } from '@mikro-orm/core';
+import { FilterQuery, FindOptions } from '@mikro-orm/core';
 import { Injectable } from '@nestjs/common';
 import { RegistryOperator } from './operator.entity';
 import { RegistryOperatorRepository } from './operator.repository';
@@ -6,6 +7,14 @@ import { RegistryOperatorRepository } from './operator.repository';
 @Injectable()
 export class RegistryOperatorStorageService {
   constructor(private readonly repository: RegistryOperatorRepository) {}
+
+  /** find operators */
+  async find<P extends string = never>(
+    where: FilterQuery<RegistryOperator>,
+    options?: FindOptions<RegistryOperator, P>,
+  ): Promise<RegistryOperator[]> {
+    return await this.repository.find(where, options);
+  }
 
   /** find all operators */
   async findAll(): Promise<RegistryOperator[]> {
