@@ -58,6 +58,17 @@ describe('Hide secrets', () => {
         expect(write).toBeCalledWith(expect.not.stringContaining(message));
       });
 
+      test('Two same secrets in error', () => {
+        const message = secrets[0] + secrets[0];
+        const expected = replacer + replacer;
+        const error = new Error(message);
+        loggerService.error(error);
+
+        expect(write).toBeCalledTimes(1);
+        expect(write).toBeCalledWith(expect.stringContaining(expected));
+        expect(write).toBeCalledWith(expect.not.stringContaining(message));
+      });
+
       test('Single secret in log', () => {
         const message = secrets[0];
         const expected = replacer;
