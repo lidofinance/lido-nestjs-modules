@@ -18,7 +18,13 @@ describe('Hide secrets', () => {
     describe(`Transport: ${name}`, () => {
       const write = jest.spyOn(process.stdout, 'write');
       const emptyString = '';
-      const secrets = ['hidden-address-1', 'hidden-address-2', emptyString];
+      const specialCharactersRegex = '-[]{}()/\\^$.|?*+';
+      const secrets = [
+        'hidden-address-1',
+        '[hidden-address-2',
+        emptyString,
+        specialCharactersRegex,
+      ];
       const replacer = SECRET_REPLACER;
       const level = 'debug';
       const transports = transport({ secrets });
@@ -58,7 +64,7 @@ describe('Hide secrets', () => {
         expect(write).toBeCalledWith(expect.not.stringContaining(message));
       });
 
-      test('Two same secrets in error', () => {
+      test('Two identical secrets in error', () => {
         const message = secrets[0] + secrets[0];
         const expected = replacer + replacer;
         const error = new Error(message);
@@ -73,6 +79,21 @@ describe('Hide secrets', () => {
         const message = secrets[0];
         const expected = replacer;
         loggerService.log(message);
+
+        expect(write).toBeCalledTimes(1);
+        expect(write).toBeCalledWith(expect.stringContaining(expected));
+        expect(write).toBeCalledWith(expect.not.stringContaining(message));
+      });
+
+      test('Single secret with regex special characters in error', () => {
+        const message =
+          secrets[0] +
+          specialCharactersRegex +
+          secrets[1] +
+          specialCharactersRegex;
+        const expected = replacer + replacer;
+        const error = new Error(message);
+        loggerService.error(error);
 
         expect(write).toBeCalledTimes(1);
         expect(write).toBeCalledWith(expect.stringContaining(expected));
