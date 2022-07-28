@@ -17,8 +17,7 @@ export const cleanSecrets = winston.format(
 const replace = <T extends unknown>(secrets: string[], message: T): T => {
   if (typeof message === 'string') {
     return secrets.reduce((result, secret) => {
-      const re = new RegExp(secret, 'g');
-      return secret ? result.replace(re, SECRET_REPLACER) : result;
+      return secret ? result.replaceAll(secret, SECRET_REPLACER) : result;
     }, message) as T;
   }
 
