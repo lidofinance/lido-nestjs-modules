@@ -10,24 +10,43 @@ import {
   validUsedKey,
 } from './keys';
 import { range, withTimer } from '@lido-nestjs/utils';
+import {
+  GenesisForkVersionService,
+  KeyValidator,
+  SingleThreadedKeyValidatorExecutor,
+  WithdrawalCredentialsFetcher,
+} from '../src/services';
 
 describe('LidoKeyValidator', () => {
-  const chainId: CHAINS = CHAINS.Mainnet;
-
   const getLidoContract = async () => {
     const contract = {
       getWithdrawalCredentials: async () => currentWC,
+
+      get provider() {
+        return {
+          getNetwork: async () => ({ chainId: CHAINS.Mainnet }),
+        }
+      }
     };
 
     return <Lido>(<any>contract);
   };
 
+  const getKeyValidator = async () => {
+    const lido = await getLidoContract();
+    const wcFetcher = new WithdrawalCredentialsFetcher(lido);
+    const executor = new SingleThreadedKeyValidatorExecutor();
+    const gfv = new GenesisForkVersionService();
+    const validator = new KeyValidator(executor);
+
+    return new LidoKeyValidator(validator, wcFetcher, gfv);
+  }
+
   test('should validate empty array immediately', async () => {
-    const lido: Lido = await getLidoContract();
-    const keyValidator = new LidoKeyValidator(lido);
+    const keyValidator = await getKeyValidator();
 
     const [res, time] = await withTimer(() =>
-      keyValidator.validateKeys([], chainId),
+      keyValidator.validateKeys([]),
     );
 
     expect(res.length).toBe(0);
@@ -36,13 +55,13 @@ describe('LidoKeyValidator', () => {
 
   test('should validate one valid used key', async () => {
     const lido: Lido = await getLidoContract();
-    const keyValidator = new LidoKeyValidator(lido);
+    const keyValidator = await getKeyValidator();
 
     // WC cache warm up
-    await keyValidator.validateKey(validUsedKey, chainId);
+    await keyValidator.validateKey(validUsedKey);
 
     const [res, time] = await withTimer(() =>
-      keyValidator.validateKey(validUsedKey, chainId),
+      keyValidator.validateKey(validUsedKey),
     );
 
     expect(res[0]).toBe(validUsedKey.key);
@@ -51,22 +70,21 @@ describe('LidoKeyValidator', () => {
   });
 
   test('should throw error for unsupported chain', async () => {
-    const lido: Lido = await getLidoContract();
-    const keyValidator = new LidoKeyValidator(lido);
+    const keyValidator = await getKeyValidator();
+
+    // TODO
 
     await expect(
-      async () => await keyValidator.validateKeys([validUsedKey], 400),
+      async () => await keyValidator.validateKeys([validUsedKey]),
     ).rejects.toThrow(
       `Genesis fork version is undefined for chain [400]. See GENESIS_FORK_VERSION constant`,
     );
   });
 
   test('should work with valid keys', async () => {
-    const lido: Lido = await getLidoContract();
-
-    const keyValidator = new LidoKeyValidator(lido);
+    const keyValidator = await getKeyValidator();
     const [results, time] = await withTimer(() =>
-      keyValidator.validateKeys(batchUsedKeys100, chainId),
+      keyValidator.validateKeys(batchUsedKeys100),
     );
 
     expect(results.length).toBe(100);
@@ -74,11 +92,9 @@ describe('LidoKeyValidator', () => {
   });
 
   test('should return false on invalid key', async () => {
-    const lido: Lido = await getLidoContract();
-
-    const keyValidator = new LidoKeyValidator(lido);
+    const keyValidator = await getKeyValidator();
     const [results, time] = await withTimer(() =>
-      keyValidator.validateKeys([invalidUsedKey], chainId),
+      keyValidator.validateKeys([invalidUsedKey]),
     );
 
     expect(results.length).toBe(1);
@@ -89,11 +105,9 @@ describe('LidoKeyValidator', () => {
   });
 
   test('should return true on valid key', async () => {
-    const lido: Lido = await getLidoContract();
-
-    const keyValidator = new LidoKeyValidator(lido);
+    const keyValidator = await getKeyValidator();
     const [results, time] = await withTimer(() =>
-      keyValidator.validateKeys([validUsedKey], chainId),
+      keyValidator.validateKeys([validUsedKey]),
     );
 
     expect(results.length).toBe(1);
@@ -104,18 +118,16 @@ describe('LidoKeyValidator', () => {
   });
 
   test('should benchmark 10k keys', async () => {
-    const lido: Lido = await getLidoContract();
-
-    const keyValidator = new LidoKeyValidator(lido);
+    const keyValidator = await getKeyValidator();
     const keys = range(0, 100)
       .map(() => batchUsedKeys100)
       .flat(1);
 
     // WC cache warm up
-    await keyValidator.validateKeys([keys[0]], chainId);
+    await keyValidator.validateKeys([keys[0]]);
 
     const [results, time] = await withTimer(() =>
-      keyValidator.validateKeys(keys, chainId),
+      keyValidator.validateKeys(keys),
     );
 
     expect(results.length).toBe(10000);

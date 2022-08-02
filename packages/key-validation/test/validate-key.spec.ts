@@ -8,8 +8,11 @@ import {
   validUsedKey,
   validUsedKeyCurrentWC,
 } from './keys';
+import { GENESIS_FORK_VERSION } from '../dist';
 
 describe('validateKey function', () => {
+  const genesisForkVersion: Buffer = GENESIS_FORK_VERSION[CHAINS.Mainnet] ?? Buffer.alloc(0);
+
   const possibleWC: PossibleWC = {
     currentWC: [currentWC, Buffer.from(currentWC.replace('0x', ''), 'hex')],
     previousWC: [],
@@ -19,7 +22,7 @@ describe('validateKey function', () => {
     const res = validateLidoKeyForPossibleWC(
       possibleWC,
       validUsedKey,
-      CHAINS.Mainnet,
+      genesisForkVersion,
     );
 
     expect(res[0]).toBe(validUsedKey.key);
@@ -30,7 +33,7 @@ describe('validateKey function', () => {
     const res = validateLidoKeyForPossibleWC(
       possibleWC,
       validUsedKeyCurrentWC,
-      CHAINS.Mainnet,
+      genesisForkVersion,
     );
 
     expect(res[0]).toBe(validUsedKeyCurrentWC.key);
@@ -41,7 +44,7 @@ describe('validateKey function', () => {
     const res = validateLidoKeyForPossibleWC(
       possibleWC,
       validUnusedKeyCurrentWC,
-      CHAINS.Mainnet,
+      genesisForkVersion,
     );
 
     expect(res[0]).toBe(validUnusedKeyCurrentWC.key);
@@ -52,7 +55,7 @@ describe('validateKey function', () => {
     const res = validateLidoKeyForPossibleWC(
       possibleWC,
       invalidUnusedKey,
-      CHAINS.Mainnet,
+      genesisForkVersion,
     );
 
     expect(res[0]).toBe(invalidUnusedKey.key);

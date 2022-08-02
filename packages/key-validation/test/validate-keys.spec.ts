@@ -3,6 +3,7 @@ import { CHAINS } from '@lido-nestjs/constants';
 import { currentWC, usedValidKeys as batchUsedKeys100 } from './keys';
 import { range, withTimer } from '@lido-nestjs/utils';
 import { GENESIS_FORK_VERSION, KeyWithWC, validateKeys } from '../src';
+import { bufferFromHexString } from '../dist';
 
 describe('validateKeys function', () => {
   jest.setTimeout(30000);
@@ -21,7 +22,7 @@ describe('validateKeys function', () => {
     const keys: KeyWithWC[] = range(0, 100)
       .map(() => batchUsedKeys100)
       .flat(1)
-      .map((key) => ({ ...key, wc: currentWC }));
+      .map((key) => ({ ...key, wc: bufferFromHexString(currentWC) }));
 
     const [res, time] = await withTimer(() =>
       validateKeys(keys, forkVersion, { multithreaded: false }),
@@ -35,7 +36,7 @@ describe('validateKeys function', () => {
     const keys: KeyWithWC[] = range(0, 100)
       .map(() => batchUsedKeys100)
       .flat(1)
-      .map((key) => ({ ...key, wc: currentWC }));
+      .map((key) => ({ ...key, wc: bufferFromHexString(currentWC) }));
 
     const [res, time] = await withTimer(() =>
       validateKeys(keys, forkVersion, { multithreaded: true }),

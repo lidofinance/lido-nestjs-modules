@@ -1,36 +1,24 @@
 import * as path from 'path';
-import { Inject, Injectable } from '@nestjs/common';
-import { LidoKeyValidatorInterface } from './interfaces/lido-key-validator.interface';
-import { Lido, LIDO_CONTRACT_TOKEN } from '@lido-nestjs/contracts';
-import { bufferFromHexString } from './common/buffer-hex';
-import { WITHDRAWAL_CREDENTIALS } from './constants/constants';
+import { Injectable } from '@nestjs/common';
 import { CHAINS } from '@lido-nestjs/constants/src';
 import { LidoKey, PossibleWC, Pubkey } from './interfaces/common';
 import Piscina from 'piscina';
 import { partition } from './common/partition';
 import worker from './worker/lido-key-validator.worker';
-import { ImplementsAtRuntime } from '@lido-nestjs/di';
+import { WithdrawalCredentialsExtractorInterface } from './interfaces';
 
 @Injectable()
-@ImplementsAtRuntime(LidoKeyValidatorInterface)
-export class MultithreadedLidoKeyValidator
-  implements LidoKeyValidatorInterface
-{
-  private possibleWithdrawalCredentialsCache: {
-    [chainId: number]: Promise<PossibleWC> | undefined;
-  } = {};
+export class MultithreadedLidoKeyValidator {
 
   public constructor(
-    @Inject(LIDO_CONTRACT_TOKEN) private readonly lidoContract: Lido,
+    private readonly wcExtractor: WithdrawalCredentialsExtractorInterface,
   ) {}
 
   public async validateKey(
     lidoKey: LidoKey,
     chainId: CHAINS,
   ): Promise<[Pubkey, boolean]> {
-    const possibleWC = await this.getPossibleWithdrawalCredentialsCached(
-      chainId,
-    );
+    const possibleWC = await this.wcExtractor.getPossibleWithdrawalCredentials();
 
     return worker({ lidoKeys: [lidoKey], chainId, possibleWC })[0];
   }
@@ -50,9 +38,7 @@ export class MultithreadedLidoKeyValidator
     lidoKeys: LidoKey[],
     chainId: CHAINS,
   ): Promise<[Pubkey, boolean][]> {
-    const possibleWC = await this.getPossibleWithdrawalCredentialsCached(
-      chainId,
-    );
+    const possibleWC = await this.wcExtractor.getPossibleWithdrawalCredentials();
 
     /* istanbul ignore next */
     const filename = process.env.TS_JEST
@@ -74,35 +60,5 @@ export class MultithreadedLidoKeyValidator
     await threadPool.destroy();
 
     return result.flat();
-  }
-
-  protected async getPossibleWithdrawalCredentialsCached(
-    chainId: CHAINS,
-  ): Promise<PossibleWC> {
-    const promise = this.possibleWithdrawalCredentialsCache[chainId];
-    if (promise) {
-      return await promise;
-    }
-
-    return (this.possibleWithdrawalCredentialsCache[chainId] =
-      this.getPossibleWithdrawalCredentials(chainId));
-  }
-
-  protected async getPossibleWithdrawalCredentials(
-    chainId: CHAINS,
-  ): Promise<PossibleWC> {
-    const currentWC: string =
-      await this.lidoContract.getWithdrawalCredentials();
-    const oldWC = WITHDRAWAL_CREDENTIALS[chainId] ?? [];
-
-    const oldWcBuffered: [string, Buffer][] = oldWC.map((wc) => [
-      wc,
-      bufferFromHexString(wc),
-    ]);
-
-    return {
-      currentWC: [currentWC, bufferFromHexString(currentWC)],
-      previousWC: oldWcBuffered,
-    };
   }
 }

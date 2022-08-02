@@ -12,7 +12,9 @@ export interface Key {
 export interface KeyWithWC {
   key: Pubkey;
   depositSignature: string;
-  wc: WithdrawalCredentialsHex;
+  wc: WithdrawalCredentialsBuffer;
+
+  // TODO amount
 }
 
 export interface LidoKey {
@@ -20,6 +22,12 @@ export interface LidoKey {
   key: Pubkey;
   depositSignature: string;
   used: boolean;
+}
+
+export interface DepositMessageData {
+  pubkey: Buffer;
+  withdrawalCredentials: Buffer;
+  amount: number;
 }
 
 export type PossibleWC = {

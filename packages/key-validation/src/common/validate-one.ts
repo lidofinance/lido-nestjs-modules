@@ -1,7 +1,5 @@
-import { CHAINS } from '@lido-nestjs/constants/src';
 import {
   DOMAIN_DEPOSIT,
-  GENESIS_FORK_VERSION,
   ZERO_HASH,
 } from '../constants/constants';
 import { bufferFromHexString } from './buffer-hex';
@@ -22,11 +20,14 @@ export const validateKey = (
   key: Key,
   withdrawalCredentials: WithdrawalCredentialsBuffer,
   genesisForkVersion: Buffer,
+  amount: number =  32 * (10 ** 9),
+  domainDeposit: Buffer = DOMAIN_DEPOSIT,
+  zeroHash: Buffer = ZERO_HASH,
 ) => {
   const pubkeyBuffer = bufferFromHexString(key.key);
   const signatureBuffer = bufferFromHexString(key.depositSignature);
-  const depositMessage = getDepositMessage(pubkeyBuffer, withdrawalCredentials);
-  const domain = computeDomain(DOMAIN_DEPOSIT, genesisForkVersion, ZERO_HASH);
+  const depositMessage = getDepositMessage(pubkeyBuffer, withdrawalCredentials, amount);
+  const domain = computeDomain(domainDeposit, genesisForkVersion, zeroHash);
   const signingRoot = computeSigningRoot(
     DepositMessage,
     depositMessage,
@@ -47,16 +48,8 @@ export const validateKey = (
 export const validateLidoKeyForPossibleWC = (
   possibleWC: PossibleWC,
   lidoKey: LidoKey,
-  chainId: CHAINS,
+  genesisForkVersion: Buffer,
 ): [Pubkey, boolean] => {
-  const genesisForkVersion = GENESIS_FORK_VERSION[chainId];
-
-  if (!genesisForkVersion) {
-    throw new Error(
-      `Genesis fork version is undefined for chain [${chainId}]. See GENESIS_FORK_VERSION constant`,
-    );
-  }
-
   if (!lidoKey.used) {
     return [
       lidoKey.key,
@@ -80,3 +73,4 @@ export const validateLidoKeyForPossibleWC = (
 
   return [lidoKey.key, resultsForOldWC.some((x) => x)];
 };
+
