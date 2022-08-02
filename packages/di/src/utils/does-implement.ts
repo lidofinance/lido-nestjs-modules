@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import 'reflect-metadata';
-import { DESIGN_IMPLEMENTS, INTERFACE_TAG } from './constants';
-import { InterfaceTag } from './interface.tag';
+import { DESIGN_IMPLEMENTS, INTERFACE_TAG } from '../di.constants';
+import { InterfaceTag } from '../interfaces';
 import { isClass } from './is-class';
 
 /**

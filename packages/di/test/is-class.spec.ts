@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-empty-function */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { isClass } from '../src/is-class';
+import { isClass } from '../src/';
 
 describe(`is-class function`, () => {
   test('should work', () => {

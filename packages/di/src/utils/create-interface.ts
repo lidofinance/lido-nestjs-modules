@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { doesImplement } from './does-implement';
-import { InterfaceTag } from './interface.tag';
-import { INTERFACE_MAP_KEY, INTERFACE_TAG } from './constants';
+import { InterfaceTag } from '../interfaces';
+import { INTERFACE_MAP_KEY, INTERFACE_TAG } from '../di.constants';
 
 /**
  * Creates special interface-like anonymous class that acts like an interface
@@ -26,7 +26,7 @@ import { INTERFACE_MAP_KEY, INTERFACE_TAG } from './constants';
  * foo instanceof FooInterface === true;
  *
  */
-export function createInterface<I>(name: string): InterfaceTag<I> {
+export const createInterface = <I>(name: string): InterfaceTag<I> => {
   const id = Symbol.for(name);
 
   const _global = global as globalThis.Global &
@@ -68,4 +68,4 @@ export function createInterface<I>(name: string): InterfaceTag<I> {
   interfaceMap.set(id, newInterfaceTag);
 
   return <InterfaceTag<I>>(<any>newInterfaceTag);
-}
+};

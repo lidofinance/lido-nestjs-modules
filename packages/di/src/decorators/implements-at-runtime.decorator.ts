@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import 'reflect-metadata';
-import { DESIGN_IMPLEMENTS, INTERFACE_TAG } from './constants';
-import { InterfaceTag } from './interface.tag';
-import { isClass } from './is-class';
+import { DESIGN_IMPLEMENTS, INTERFACE_TAG } from '../di.constants';
+import { InterfaceTag } from '../interfaces/interface.tag';
+import { isClass } from '../utils/is-class';
 
 /**
  * Class decorator indicating that class implements interface at runtime
@@ -10,8 +10,8 @@ import { isClass } from './is-class';
  * This is needed for proper work of:
  * `foo instanceof IFoo`
  */
-export function ImplementsAtRuntime<T>(interfaceTag: InterfaceTag<T>) {
-  return function (target: new (...args: any[]) => T): any {
+export const ImplementsAtRuntime = <T>(interfaceTag: InterfaceTag<T>) => {
+  return (target: new (...args: any[]) => T): any => {
     const tags: symbol[] = [];
 
     if (!isClass(target)) {
@@ -39,4 +39,4 @@ export function ImplementsAtRuntime<T>(interfaceTag: InterfaceTag<T>) {
 
     Reflect.defineMetadata(DESIGN_IMPLEMENTS, tags, target);
   };
-}
+};
