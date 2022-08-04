@@ -3,6 +3,10 @@ import { LoggerCleanSecretsOptions } from '../interfaces';
 
 export const SECRET_REPLACER = '<removed>';
 
+export const regExpEscape = (str: string): string => {
+  return str.replace(/[-[\]{}()*+?./\\^$|\s,]/g, '\\$&');
+};
+
 export const cleanSecrets = winston.format(
   (info, opts: LoggerCleanSecretsOptions) => {
     const secrets = opts.secrets ?? [];
@@ -17,7 +21,8 @@ export const cleanSecrets = winston.format(
 const replace = <T extends unknown>(secrets: string[], message: T): T => {
   if (typeof message === 'string') {
     return secrets.reduce((result, secret) => {
-      return secret ? result.replace(secret, SECRET_REPLACER) : result;
+      const re = new RegExp(regExpEscape(secret), 'g');
+      return secret ? result.replace(re, SECRET_REPLACER) : result;
     }, message) as T;
   }
 
