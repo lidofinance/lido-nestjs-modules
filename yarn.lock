@@ -2681,6 +2681,25 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@lido-nestjs/offchain-key-storage-client@workspace:packages/offchain-key-storage-client":
+  version: 0.0.0-use.local
+  resolution: "@lido-nestjs/offchain-key-storage-client@workspace:packages/offchain-key-storage-client"
+  dependencies:
+    "@lido-nestjs/fetch": "workspace:*"
+    "@nestjs/common": ^8.2.5
+    "@nestjs/core": ^8.2.5
+    "@nestjs/testing": ^8.2.5
+    ethers: ^5.5.4
+    reflect-metadata: ^0.1.13
+    rxjs: ^7.5.2
+  peerDependencies:
+    "@nestjs/common": ^8.2.5
+    "@nestjs/core": ^8.2.5
+    reflect-metadata: ^0.1.13
+    rxjs: ^7.5.2
+  languageName: unknown
+  linkType: soft
+
 "@lido-nestjs/registry@workspace:packages/registry":
   version: 0.0.0-use.local
   resolution: "@lido-nestjs/registry@workspace:packages/registry"

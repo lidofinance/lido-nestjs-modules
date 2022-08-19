@@ -1,0 +1,50 @@
+{
+  "name": "@lido-nestjs/offchain-key-storage-client",
+  "version": "0.0.0-semantic-release",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "license": "MIT",
+  "homepage": "https://github.com/lidofinance/lido-nestjs-modules",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/lidofinance/lido-nestjs-modules.git",
+    "directory": "packages/offchain-key-storage-client"
+  },
+  "bugs": {
+    "url": "https://github.com/lidofinance/lido-nestjs-modules/issues"
+  },
+  "sideEffects": false,
+  "keywords": [
+    "lido",
+    "lido-nestjs",
+    "lido-nestjs-modules",
+    "lidofinance"
+  ],
+  "files": [
+    "dist/*"
+  ],
+  "scripts": {
+    "lint": "eslint --ext ts ."
+  },
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org/",
+    "access": "public"
+  },
+  "dependencies": {
+    "@lido-nestjs/fetch": "workspace:*",
+    "ethers": "^5.5.4"
+  },
+  "peerDependencies": {
+    "@nestjs/common": "^8.2.5",
+    "@nestjs/core": "^8.2.5",
+    "reflect-metadata": "^0.1.13",
+    "rxjs": "^7.5.2"
+  },
+  "devDependencies": {
+    "@nestjs/common": "^8.2.5",
+    "@nestjs/core": "^8.2.5",
+    "@nestjs/testing": "^8.2.5",
+    "reflect-metadata": "^0.1.13",
+    "rxjs": "^7.5.2"
+  }
+}
