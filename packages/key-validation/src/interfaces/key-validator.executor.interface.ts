@@ -1,23 +1,16 @@
-import { KeyWithWC, Pubkey } from './common';
+import { Key } from './common';
 import { createInterface } from '@lido-nestjs/di';
 
 export const KeyValidatorExecutorInterface =
-  createInterface<KeyValidatorExecutorInterface>('KeyValidatorExecutorInterface');
+  createInterface<KeyValidatorExecutorInterface>(
+    'KeyValidatorExecutorInterface',
+  );
 
+/**
+ * Executor that actually performs key-validation.
+ * Does not store any state or data.
+ */
 export interface KeyValidatorExecutorInterface {
-  validateKey(
-    key: KeyWithWC,
-    genesisForkVersion: Buffer,
-    amount?: number,
-    domainDeposit?: Buffer,
-    zeroHash?: Buffer
-  ): Promise<boolean>;
-
-  validateKeys(
-    keys: KeyWithWC[],
-    genesisForkVersion: Buffer,
-    amount?: number,
-    domainDeposit?: Buffer,
-    zeroHash?: Buffer
-  ): Promise<[Pubkey, boolean][]>;
+  validateKey<T = never>(key: Key & T): Promise<boolean>;
+  validateKeys<T = never>(keys: (Key & T)[]): Promise<[Key & T, boolean][]>;
 }

@@ -1,68 +1,50 @@
-import { DynamicModule, Module } from '@nestjs/common';
-import { LidoContractModule } from '@lido-nestjs/contracts';
+import { DynamicModule, Module, Provider } from '@nestjs/common';
 import {
-  LidoKeyValidatorInterface,
   KeyValidatorInterface,
   KeyValidatorExecutorInterface,
-  WithdrawalCredentialsExtractorInterface,
 } from './interfaces';
-import { KeyValidatorModuleOptions } from './interfaces/module.options';
-import { KeyValidator } from './services/key-validator';
-import { SingleThreadedKeyValidatorExecutor } from './services/key-validator-executor';
-import { WithdrawalCredentialsFetcher } from './services/withdrawal-credentials-fetcher';
+import {
+  KeyValidatorModuleOptions,
+  KeyValidatorModuleSyncOptions,
+} from './interfaces/module.options';
+import {
+  KeyValidator,
+  SingleThreadedKeyValidatorExecutor,
+  MultiThreadedKeyValidatorExecutor,
+} from './services';
 
-@Module({
-  imports: [LidoContractModule],
-  providers: [
-    {
-      provide: KeyValidatorInterface,
-      useClass: KeyValidator,
-    },
-    {
-      provide: KeyValidatorExecutorInterface,
-      useClass: SingleThreadedKeyValidatorExecutor,
-    },
-    {
-      provide: KeyValidatorExecutorInterface,
-      useClass: SingleThreadedKeyValidatorExecutor,
-    },
-    {
-      provide: WithdrawalCredentialsExtractorInterface,
-      useClass: WithdrawalCredentialsFetcher,
-    },
-  ],
-  exports: [KeyValidatorInterface],
-})
+export const getDefaultKeyValidatorModuleProviders = (
+  options?: KeyValidatorModuleOptions,
+): Provider[] => [
+  {
+    provide: KeyValidatorInterface,
+    useClass: KeyValidator,
+  },
+  {
+    provide: KeyValidatorExecutorInterface,
+    useClass: options
+      ? options.multithreaded
+        ? MultiThreadedKeyValidatorExecutor
+        : SingleThreadedKeyValidatorExecutor
+      : MultiThreadedKeyValidatorExecutor,
+  },
+];
+
+@Module({})
 export class KeyValidatorModule {
-  static forRoot(options?: KeyValidatorModuleOptions): DynamicModule {
+  static forRoot(options?: KeyValidatorModuleSyncOptions): DynamicModule {
     return {
       global: true,
       ...this.forFeature(options),
     };
   }
 
-  static forFeature(options?: KeyValidatorModuleOptions): DynamicModule {
+  static forFeature(options?: KeyValidatorModuleSyncOptions): DynamicModule {
     return {
+      imports: [],
       module: KeyValidatorModule,
-      providers: [
-        {
-          provide: KeyValidatorInterface,
-          useClass: KeyValidator,
-        },
-        {
-          provide: KeyValidatorExecutorInterface,
-          useClass: SingleThreadedKeyValidatorExecutor,
-        },
-        {
-          provide: KeyValidatorExecutorInterface,
-          useClass: SingleThreadedKeyValidatorExecutor,
-        },
-        {
-          provide: WithdrawalCredentialsExtractorInterface,
-          useClass: WithdrawalCredentialsFetcher,
-        },
-      ],
-      exports: [LidoKeyValidatorInterface],
+      providers: getDefaultKeyValidatorModuleProviders(options),
+      exports: [KeyValidatorInterface],
     };
   }
 }

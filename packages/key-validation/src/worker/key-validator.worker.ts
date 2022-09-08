@@ -1,17 +1,19 @@
-import { validateKey } from '../common/validate-one';
-import { KeyWithWC, Pubkey } from '../interfaces/common';
-import { bufferFromHexString } from '../common/buffer-hex';
+import { validateOneKey } from '../common/validate-one-key';
+import { Key } from '../interfaces';
 
-export type Args = {
-  keys: KeyWithWC[];
-  genesisForkVersion: Buffer;
-};
-
-export default (args: Args): [Pubkey, boolean][] => {
-  return args.keys.map((key) => {
+export default <T = never>(keys: (Key & T)[]): [Key & T, boolean][] => {
+  return keys.map((key) => {
     return [
-      key.key,
-      validateKey(key, bufferFromHexString(key.wc), args.genesisForkVersion),
+      key,
+      validateOneKey(
+        key.key,
+        key.depositSignature,
+        key.withdrawalCredentials,
+        key.genesisForkVersion,
+        key.amount,
+        key.domainDeposit,
+        key.zeroHash,
+      ),
     ];
   });
 };

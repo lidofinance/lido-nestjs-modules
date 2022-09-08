@@ -7,14 +7,11 @@ export type Pubkey = string;
 export interface Key {
   key: Pubkey;
   depositSignature: string;
-}
-
-export interface KeyWithWC {
-  key: Pubkey;
-  depositSignature: string;
-  wc: WithdrawalCredentialsBuffer;
-
-  // TODO amount
+  withdrawalCredentials: WithdrawalCredentialsBuffer;
+  genesisForkVersion: Buffer;
+  amount?: number;
+  domainDeposit?: Buffer;
+  zeroHash?: Buffer;
 }
 
 export interface LidoKey {

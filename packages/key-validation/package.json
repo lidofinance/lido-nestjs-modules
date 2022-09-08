@@ -33,6 +33,7 @@
     "@lido-nestjs/constants": "workspace:*",
     "@lido-nestjs/contracts": "workspace:*",
     "@lido-nestjs/di": "workspace:*",
+    "@lido-nestjs/utils": "workspace:*",
     "piscina": "3.2.0"
   },
   "peerDependencies": {
@@ -44,7 +45,6 @@
   },
   "devDependencies": {
     "@ethersproject/providers": "^5.5.3",
-    "@lido-nestjs/utils": "workspace:*",
     "@nestjs/common": "^8.2.5",
     "@nestjs/core": "^8.2.5",
     "@nestjs/testing": "^8.2.5",

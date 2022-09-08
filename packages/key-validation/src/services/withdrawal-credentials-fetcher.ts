@@ -1,15 +1,19 @@
-import { WithdrawalCredentialsExtractorInterface } from '../interfaces/withdrawal-credentials.extractor.interface';
+import {
+  WithdrawalCredentialsExtractorInterface,
+  PossibleWC,
+} from '../interfaces';
 import { Inject, Injectable } from '@nestjs/common';
 import { ImplementsAtRuntime } from '@lido-nestjs/di';
 import { CHAINS } from '@lido-nestjs/constants';
-import { PossibleWC } from '../interfaces/common';
 import { Lido, LIDO_CONTRACT_TOKEN } from '@lido-nestjs/contracts';
 import { WITHDRAWAL_CREDENTIALS } from '../constants/constants';
 import { bufferFromHexString } from '../common/buffer-hex';
 
 @Injectable()
 @ImplementsAtRuntime(WithdrawalCredentialsExtractorInterface)
-export class WithdrawalCredentialsFetcher implements WithdrawalCredentialsExtractorInterface {
+export class WithdrawalCredentialsFetcher
+  implements WithdrawalCredentialsExtractorInterface
+{
   private possibleWcCache: Promise<PossibleWC> | undefined;
 
   public constructor(
@@ -17,11 +21,13 @@ export class WithdrawalCredentialsFetcher implements WithdrawalCredentialsExtrac
   ) {}
 
   public async getWithdrawalCredentials(): Promise<string> {
+    /* istanbul ignore next */
     return await this.lidoContract.getWithdrawalCredentials();
   }
 
   public async getPossibleWithdrawalCredentials(): Promise<PossibleWC> {
     const promise = this.possibleWcCache;
+    /* istanbul ignore next */
     if (promise) {
       return await promise;
     }
@@ -32,7 +38,8 @@ export class WithdrawalCredentialsFetcher implements WithdrawalCredentialsExtrac
 
   protected async getPossibleWithdrawalCredentialsWithoutCache(): Promise<PossibleWC> {
     const chainId = await this.getChainId();
-    const currentWC: string = await this.lidoContract.getWithdrawalCredentials();
+    const currentWC: string =
+      await this.lidoContract.getWithdrawalCredentials();
     const oldWC = WITHDRAWAL_CREDENTIALS[chainId] ?? [];
 
     const oldWcBuffered: [string, Buffer][] = oldWC.map((wc) => [

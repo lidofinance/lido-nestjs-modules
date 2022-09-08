@@ -1,24 +1,25 @@
 import { createInterface } from '@lido-nestjs/di';
-import { PossibleWC } from './common';
+import { PossibleWC, WithdrawalCredentialsHex } from './common';
 import { CHAINS } from '@lido-nestjs/constants';
 
-
 export const WithdrawalCredentialsExtractorInterface =
-  createInterface<WithdrawalCredentialsExtractorInterface>('WithdrawalCredentialsExtractorInterface');
+  createInterface<WithdrawalCredentialsExtractorInterface>(
+    'WithdrawalCredentialsExtractorInterface',
+  );
 
 export interface WithdrawalCredentialsExtractorInterface {
   /**
-   * Returns all possible (current and previous) WC for current chain
+   * Returns all possible (current and historic) WC
    */
   getPossibleWithdrawalCredentials(): Promise<PossibleWC>;
 
   /**
-   * Returns all current WC for current chain id
+   * Returns current WC as string (hexed)
    */
-  getWithdrawalCredentials(): Promise<string>;
+  getWithdrawalCredentials(): Promise<WithdrawalCredentialsHex>;
 
   /**
    * Returns current chain id
    */
-  getChainId(): Promise<CHAINS>
+  getChainId(): Promise<CHAINS>;
 }

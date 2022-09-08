@@ -1,7 +1,7 @@
 export const getDepositMessage = (
   publicKey: Buffer,
   withdrawalCredentials: Buffer,
-  amount: number
+  amount: number,
 ) => {
   return {
     pubkey: publicKey,

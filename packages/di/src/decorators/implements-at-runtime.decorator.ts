@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import 'reflect-metadata';
 import { DESIGN_IMPLEMENTS, INTERFACE_TAG } from '../di.constants';
-import { InterfaceTag } from '../interfaces/interface.tag';
-import { isClass } from '../utils/is-class';
+import { InterfaceTag } from '../interfaces';
+import { isClass } from '../utils';
 
 /**
  * Class decorator indicating that class implements interface at runtime
