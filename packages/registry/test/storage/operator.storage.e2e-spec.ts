@@ -1,4 +1,5 @@
 import { Test } from '@nestjs/testing';
+import { QueryOrder } from '@mikro-orm/core';
 import { MikroOrmModule } from '@mikro-orm/nestjs';
 import { operator } from '../fixtures/operator.fixture';
 import {
@@ -31,6 +32,22 @@ describe('Operators', () => {
 
   afterEach(async () => {
     await registryService.onModuleDestroy();
+  });
+
+  test('find', async () => {
+    const operators = [
+      { index: 1, ...operator },
+      { index: 2, ...operator },
+    ];
+
+    await expect(storageService.findAll()).resolves.toEqual([]);
+    await storageService.save(operators);
+    await expect(
+      storageService.find(
+        { active: true },
+        { limit: 1, orderBy: { index: QueryOrder.DESC } },
+      ),
+    ).resolves.toEqual([operators[1]]);
   });
 
   test('save one operator', async () => {

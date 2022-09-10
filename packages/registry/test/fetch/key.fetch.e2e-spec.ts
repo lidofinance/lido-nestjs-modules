@@ -13,7 +13,7 @@ describe('Keys', () => {
   });
 
   test('fetch one key', async () => {
-    const key = await fetchService.fetchOne(0, 0);
+    const key = await fetchService.fetchOne(21, 0, { blockTag: 6912872 });
 
     expect(key).toBeInstanceOf(Object);
 
@@ -24,20 +24,20 @@ describe('Keys', () => {
   });
 
   test('fetch operator keys', async () => {
-    const keys = await fetchService.fetch(21, 0, -1, { blockTag: 14_200_000 });
+    const keys = await fetchService.fetch(21, 0, -1, { blockTag: 6912872 });
 
     expect(keys).toBeInstanceOf(Array);
-    expect(keys.length).toBe(100);
+    expect(keys.length).toBe(3);
   }, 15_000);
 
   test('fetch multiply operators', async () => {
-    const keys = await fetchService.fetch(0, 0, 2);
+    const keys = await fetchService.fetch(21, 0, 2, { blockTag: 6912872 });
 
     expect(keys).toBeInstanceOf(Array);
     expect(keys.length).toBe(2);
 
-    expect(keys[0].operatorIndex).toBe(0);
-    expect(keys[1].operatorIndex).toBe(0);
+    expect(keys[0].operatorIndex).toBe(21);
+    expect(keys[1].operatorIndex).toBe(21);
 
     expect(keys[0].index).toBe(0);
     expect(keys[1].index).toBe(1);

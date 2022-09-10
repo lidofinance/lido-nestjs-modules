@@ -51,6 +51,17 @@ describe('Keys', () => {
     });
   });
 
+  test('find', async () => {
+    await expect(
+      storageService.find({ used: true }, { limit: 1 }),
+    ).resolves.toEqual([]);
+    expect(mockRegistryKeyRepository.find).toBeCalledTimes(1);
+    expect(mockRegistryKeyRepository.find).toBeCalledWith(
+      { used: true },
+      { limit: 1 },
+    );
+  });
+
   test('findAll', async () => {
     await expect(storageService.findAll()).resolves.toEqual([]);
     expect(mockRegistryKeyRepository.findAll).toBeCalledTimes(1);

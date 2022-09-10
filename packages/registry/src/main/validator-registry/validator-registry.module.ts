@@ -1,5 +1,3 @@
-/* TODO: add tests */
-/* istanbul ignore file */
 import { DynamicModule, Module } from '@nestjs/common';
 import {
   RegistryModuleSyncOptions,
