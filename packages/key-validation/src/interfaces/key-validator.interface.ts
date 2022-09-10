@@ -21,7 +21,7 @@ export interface KeyValidatorInterface {
    * Validates array of keys.
    *
    * It's possible to provide extra data with each key,
-   * the same data will be returned in the result
+   * the same data will be returned with the result
    */
   validateKeys<T>(keys: (Key & T)[]): Promise<[Key & T, boolean][]>;
 }
