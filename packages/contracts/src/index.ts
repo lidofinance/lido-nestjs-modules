@@ -3,6 +3,9 @@ export * from './generated/common';
 
 export * from './contract.module';
 
+export * from './allowed-list/allowed-list.constants';
+export * from './allowed-list/allowed-list.module';
+
 export * from './aragon-token-manager/aragon-token-manager.constants';
 export * from './aragon-token-manager/aragon-token-manager.module';
 

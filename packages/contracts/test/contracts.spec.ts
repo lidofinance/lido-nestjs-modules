@@ -2,6 +2,7 @@ import { JsonRpcProvider } from '@ethersproject/providers';
 import { CHAINS } from '@lido-nestjs/constants';
 import { Test } from '@nestjs/testing';
 import {
+  AllowedListContractModule,
   AragonTokenManagerContractModule,
   AragonVotingManagerContractModule,
   DepositContractModule,
@@ -13,6 +14,8 @@ import {
   RegistryContractModule,
   SecurityContractModule,
   WstethContractModule,
+  ALLOWED_LIST_CONTRACT_ADDRESSES,
+  ALLOWED_LIST_CONTRACT_TOKEN,
   ARAGON_TOKEN_MANAGER_CONTRACT_ADDRESSES,
   ARAGON_TOKEN_MANAGER_CONTRACT_TOKEN,
   ARAGON_VOTING_CONTRACT_ADDRESSES,
@@ -74,6 +77,14 @@ describe('Chains', () => {
     await expect(() =>
       getContract(LidoContractModule, LIDO_CONTRACT_TOKEN, CHAINS.Kovan),
     ).rejects.toThrow();
+  });
+
+  test('allowed list', async () => {
+    await testAddress(
+      AllowedListContractModule,
+      ALLOWED_LIST_CONTRACT_TOKEN,
+      ALLOWED_LIST_CONTRACT_ADDRESSES,
+    );
   });
 
   test('aragon token manager', async () => {
