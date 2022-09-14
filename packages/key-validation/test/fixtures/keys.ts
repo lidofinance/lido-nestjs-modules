@@ -83,7 +83,7 @@ export const invalidUnusedKey = {
   used: false,
 };
 
-export const bigKeysBatch10k: Key[] = range(0, 100)
+export const bigKeysBatch1k: Key[] = range(0, 10)
   .map(() => usedValidKeys)
   .flat(1)
   .map((key) => ({

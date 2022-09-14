@@ -1,12 +1,13 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
 import {
-  bigKeysBatch10k,
+  bigKeysBatch1k,
   invalidKeyBadGenesisForkVersion,
   invalidKeyBadWC,
   validKey,
 } from './fixtures/keys';
 import { withTimer } from '@lido-nestjs/utils';
 import {
+  Key,
   KeyValidator,
   KeyValidatorInterface,
   KeyValidatorModule,
@@ -27,23 +28,89 @@ describe('KeyValidator', () => {
 
   test('[single-thread] should successfully validate a valid key', async () => {
     const keyValidator = await getKeyValidator(false);
-    const res = await keyValidator.validateKey(validKey);
+    const resSingle = await keyValidator.validateKey(validKey);
 
-    expect(res).toBe(true);
-  });
+    expect(resSingle).toBe(true);
 
-  test('[multi-thread] should successfully validate a valid key', async () => {
-    const keyValidator = await getKeyValidator(false);
-    const res = await keyValidator.validateKey(validKey);
+    const resMultiple = await keyValidator.validateKeys([validKey, validKey]);
 
-    expect(res).toBe(true);
+    expect(resMultiple).toBeInstanceOf(Array);
+    expect(resMultiple.length).toBe(2);
+    expect(resMultiple[0]).toBeInstanceOf(Array);
+    expect(resMultiple[0].length).toBe(2);
+    expect(resMultiple[0][0]).toStrictEqual(validKey);
+    expect(resMultiple[0][1]).toBe(true);
   });
 
   test('[multi-thread] should successfully validate a valid key', async () => {
     const keyValidator = await getKeyValidator(true);
-    const res = await keyValidator.validateKey(validKey);
+    const resSingle = await keyValidator.validateKey(validKey);
 
-    expect(res).toBe(true);
+    expect(resSingle).toBe(true);
+
+    const resMultiple = await keyValidator.validateKeys([validKey, validKey]);
+
+    expect(resMultiple).toBeInstanceOf(Array);
+    expect(resMultiple.length).toBe(2);
+    //expect(resMultiple[0]).toBeInstanceOf(Array);
+    expect(resMultiple[0].length).toBe(2);
+
+    expect(resMultiple[0][0].key).toStrictEqual(validKey.key);
+    expect(resMultiple[0][0].depositSignature).toStrictEqual(
+      validKey.depositSignature,
+    );
+    expect(resMultiple[0][0].withdrawalCredentials).toStrictEqual(
+      validKey.withdrawalCredentials,
+    );
+    expect(resMultiple[0][0].genesisForkVersion).toStrictEqual(
+      validKey.genesisForkVersion,
+    );
+    expect(resMultiple[0][0].domainDeposit).toStrictEqual(
+      validKey.domainDeposit,
+    );
+    expect(resMultiple[0][0].amount).toStrictEqual(validKey.amount);
+    expect(resMultiple[0][0].zeroHash).toStrictEqual(validKey.zeroHash);
+    expect(resMultiple[0][1]).toBe(true);
+  });
+
+  test('[single-thread] should return false on valid key but bad amount', async () => {
+    const keyValidator = await getKeyValidator(false);
+    const res = await keyValidator.validateKey({
+      ...validKey,
+      amount: 2 * 10 ** 9,
+    });
+
+    expect(res).toBe(false);
+  });
+
+  test('[multi-thread] should return false on valid key but bad amount', async () => {
+    const keyValidator = await getKeyValidator(true);
+    const res = await keyValidator.validateKey({
+      ...validKey,
+      amount: 2 * 10 ** 9,
+    });
+
+    expect(res).toBe(false);
+  });
+
+  test('[single-thread] should return false on valid key but bad domain deposit', async () => {
+    const keyValidator = await getKeyValidator(false);
+    const res = await keyValidator.validateKey({
+      ...validKey,
+      domainDeposit: Buffer.from('0324124'),
+    });
+
+    expect(res).toBe(false);
+  });
+
+  test('[multi-thread] should return false on valid key but bad domain deposit', async () => {
+    const keyValidator = await getKeyValidator(true);
+    const res = await keyValidator.validateKey({
+      ...validKey,
+      domainDeposit: Buffer.from('0324124'),
+    });
+
+    expect(res).toBe(false);
   });
 
   test('[single-thread] should return false on invalid key with bad WC', async () => {
@@ -90,25 +157,83 @@ describe('KeyValidator', () => {
     expect(time).toBeLessThan(0.01);
   });
 
-  test('[single-thread] 10k keys benchmark should run OK', async () => {
+  test('[single-thread] should successfully validate a valid key with custom properties', async () => {
+    const keyValidator = await getKeyValidator(false);
+
+    type CustomKey = Key & { extra: string };
+
+    const keyWithCustomProperties: CustomKey = {
+      ...validKey,
+      extra: 'have a nice day',
+    };
+    const resSingle = await keyValidator.validateKey(keyWithCustomProperties);
+
+    expect(resSingle).toBe(true);
+
+    const resMultiple = await keyValidator.validateKeys([
+      keyWithCustomProperties,
+    ]);
+
+    expect(resMultiple[0][0]).toHaveProperty('extra');
+    expect(resMultiple[0][0].extra).toBe(keyWithCustomProperties.extra);
+    expect(resMultiple[0][0]).toStrictEqual(keyWithCustomProperties);
+    expect(resMultiple[0][1]).toStrictEqual(true);
+  });
+
+  test('[multi-thread] should successfully validate a valid key with custom properties', async () => {
+    const keyValidator = await getKeyValidator(true);
+
+    type CustomKey = Key & { extra: string };
+
+    const keyWithCustomProperties: CustomKey = {
+      ...validKey,
+      extra: 'have a nice day',
+    };
+    const resSingle = await keyValidator.validateKey(keyWithCustomProperties);
+
+    expect(resSingle).toBe(true);
+
+    const resMultiple = await keyValidator.validateKeys([
+      keyWithCustomProperties,
+    ]);
+
+    expect(resMultiple[0][0]).toHaveProperty('extra');
+    expect(resMultiple[0][0].extra).toBe(keyWithCustomProperties.extra);
+    expect(resMultiple[0][0].key).toStrictEqual(keyWithCustomProperties.key);
+    expect(resMultiple[0][0].depositSignature).toStrictEqual(
+      keyWithCustomProperties.depositSignature,
+    );
+    expect(resMultiple[0][0].withdrawalCredentials).toStrictEqual(
+      keyWithCustomProperties.withdrawalCredentials,
+    );
+    expect(resMultiple[0][0].genesisForkVersion).toStrictEqual(
+      keyWithCustomProperties.genesisForkVersion,
+    );
+    expect(resMultiple[0][0].domainDeposit).toStrictEqual(
+      keyWithCustomProperties.domainDeposit,
+    );
+    expect(resMultiple[0][1]).toStrictEqual(true);
+  });
+
+  test('[single-thread] 1k keys benchmark should run OK', async () => {
     const keyValidator = await getKeyValidator(false);
 
     const [res, time] = await withTimer(() =>
-      keyValidator.validateKeys(bigKeysBatch10k),
+      keyValidator.validateKeys(bigKeysBatch1k),
     );
 
-    expect(res.length).toBe(10000);
-    expect(time).toBeLessThan(60); // 60 seconds
+    expect(res.length).toBe(1000);
+    expect(time).toBeLessThan(30); // 30 seconds
   });
 
-  test('[multi-thread] 10k keys benchmark should run OK', async () => {
+  test('[multi-thread] 1k keys benchmark should run OK', async () => {
     const keyValidator = await getKeyValidator(true);
 
     const [res, time] = await withTimer(() =>
-      keyValidator.validateKeys(bigKeysBatch10k),
+      keyValidator.validateKeys(bigKeysBatch1k),
     );
 
-    expect(res.length).toBe(10000);
-    expect(time).toBeLessThan(30); // 30 seconds
+    expect(res.length).toBe(1000);
+    expect(time).toBeLessThan(15); // 30 seconds
   });
 });
