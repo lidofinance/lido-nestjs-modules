@@ -86,3 +86,5 @@ export class MyService {
   }
 }
 ```
+
+Example of usage this library https://github.com/lidofinance/lido-offchain-key-lib-test.git
