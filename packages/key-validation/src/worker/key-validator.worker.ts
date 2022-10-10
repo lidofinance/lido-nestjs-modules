@@ -1,27 +1,32 @@
 import * as path from 'path';
 import { validateOneKey } from '../common/validate-one-key';
 import { Key } from '../interfaces';
-import { deserialize, serialize } from './serialize';
+import { deserialize } from './serialize';
 
-const worker = <T extends Key>(keysPartSerialized: string[]): string[] => {
-  const keys = keysPartSerialized.map((data) => deserialize<T>(data));
+const worker = <T extends Key>(
+  keysPartSerialized: [serializedKey: string, index: number][],
+): [index: number, valid: boolean][] => {
+  const keysDataBatch = keysPartSerialized.map((data) => {
+    return {
+      index: data[1],
+      key: deserialize<T>(data[0]),
+    };
+  });
 
-  const results: [Key & T, boolean][] = keys.map((key) => {
+  return keysDataBatch.map((data) => {
     return [
-      key,
+      data.index,
       validateOneKey(
-        key.key,
-        key.depositSignature,
-        key.withdrawalCredentials,
-        key.genesisForkVersion,
-        key.amount,
-        key.domainDeposit,
-        key.zeroHash,
+        data.key.key,
+        data.key.depositSignature,
+        data.key.withdrawalCredentials,
+        data.key.genesisForkVersion,
+        data.key.amount,
+        data.key.domainDeposit,
+        data.key.zeroHash,
       ),
     ];
   });
-
-  return results.map(serialize);
 };
 
 /* istanbul ignore next */

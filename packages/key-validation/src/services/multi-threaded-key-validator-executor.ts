@@ -1,8 +1,9 @@
 import { Key, KeyValidatorExecutorInterface } from '../interfaces';
 import { partition } from '@lido-nestjs/utils';
 import Piscina from 'piscina';
-import { deserialize, serialize } from '../worker/serialize';
+import { serialize } from '../worker/serialize';
 import worker from '../worker/key-validator.worker';
+import assert from 'assert';
 
 export class MultiThreadedKeyValidatorExecutor
   implements KeyValidatorExecutorInterface
@@ -10,9 +11,9 @@ export class MultiThreadedKeyValidatorExecutor
   public async validateKey<T = never>(key: Key & T): Promise<boolean> {
     const serialized = serialize(key);
 
-    const result = worker([serialized]);
+    const result = worker([[serialized, 0]]);
 
-    return deserialize<[Key & T, boolean]>(result[0])[1];
+    return result[0][1];
   }
 
   public async validateKeys<T = never>(
@@ -31,17 +32,32 @@ export class MultiThreadedKeyValidatorExecutor
 
     const runner: Runner = threadPool.run;
 
-    const results: string[][] = await Promise.all(
-      partitions
-        .map((keys) => keys.map(serialize))
-        .map((keysPartSerialized: string[]) => {
-          return runner.call(threadPool, keysPartSerialized);
-        }),
+    const results: [Key & T, boolean][][] = await Promise.all(
+      partitions.map(async (partition) => {
+        const partitionWithExtraData = partition.map((key, index) => {
+          // index in each partition is used to find result for each key from workers
+          return { key, serialized: serialize(key), index };
+        });
+
+        const dataToBeSentToWorker: [serializedKey: string, index: number][] =
+          partitionWithExtraData.map((x) => [x.serialized, x.index]);
+
+        const results = await runner.call(threadPool, dataToBeSentToWorker);
+
+        const resultsWithOriginalKey: [Key & T, boolean][] =
+          partitionWithExtraData.map((x) => {
+            const result = results.find((s) => s[0] === x.index);
+            // this will never happen
+            assert(result, 'Empty key result found. Halting.');
+            return [x.key, result[1]];
+          });
+
+        return resultsWithOriginalKey;
+      }),
     );
 
     await threadPool.destroy();
 
-    // deserialization
-    return results.flat().map((data) => deserialize<[Key & T, boolean]>(data));
+    return results.flat();
   }
 }
