@@ -7,8 +7,8 @@ export { RequestInfo } from 'node-fetch';
 type Cb<P> = (payload: P) => Cb<P>;
 
 type LocalPayload = {
-  response: Response;
-  data: unknown;
+  response?: Response;
+  data?: unknown;
 };
 
 export interface FetchModuleOptions {
@@ -17,10 +17,9 @@ export interface FetchModuleOptions {
   middlewares?: MiddlewareCallback<Promise<Cb<LocalPayload>>, LocalPayload>[];
 }
 
-export interface RequestInit<Payload extends object = never>
-  extends RequestInitSource {
+export interface RequestInit extends RequestInitSource {
   retryPolicy?: RequestRetryPolicy;
-  middlewares?: MiddlewareCallback<Promise<Cb<Payload>>, LocalPayload>[];
+  middlewares?: MiddlewareCallback<Promise<Cb<LocalPayload>>, LocalPayload>[];
 }
 
 export interface RequestRetryPolicy {

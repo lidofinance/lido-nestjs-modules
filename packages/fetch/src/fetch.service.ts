@@ -17,9 +17,9 @@ import { MiddlewareCallback } from '@lido-nestjs/middleware';
 type Cb<P> = (payload: P) => Cb<P>;
 
 type LocalPayload = {
-  response: Response;
+  response?: Response;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  data: any;
+  data?: any;
   statusCode?: number;
 };
 @Injectable()
@@ -46,7 +46,7 @@ export class FetchService {
     return await this.runMiddlewares<T>(
       url,
       async (next, payload) => {
-        if (!payload) return await next();
+        if (!payload || !payload.response) return await next();
         payload.data = await payload.response.json();
         return await next();
       },
@@ -61,7 +61,7 @@ export class FetchService {
     return await this.runMiddlewares<string>(
       url,
       async (next, payload) => {
-        if (!payload) return await next();
+        if (!payload || !payload.response) return await next();
         payload.data = await payload.response.text();
         return await next();
       },
@@ -77,7 +77,7 @@ export class FetchService {
 
   protected async runMiddlewares<T>(
     url: RequestInfo,
-    middleware: MiddlewareCallback<Promise<Cb<T>>, LocalPayload>,
+    middleware: MiddlewareCallback<Promise<Cb<LocalPayload>>, LocalPayload>,
     init?: RequestInit,
     attempt = 0,
   ): Promise<T> {
@@ -87,8 +87,6 @@ export class FetchService {
     try {
       return (await this.middlewareService.run(
         [
-          // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-          // @ts-ignore
           async (next, payload) => {
             const baseUrl = this.getBaseUrl(attempt);
             const fullUrl = this.getUrl(baseUrl, url);
@@ -96,18 +94,14 @@ export class FetchService {
             if (payload) payload.response = response;
             return await next();
           },
-          // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-          // @ts-ignore
           middleware,
-          // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-          // @ts-ignore
           ...middlewares,
         ],
         async (payload) => {
-          if (!payload) return;
-          const data = payload.data as T;
+          if (!payload || !payload.response) return;
+          const data = payload.data;
           if (!payload.response.ok) {
-            throw new HttpException(data, payload.response.status);
+            throw new HttpException(data, payload?.response.status);
           }
           return data;
         },
