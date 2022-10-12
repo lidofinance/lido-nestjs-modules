@@ -21,7 +21,13 @@ type LocalPayload = {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   data?: any;
   statusCode?: number;
+  abortController?: AbortController;
 };
+
+export type CustomMiddleware = MiddlewareCallback<
+  Promise<Cb<LocalPayload>>,
+  LocalPayload
+>;
 @Injectable()
 export class FetchService {
   constructor(
@@ -90,8 +96,17 @@ export class FetchService {
           async (next, payload) => {
             const baseUrl = this.getBaseUrl(attempt);
             const fullUrl = this.getUrl(baseUrl, url);
-            const response = await fetch(fullUrl, init);
-            if (payload) payload.response = response;
+            const controller = new AbortController();
+
+            const response = await fetch(fullUrl, {
+              ...init,
+              signal: controller.signal,
+            });
+
+            if (payload) {
+              payload.response = response;
+              payload.abortController = controller;
+            }
             return await next();
           },
           middleware,

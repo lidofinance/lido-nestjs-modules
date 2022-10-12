@@ -2,7 +2,12 @@
 jest.mock('node-fetch');
 
 import { Test } from '@nestjs/testing';
-import { FetchModule, FetchService, RequestRetryPolicy } from '../src';
+import {
+  FetchException,
+  FetchModule,
+  FetchService,
+  RequestRetryPolicy,
+} from '../src';
 import fetch from 'node-fetch';
 const mockFetch = fetch as jest.MockedFunction<typeof fetch>;
 
@@ -26,7 +31,15 @@ describe('Base urls', () => {
     baseUrls?: string[],
     retryPolicy?: RequestRetryPolicy,
   ) => {
-    const fetchModule = FetchModule.forRoot({ baseUrls, retryPolicy });
+    const fetchModule = FetchModule.forRoot({
+      baseUrls,
+      retryPolicy,
+      middlewares: [
+        async (next) => {
+          return await next();
+        },
+      ],
+    });
     const testModule = { imports: [fetchModule] };
     const moduleRef = await Test.createTestingModule(testModule).compile();
 
@@ -49,7 +62,7 @@ describe('Base urls', () => {
         },
         middlewares: [
           () => {
-            throw new Error('Request limit');
+            throw new FetchException('Request limit', 500);
           },
         ],
       });
@@ -73,7 +86,7 @@ describe('Base urls', () => {
         },
         middlewares: [
           () => {
-            throw new Error('Request limit');
+            throw new FetchException('Request limit', 500);
           },
         ],
       });
@@ -102,7 +115,7 @@ describe('Base urls', () => {
             );
             // @ts-ignore
             if (payload && payload.data.test === 100) {
-              throw new Error('Request limit');
+              throw new FetchException('Request limit', 500);
             }
             return next();
           },

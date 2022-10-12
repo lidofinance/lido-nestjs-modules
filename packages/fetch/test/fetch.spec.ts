@@ -35,7 +35,7 @@ describe('Data fetching', () => {
 
       expect(result).toEqual(expected);
       expect(mockFetch).toBeCalledTimes(1);
-      expect(mockFetch).toBeCalledWith(url, undefined);
+      expect(mockFetch).toBeCalledWith(url, expect.anything());
     });
 
     test('Object', async () => {
@@ -44,7 +44,7 @@ describe('Data fetching', () => {
 
       expect(result).toEqual(expected);
       expect(mockFetch).toBeCalledTimes(1);
-      expect(mockFetch).toBeCalledWith(url, undefined);
+      expect(mockFetch).toBeCalledWith(url, expect.anything());
     });
   });
 
