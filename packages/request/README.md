@@ -8,7 +8,7 @@ The module is based on the [node-fetch](https://www.npmjs.com/package/node-fetch
 ## Install
 
 ```bash
-yarn add @lido-nestjs/fetch
+yarn add @lido-nestjs/request
 ```
 
 ## Usage
@@ -18,38 +18,38 @@ yarn add @lido-nestjs/fetch
 ```ts
 // Import
 import { Module } from '@nestjs/common';
-import { FetchModule } from '@lido-nestjs/fetch';
+import { RequestModule } from '@lido-nestjs/request';
 import { MyService } from './my.service';
 
 @Module({
-  imports: [FetchModule.forFeature()],
+  imports: [RequestModule.forFeature()],
   providers: [MyService],
   exports: [MyService],
 })
 export class MyModule {}
 
 // Usage
-import { FetchService } from '@lido-nestjs/fetch';
+import { RequestService } from '@lido-nestjs/request';
 
 export class MyService {
-  constructor(private fetchService: FetchService) {}
+  constructor(private requestService: RequestService) {}
 
   async myFetch() {
-    return await this.fetchService.fetchJson('/url');
+    return await this.requestService.json({ url: '/url' });
   }
 }
 ```
 
-The `fetchService` provides 2 methods: `fetchJson` and `fetchText`, which are based on a call to the `fetch` function followed by a call to `.json()` or `.text()`. Method arguments are compatible with the `fetch`.
+The `requestService` provides 2 methods: `json` and `text`, which are based on a call to the `fetch` function followed by a call to `.json()` or `.text()`. Method arguments are compatible with the `fetch`.
 
 ### Global usage
 
 ```ts
 import { Module } from '@nestjs/common';
-import { FetchModule } from '@lido-nestjs/fetch';
+import { RequestModule } from '@lido-nestjs/request';
 
 @Module({
-  imports: [FetchModule.forRoot()],
+  imports: [RequestModule.forRoot()],
 })
 export class MyModule {}
 ```
@@ -58,15 +58,15 @@ export class MyModule {}
 
 ```ts
 import { Module } from '@nestjs/common';
-import { FetchModule } from '@lido-nestjs/fetch';
+import { RequestModule } from '@lido-nestjs/request';
 import { ConfigModule, ConfigService } from './my.service';
 
 @Module({
   imports: [
     ConfigModule,
-    FetchModule.forRootAsync({
+    RequestModule.forRootAsync({
       async useFactory(configService: ConfigService) {
-        return { baseUrls: configService.baseUrls };
+        return { url: configService.url };
       },
       inject: [ConfigService],
     }),
@@ -75,89 +75,53 @@ import { ConfigModule, ConfigService } from './my.service';
 export class MyModule {}
 ```
 
-### Module options
+### Middlewares
 
-The `forRoot` and `forFeature` methods have the same options:
+Middlewares - is a main difference between request module and fetch module
 
-```ts
-export interface FetchModuleOptions {
-  baseUrls?: string[];
-  retryPolicy?: RequestRetryPolicy;
-}
+#### Global middlewares
 
-export interface RequestRetryPolicy {
-  delay?: number;
-  attempts?: number;
-}
-```
+You can add global middlewares into the Module instance. These middlewares will be used for each request.
+For example this _standard_ middlewares will be repeated request on each network error 4 times and change the base url on each failure.
 
-| Option   | Default | Desc                                    |
-| -------- | ------- | --------------------------------------- |
-| baseUrls | []      | Array of base API URLs                  |
-| delay    | 1000    | Number of milliseconds between attempts |
-| attempts | 0       | Number of times the query is retried    |
-
-#### Example
+Let's setup our module
 
 ```ts
-// Import
 import { Module } from '@nestjs/common';
-import { FetchModule } from '@lido-nestjs/fetch';
-import { MyService } from './my.service';
+import {
+  RequestModule,
+  repeat,
+  rotate,
+  notOkError,
+} from '@lido-nestjs/request';
+import { ConfigModule, ConfigService } from './my.service';
 
 @Module({
   imports: [
-    FetchModule.forFeature({
-      baseUrls: ['https://my-api.com', 'https://my-fallback-api.com'],
-      retryPolicy: {
-        delay: 2000,
-        attempts: 3,
+    ConfigModule,
+    RequestModule.forRootAsync({
+      async useFactory(configService: ConfigService) {
+        return {
+          middlewares: [repeat(5), rotate(configService.baseUrls), notOkError],
+        };
       },
+      inject: [ConfigService],
     }),
   ],
-  providers: [MyService],
-  exports: [MyService],
 })
 export class MyModule {}
-
-// Usage
-import { FetchService } from '@lido-nestjs/fetch';
-
-export class MyService {
-  constructor(private fetchService: FetchService) {}
-
-  async myFetch() {
-    return await this.fetchService.fetchJson('/foo');
-  }
-}
 ```
 
-If the provided API services are unavailable, the following happens:
-
-- request to https://my-api.com/foo
-- 2000 ms delay
-- request to https://my-fallback-api.com/foo
-- 2000 ms delay
-- request to https://my-api.com/foo
-- throw exception
-
-### Local options
-
-The `retryPolicy` for each query can be rewritten:
+And use it
 
 ```ts
-import { FetchService } from '@lido-nestjs/fetch';
+import { RequestService } from '@lido-nestjs/request';
 
 export class MyService {
-  constructor(private fetchService: FetchService) {}
+  constructor(private requestService: RequestService) {}
 
   async myFetch() {
-    return await this.fetchService.fetchJson('/foo', {
-      retryPolicy: {
-        delay: 2000,
-        attempts: 3,
-      },
-    });
+    return await this.requestService.json({ url: '/url' });
   }
 }
 ```
