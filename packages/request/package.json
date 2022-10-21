@@ -30,7 +30,8 @@
   "dependencies": {
     "@lido-nestjs/middleware": "workspace:*",
     "@types/node-fetch": "^2.5.12",
-    "node-fetch": "^2.6.7"
+    "node-fetch": "^2.6.7",
+    "prom-client": "^14.1.0"
   },
   "peerDependencies": {
     "@nestjs/common": "^8.2.5",
