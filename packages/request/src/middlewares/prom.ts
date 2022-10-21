@@ -16,7 +16,7 @@ const defaultSerializer = (
   const url = getUrl(config.baseUrl, config.url);
   const status = error instanceof HttpException ? error.getStatus() : 'unknown';
   return {
-    result: error ? 'error' : 'result',
+    result: error ? 'error' : 'success',
     status: error ? status : response.status,
     url: url.toString(),
   };
