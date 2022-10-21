@@ -1,6 +1,26 @@
 import { Response } from 'node-fetch';
 import { InternalConfig, Middleware } from '../interfaces';
 import { Histogram } from 'prom-client';
+import { getUrl } from '../common';
+import { HttpException } from '@nestjs/common';
+
+type PromReturnTypeSerializer =
+  | Partial<Record<string, string | number>>
+  | undefined;
+
+const defaultSerializer = (
+  config: InternalConfig,
+  response: Response,
+  error?: Error,
+): PromReturnTypeSerializer => {
+  const url = getUrl(config.baseUrl, config.url);
+  const status = error instanceof HttpException ? error.getStatus() : 'unknown';
+  return {
+    result: error ? 'error' : 'result',
+    status: error ? status : response.status,
+    url: url.toString(),
+  };
+};
 
 /**
  * Simple middleware for prom-client
@@ -29,7 +49,7 @@ export const prom =
       conf: InternalConfig,
       response: Response,
       error?: Error,
-    ) => Partial<Record<string, string | number>> | undefined,
+    ) => PromReturnTypeSerializer = defaultSerializer,
   ): Middleware =>
   async (config, next) => {
     let response!: Response;
