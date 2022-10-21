@@ -24,6 +24,7 @@ const defaultSerializer = (
 
 /**
  * Simple middleware for prom-client
+ *
  * ```ts
  * const h = new Histogram({
  *   name: 'name',
@@ -31,7 +32,9 @@ const defaultSerializer = (
  *   buckets: [0.1, 0.2, 0.5, 1, 2, 5, 10, 15, 20],
  *   labelNames: ['result', 'status'],
  * });
- *
+ * // With default serializer
+ * prom(h)
+ * // With custom serializer
  * prom(h, (config, res, error) => ({
  *  result: error ? 'error' : 'result',
  *  status: 200,
