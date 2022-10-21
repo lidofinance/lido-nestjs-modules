@@ -2625,6 +2625,27 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@lido-nestjs/request@workspace:packages/request":
+  version: 0.0.0-use.local
+  resolution: "@lido-nestjs/request@workspace:packages/request"
+  dependencies:
+    "@lido-nestjs/middleware": "workspace:*"
+    "@nestjs/common": ^8.2.5
+    "@nestjs/core": ^8.2.5
+    "@nestjs/testing": ^8.2.5
+    "@types/node-fetch": ^2.5.12
+    node-fetch: ^2.6.7
+    reflect-metadata: ^0.1.13
+    rxjs: ^7.5.2
+  peerDependencies:
+    "@nestjs/common": ^8.2.5
+    "@nestjs/core": ^8.2.5
+    reflect-metadata: ^0.1.13
+    rxjs: ^7.5.2
+    tslib: ^2.3.1
+  languageName: unknown
+  linkType: soft
+
 "@lido-nestjs/utils@workspace:*, @lido-nestjs/utils@workspace:packages/utils":
   version: 0.0.0-use.local
   resolution: "@lido-nestjs/utils@workspace:packages/utils"
