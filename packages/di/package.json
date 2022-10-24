@@ -1,0 +1,45 @@
+{
+  "name": "@lido-nestjs/di",
+  "version": "0.0.0-semantic-release",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "license": "MIT",
+  "homepage": "https://github.com/lidofinance/lido-nestjs-modules",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/lidofinance/lido-nestjs-modules.git",
+    "directory": "packages/di"
+  },
+  "bugs": {
+    "url": "https://github.com/lidofinance/lido-nestjs-modules/issues"
+  },
+  "sideEffects": false,
+  "keywords": [
+    "lido",
+    "lido-nestjs",
+    "lido-nestjs-modules",
+    "lidofinance",
+    "di"
+  ],
+  "files": [
+    "dist/*"
+  ],
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org/",
+    "access": "public"
+  },
+  "peerDependencies": {
+    "@nestjs/common": "^8.2.5",
+    "@nestjs/core": "^8.2.5",
+    "reflect-metadata": "^0.1.13",
+    "rxjs": "^7.5.2",
+    "tslib": "^2.3.1"
+  },
+  "devDependencies": {
+    "@nestjs/common": "^8.2.5",
+    "@nestjs/core": "^8.2.5",
+    "@nestjs/testing": "^8.2.5",
+    "reflect-metadata": "^0.1.13",
+    "rxjs": "^7.5.2"
+  }
+}
