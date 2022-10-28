@@ -16,6 +16,7 @@ module.exports = {
   transform: {
     '^.+\\.ts?$': 'ts-jest',
   },
+  moduleNameMapper: { '^node-fetch$': require.resolve('node-fetch') },
   testEnvironment: 'node',
   setupFiles: ['dotenv/config'],
 };

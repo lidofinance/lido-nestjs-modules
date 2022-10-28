@@ -1,16 +1,18 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { RequestInit as RequestInitSource, Response } from 'node-fetch';
+import type * as Fetch from 'node-fetch';
+
 import { ModuleMetadata } from '@nestjs/common';
 import { MiddlewareCallback } from '@lido-nestjs/middleware';
-export { RequestInfo } from 'node-fetch';
+
+export type RequestInfo = Fetch.RequestInfo;
 
 export interface FetchModuleOptions {
   baseUrls?: string[];
   retryPolicy?: RequestRetryPolicy;
-  middlewares?: MiddlewareCallback<Promise<Response>>[];
+  middlewares?: MiddlewareCallback<Promise<Fetch.Response>>[];
 }
 
-export interface RequestInit extends RequestInitSource {
+export interface RequestInit extends Fetch.RequestInit {
   retryPolicy?: RequestRetryPolicy;
 }
 
