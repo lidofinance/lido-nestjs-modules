@@ -130,14 +130,16 @@ import { createInterface } from '@lido-nestjs/di';
 export interface ServiceInterface {
   doSmth(): string;
 }
-
-const ServiceInterface = createInterface<ServiceInterface>('ServiceInterface');
+// the interface name and the name of the constant should be the same
+export const ServiceInterface = createInterface<ServiceInterface>('ServiceInterface');
 ```
 
 ```ts
 // service.ts
 import { ImplementsAtRuntime } from '@lido-nestjs/di';
 import { Injectable } from '@nestjs/common';
+
+// here, we are importing the type and the constant in one variable 'ServiceInterface'
 import { ServiceInterface } from './service.interface';
 
 @Injectable()
