@@ -1,6 +1,6 @@
 import { KeySignPair } from './key-sign-pair';
 
 export type NopKeysResult = {
-  cid: string | null;
-  data: KeySignPair[] | null;
+  cid: string;
+  data: KeySignPair[];
 };
