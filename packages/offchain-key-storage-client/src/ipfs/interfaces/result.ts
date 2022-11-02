@@ -1,5 +1,6 @@
-export type Result = {
+import { KeySignPair } from './key-sign-pair';
+
+export type NopKeysResult = {
   cid: string | null;
-  data: string | null;
-  error: string | null;
+  data: KeySignPair[] | null;
 };

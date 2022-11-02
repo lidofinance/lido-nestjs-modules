@@ -1,47 +1,54 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Test } from '@nestjs/testing';
 import { FetchModule } from '@lido-nestjs/fetch';
-import { IpfsNopKeysService } from '../../src';
+import { IpfsNopKeysService, IpfsNopKeysModule } from '../../src';
+import { IpfsGeneralService, IpfsModule } from '@lido-nestjs/ipfs-http-client';
 
 describe('Ipfs service', () => {
   let ipfsService: IpfsNopKeysService;
+  let ipfsGeneralService: IpfsGeneralService;
 
   let mockAdd: any;
   let mockGet: any;
 
   beforeEach(async () => {
     const moduleRef = await Test.createTestingModule({
-      imports: [FetchModule.forRoot()],
-      providers: [IpfsNopKeysService],
+      imports: [
+        FetchModule.forRoot(),
+        IpfsModule.forRoot({
+          imports: [FetchModule],
+          url: '',
+          username: '',
+          password: '',
+        }),
+        IpfsNopKeysModule.forRoot({
+          // imports: [],
+        }),
+      ],
     }).compile();
-    ipfsService = moduleRef.get(IpfsNopKeysService);
 
-    mockAdd = jest.spyOn(ipfsService, 'add');
-    mockGet = jest.spyOn(ipfsService, 'get');
+    ipfsService = moduleRef.get(IpfsNopKeysService);
+    ipfsGeneralService = moduleRef.get(IpfsGeneralService);
+
+    mockAdd = jest.spyOn(ipfsGeneralService, 'add');
+    mockGet = jest.spyOn(ipfsGeneralService, 'get');
   });
 
   test('Methods are defined', () => {
-    expect(ipfsService.add).toBeDefined();
-    expect(ipfsService.get).toBeDefined();
-
     expect(ipfsService.addKeySign).toBeDefined();
     expect(ipfsService.getKeySign).toBeDefined();
+
+    expect(ipfsGeneralService.add).toBeDefined();
+    expect(ipfsGeneralService.get).toBeDefined();
   });
 
   describe('Params validation', () => {
     test('absence of sign', async () => {
       const params: any = [{ key: 'key1', sign: 'sign1' }, { key: 'key1' }];
 
-      expect(
-        await ipfsService.addKeySign(params, 'someurl', {
-          username: 'username',
-          password: 'password',
-        }),
-      ).toEqual({
-        cid: null,
-        data: null,
-        error: 'Incorrect parameter, values should be KeySignPair[]',
-      });
+      expect(ipfsService.addKeySign(params)).rejects.toThrowError(
+        'Incorrect parameter, values should be KeySignPair[]',
+      );
     });
 
     test('wrong type', async () => {
@@ -50,31 +57,17 @@ describe('Ipfs service', () => {
         { key: 'key1', sign: 'sign1' },
       ];
 
-      expect(
-        await ipfsService.addKeySign(params, 'someurl', {
-          username: 'username',
-          password: 'password',
-        }),
-      ).toEqual({
-        cid: null,
-        data: null,
-        error: 'Incorrect parameter, values should be KeySignPair[]',
-      });
+      expect(ipfsService.addKeySign(params)).rejects.toThrowError(
+        'Incorrect parameter, values should be KeySignPair[]',
+      );
     });
 
     test('parameter is not list', async () => {
       const params: any = { key: 'key1', sign: 'sign1' };
 
-      expect(
-        await ipfsService.addKeySign(params, 'someurl', {
-          username: 'username',
-          password: 'password',
-        }),
-      ).toEqual({
-        cid: null,
-        data: null,
-        error: 'Incorrect parameter, values should be KeySignPair[]',
-      });
+      expect(ipfsService.addKeySign(params)).rejects.toThrowError(
+        'Incorrect parameter, values should be KeySignPair[]',
+      );
     });
   });
 
@@ -82,35 +75,19 @@ describe('Ipfs service', () => {
     test('got error message', async () => {
       const error = 'some error message';
 
-      mockAdd = mockAdd.mockImplementation(async () => ({
-        data: null,
-        cid: null,
-        error: error,
-      }));
+      mockAdd = mockAdd.mockImplementation(() => {
+        throw new Error(error);
+      });
 
       const param = [
         { key: 'key1', sign: 'sign1' },
         { key: 'key1', sign: 'sign1' },
       ];
 
-      const result = await ipfsService.addKeySign(
-        param,
-        'http://127.0.0.1:5001/api/v0',
-        { username: 'username', password: 'password' },
-      );
+      expect(ipfsService.addKeySign(param)).rejects.toThrowError(error);
 
       expect(mockAdd).toBeCalledTimes(1);
-      expect(mockAdd).toBeCalledWith(
-        JSON.stringify(param),
-        'http://127.0.0.1:5001/api/v0',
-        { username: 'username', password: 'password' },
-      );
-
-      expect(result).toEqual({
-        cid: null,
-        data: null,
-        error: error,
-      });
+      expect(mockAdd).toBeCalledWith(JSON.stringify(param));
     });
 
     test('successful result', async () => {
@@ -122,26 +99,16 @@ describe('Ipfs service', () => {
       mockAdd = mockAdd.mockImplementation(async () => ({
         data: JSON.stringify(param),
         cid: 'QmSJiSS956mnxk2UhWo5T7CqCebeDAS4BrnjuBM6VAeheT',
-        error: null,
       }));
 
-      const result = await ipfsService.addKeySign(
-        param,
-        'http://127.0.0.1:5001/api/v0',
-        { username: 'username', password: 'password' },
-      );
+      const result = await ipfsService.addKeySign(param);
 
       expect(mockAdd).toBeCalledTimes(1);
-      expect(mockAdd).toBeCalledWith(
-        JSON.stringify(param),
-        'http://127.0.0.1:5001/api/v0',
-        { username: 'username', password: 'password' },
-      );
+      expect(mockAdd).toBeCalledWith(JSON.stringify(param));
 
       expect(result).toEqual({
         cid: 'QmSJiSS956mnxk2UhWo5T7CqCebeDAS4BrnjuBM6VAeheT',
         data: param,
-        error: null,
       });
     });
   });
@@ -152,27 +119,19 @@ describe('Ipfs service', () => {
       mockGet = mockGet.mockImplementation(async () => ({
         data: unexpectedResult,
         cid: 'QmSJiSS956mnxk2UhWo5T7CqCebeDAS4BrnjuBM6VAeheT',
-        error: null,
       }));
 
-      const result = await ipfsService.getKeySign(
-        'QmSJiSS956mnxk2UhWo5T7CqCebeDAS4BrnjuBM6VAeheT',
-        'http://127.0.0.1:5001/api/v0',
-        { username: 'username', password: 'password' },
-      );
+      // Json.parse throw error
+      expect(
+        ipfsService.getKeySign(
+          'QmSJiSS956mnxk2UhWo5T7CqCebeDAS4BrnjuBM6VAeheT',
+        ),
+      ).rejects.toThrowError('Unexpected token k in JSON at position 0');
 
       expect(mockGet).toBeCalledTimes(1);
       expect(mockGet).toBeCalledWith(
         'QmSJiSS956mnxk2UhWo5T7CqCebeDAS4BrnjuBM6VAeheT',
-        'http://127.0.0.1:5001/api/v0',
-        { username: 'username', password: 'password' },
       );
-
-      expect(result).toEqual({
-        cid: null,
-        data: null,
-        error: `Unexpected result: ${unexpectedResult}`,
-      });
     });
 
     test('result is not keySignPair[]', async () => {
@@ -183,27 +142,20 @@ describe('Ipfs service', () => {
       mockGet = mockGet.mockImplementation(async () => ({
         data: unexpectedResult,
         cid: 'QmSJiSS956mnxk2UhWo5T7CqCebeDAS4BrnjuBM6VAeheT',
-        error: null,
       }));
 
-      const result = await ipfsService.getKeySign(
-        'QmSJiSS956mnxk2UhWo5T7CqCebeDAS4BrnjuBM6VAeheT',
-        'http://127.0.0.1:5001/api/v0',
-        { username: 'username', password: 'password' },
+      expect(
+        ipfsService.getKeySign(
+          'QmSJiSS956mnxk2UhWo5T7CqCebeDAS4BrnjuBM6VAeheT',
+        ),
+      ).rejects.toThrowError(
+        'Incorrect parameter, values should be KeySignPair[]',
       );
 
       expect(mockGet).toBeCalledTimes(1);
       expect(mockGet).toBeCalledWith(
         'QmSJiSS956mnxk2UhWo5T7CqCebeDAS4BrnjuBM6VAeheT',
-        'http://127.0.0.1:5001/api/v0',
-        { username: 'username', password: 'password' },
       );
-
-      expect(result).toEqual({
-        cid: null,
-        data: null,
-        error: `Unexpected result: ${unexpectedResult}`,
-      });
     });
 
     test('successfull result', async () => {
@@ -215,83 +167,40 @@ describe('Ipfs service', () => {
       mockGet = mockGet.mockImplementation(async () => ({
         data: param,
         cid: 'QmSJiSS956mnxk2UhWo5T7CqCebeDAS4BrnjuBM6VAeheT',
-        error: null,
       }));
 
       const result = await ipfsService.getKeySign(
         'QmSJiSS956mnxk2UhWo5T7CqCebeDAS4BrnjuBM6VAeheT',
-        'http://127.0.0.1:5001/api/v0',
-        { username: 'username', password: 'password' },
       );
 
       expect(mockGet).toBeCalledTimes(1);
       expect(mockGet).toBeCalledWith(
         'QmSJiSS956mnxk2UhWo5T7CqCebeDAS4BrnjuBM6VAeheT',
-        'http://127.0.0.1:5001/api/v0',
-        { username: 'username', password: 'password' },
       );
 
       expect(result).toEqual({
         cid: 'QmSJiSS956mnxk2UhWo5T7CqCebeDAS4BrnjuBM6VAeheT',
         data: JSON.parse(param),
-        error: null,
       });
     });
 
     test('got error message', async () => {
       const error = 'some error message';
 
-      mockGet = mockGet.mockImplementation(async () => ({
-        data: null,
-        cid: null,
-        error: error,
-      }));
+      mockGet = mockGet.mockImplementation(async () => {
+        throw new Error(error);
+      });
 
-      const result = await ipfsService.getKeySign(
-        'QmSJiSS956mnxk2UhWo5T7CqCebeDAS4BrnjuBM6VAeheT',
-        'http://127.0.0.1:5001/api/v0',
-        { username: 'username', password: 'password' },
-      );
+      expect(
+        ipfsService.getKeySign(
+          'QmSJiSS956mnxk2UhWo5T7CqCebeDAS4BrnjuBM6VAeheT',
+        ),
+      ).rejects.toThrowError(error);
 
       expect(mockGet).toBeCalledTimes(1);
       expect(mockGet).toBeCalledWith(
         'QmSJiSS956mnxk2UhWo5T7CqCebeDAS4BrnjuBM6VAeheT',
-        'http://127.0.0.1:5001/api/v0',
-        { username: 'username', password: 'password' },
       );
-
-      expect(result).toEqual({
-        cid: null,
-        data: null,
-        error: error,
-      });
-    });
-
-    test('got null data', async () => {
-      mockGet = mockGet.mockImplementation(async () => ({
-        data: null,
-        cid: null,
-        error: null,
-      }));
-
-      const result = await ipfsService.getKeySign(
-        'QmSJiSS956mnxk2UhWo5T7CqCebeDAS4BrnjuBM6VAeheT',
-        'http://127.0.0.1:5001/api/v0',
-        { username: 'username', password: 'password' },
-      );
-
-      expect(mockGet).toBeCalledTimes(1);
-      expect(mockGet).toBeCalledWith(
-        'QmSJiSS956mnxk2UhWo5T7CqCebeDAS4BrnjuBM6VAeheT',
-        'http://127.0.0.1:5001/api/v0',
-        { username: 'username', password: 'password' },
-      );
-
-      expect(result).toEqual({
-        cid: null,
-        data: null,
-        error: 'Unexpected result: null',
-      });
     });
   });
 });

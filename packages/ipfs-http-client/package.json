@@ -1,5 +1,5 @@
 {
-  "name": "@lido-nestjs/offchain-key-storage-client",
+  "name": "@lido-nestjs/ipfs-http-client",
   "version": "0.0.0-semantic-release",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -8,7 +8,7 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/lidofinance/lido-nestjs-modules.git",
-    "directory": "packages/offchain-key-storage-client"
+    "directory": "packages/ipfs-http-client"
   },
   "bugs": {
     "url": "https://github.com/lidofinance/lido-nestjs-modules/issues"
@@ -23,15 +23,13 @@
   "files": [
     "dist/*"
   ],
-  "scripts": {
-    "lint": "eslint --ext ts ."
-  },
   "publishConfig": {
     "registry": "https://registry.npmjs.org/",
     "access": "public"
   },
   "dependencies": {
-    "@lido-nestjs/ipfs-http-client": "workspace:*",
+    "@lido-nestjs/di": "workspace:*",
+    "@lido-nestjs/fetch": "workspace:*",
     "ethers": "^5.5.4"
   },
   "peerDependencies": {

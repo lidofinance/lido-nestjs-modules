@@ -13,51 +13,62 @@ yarn add @lido-nestjs/offchain-key-storage-client
 
 ### Usage
 
-This module depends on `FetchModule` from `@lido-nestjs/fetch`, so you need to provide it as a global module or import it into `IpfsModule`.
+This module depends on `IpfsModule` from `@lido-nestjs/ipfs-http-client`, so you need to provide it as a global module or import it into `IpfsNopKeysModule`.
+
+### IpfsModule
+
+// global IpfsModule usage
 
 ```ts
-// Import
-import { Module } from '@nestjs/common';
-import { IpfsModule } from '@lido-nestjs/offchain-key-storage-client';
-import { FetchModule } from '@lido-nestjs/fetch';
-import { MyService } from './my.service';
-
 @Module({
-  imports: [IpfsModule.forFeature({ imports: [FetchModule] })],
-  providers: [MyService],
-  exports: [MyService],
-})
-export class MyModule {}
-
-// Usage
-import { IpfsGeneralService } from '@lido-nestjs/offchain-key-storage-client';
-
-export class MyService {
-  constructor(private ipfsService: IpfsGeneralService) {}
-
-  async myMethod() {
-    return await this.ipfsService.get(
-      'QmSJiSS956mnxk2UhWo5T7CqCebeDAS4BrnjuBM6VAeheT',
-      'http://127.0.0.1:5001/api/v0',
-    );
-  }
-}
-```
-
-### Global usage
-
-```ts
-import { Module } from '@nestjs/common';
-import { IpfsModule } from '@lido-nestjs/offchain-key-storage-client';
-import { FetchModule } from '@lido-nestjs/fetch';
-
-@Module({
-  imports: [FetchModule.forRoot(), IpfsModule.forRoot()],
+  imports: [
+    ConfigModule,
+    // FetchModule.forRoot(),
+    IpfsModule.forRootAsync({
+      imports: [CustomFetchModule],
+      async useFactory(config: ConfigService) {
+        return {
+          url: config.get('URL'),
+          username: config.get('USERNAME'),
+          password: config.get('PASSWORD'),
+        };
+      },
+      inject: [ConfigService],
+    }),
+    IpfsNopKeysModule.forRoot(),
+  ],
 })
 export class MyModule {}
 ```
 
-## NopMerkleTree
+// IpfsModule as deps of IpfsNopKeysModule
+
+```ts
+@Module({
+  imports: [
+    ConfigModule,
+    // FetchModule.forRoot(),
+    IpfsNopKeysModule.forRoot({
+      imports: [
+        IpfsModule.forRootAsync({
+          imports: [CustomFetchModule],
+          async useFactory(config: ConfigService) {
+            return {
+              url: config.get('URL'),
+              username: config.get('USERNAME'),
+              password: config.get('PASSWORD'),
+            };
+          },
+          inject: [ConfigService],
+        }),
+      ],
+    }),
+  ],
+})
+export class MyModule {}
+```
+
+### NopMerkleTree
 
 ```ts
 // Import
