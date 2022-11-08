@@ -9,7 +9,7 @@ import { FallbackProvider } from '../interfaces/fallback-provider';
 import { BlockTag } from '../ethers/block-tag';
 import { BigNumber, BigNumberish } from '@ethersproject/bignumber';
 import { Deferrable } from '@ethersproject/properties';
-import { TransactionRequest } from '@ethersproject/abstract-provider/src.ts/index';
+import { TransactionRequest } from '@ethersproject/abstract-provider/src.ts';
 import { FormatterWithEIP1898 } from '../ethers/formatter-with-eip1898';
 import {
   getNetworkChain,
@@ -87,11 +87,7 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
         return false;
       }
 
-      if (typeof url === 'object' && !url.url) {
-        return false;
-      }
-
-      return true;
+      return !(typeof url === 'object' && !url.url);
     });
 
     if (conns.length < 1) {
@@ -234,10 +230,6 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
           this.provider.provider.perform(method, params),
         );
       } catch (e) {
-        if (this.errorShouldBeReThrown(e)) {
-          throw e;
-        }
-
         this.logger.error(
           'Error while doing ETH1 RPC request. Will try to switch to another provider',
         );
