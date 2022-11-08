@@ -36,7 +36,7 @@ describe('Base urls', () => {
 
       await expect(fetchService.fetchJson(url)).rejects.toThrow();
       expect(mockFetch).toBeCalledTimes(1);
-      expect(mockFetch).toBeCalledWith(baseUrls[0] + url, undefined);
+      expect(mockFetch).toBeCalledWith(baseUrls[0] + url, expect.anything());
     });
 
     test('Without base url', async () => {
@@ -45,7 +45,7 @@ describe('Base urls', () => {
 
       await expect(fetchService.fetchJson(url)).rejects.toThrow();
       expect(mockFetch).toBeCalledTimes(1);
-      expect(mockFetch).toBeCalledWith(url, undefined);
+      expect(mockFetch).toBeCalledWith(url, expect.anything());
     });
 
     test('Absolute url', async () => {
@@ -55,7 +55,7 @@ describe('Base urls', () => {
 
       await expect(fetchService.fetchJson(expected)).rejects.toThrow();
       expect(mockFetch).toBeCalledTimes(1);
-      expect(mockFetch).toBeCalledWith(expected, undefined);
+      expect(mockFetch).toBeCalledWith(expected, expect.anything());
     });
   });
 
@@ -68,7 +68,7 @@ describe('Base urls', () => {
 
       await expect(fetchService.fetchJson(url)).rejects.toThrow();
       expect(mockFetch).toBeCalledTimes(1);
-      expect(mockFetch).toBeCalledWith(baseUrls[0] + url, undefined);
+      expect(mockFetch).toBeCalledWith(baseUrls[0] + url, expect.anything());
     });
 
     test('One retry', async () => {
