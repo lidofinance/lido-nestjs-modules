@@ -7,9 +7,6 @@ export const nonRetryableErrors: (string | number)[] = [
   // Not Implemented
   ErrorCode.NOT_IMPLEMENTED,
 
-  // Timeout
-  ErrorCode.TIMEOUT,
-
   ///////////////////
   // Operational  Errors
 
