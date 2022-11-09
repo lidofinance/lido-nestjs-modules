@@ -1,4 +1,4 @@
-jest.mock('node-fetch');
+jest.mock('node-fetch-cjs');
 
 import { performance } from 'perf_hooks';
 import { Test } from '@nestjs/testing';
@@ -8,7 +8,7 @@ import {
   FetchModuleOptions,
   FETCH_GLOBAL_RETRY_DEFAULT_DELAY,
 } from '../src';
-import fetch from 'node-fetch';
+import fetch from 'node-fetch-cjs';
 
 const mockFetch = fetch as jest.MockedFunction<typeof fetch>;
 

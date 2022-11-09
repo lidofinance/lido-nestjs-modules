@@ -1,4 +1,4 @@
-import fetch, { Response } from 'node-fetch';
+import fetch, { Response } from 'node-fetch-cjs';
 import { HttpException, Inject, Injectable, Optional } from '@nestjs/common';
 import { MiddlewareService } from '@lido-nestjs/middleware';
 import {
@@ -29,7 +29,7 @@ export class FetchService {
 
   public async fetchJson<T>(url: RequestInfo, init?: RequestInit): Promise<T> {
     const response = await this.wrappedRequest(url, init);
-    return await response.json();
+    return (await response.json()) as T;
   }
 
   public async fetchText(
@@ -84,7 +84,7 @@ export class FetchService {
     response: Response,
   ): Promise<string | Record<string, unknown>> {
     try {
-      return await response.json();
+      return (await response.json()) as string | Record<string, unknown>;
     } catch (error) {
       return response.statusText;
     }

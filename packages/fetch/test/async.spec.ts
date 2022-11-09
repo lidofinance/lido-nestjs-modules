@@ -1,6 +1,6 @@
-jest.mock('node-fetch');
+jest.mock('node-fetch-cjs');
 
-import fetch from 'node-fetch';
+import fetch from 'node-fetch-cjs';
 import {
   DynamicModule,
   Injectable,
@@ -10,7 +10,7 @@ import {
 import { Test } from '@nestjs/testing';
 import { FetchModule, FetchModuleAsyncOptions, FetchService } from '../src';
 
-const { Response } = jest.requireActual('node-fetch');
+const { Response } = jest.requireActual('node-fetch-cjs');
 const mockFetch = fetch as jest.MockedFunction<typeof fetch>;
 
 @Injectable()

@@ -1,4 +1,4 @@
-jest.mock('node-fetch');
+jest.mock('node-fetch-cjs');
 import { Test } from '@nestjs/testing';
 import {
   FetchModule,
@@ -7,9 +7,9 @@ import {
 } from '@lido-nestjs/fetch';
 import { ConsensusModule, ConsensusService } from '../src';
 import { ModuleMetadata } from '@nestjs/common';
-import fetch from 'node-fetch';
+import fetch from 'node-fetch-cjs';
 
-const { Response } = jest.requireActual('node-fetch');
+const { Response } = jest.requireActual('node-fetch-cjs');
 const mockFetch = fetch as jest.MockedFunction<typeof fetch>;
 
 describe('Fetch config', () => {

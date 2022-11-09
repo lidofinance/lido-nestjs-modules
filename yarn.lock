@@ -2477,7 +2477,7 @@ __metadata:
     "@nestjs/core": ^8.2.5
     "@nestjs/testing": ^8.2.5
     "@types/lodash.snakecase": ^4.1.6
-    "@types/node-fetch": ^2.5.12
+    "@types/node-fetch": ^2.6.2
     lodash.snakecase: ^4.1.1
     node-abort-controller: ^3.0.1
     node-fetch: ^2.6.7
@@ -2604,8 +2604,9 @@ __metadata:
     "@nestjs/common": ^8.2.5
     "@nestjs/core": ^8.2.5
     "@nestjs/testing": ^8.2.5
-    "@types/node-fetch": ^2.5.12
+    "@types/node-fetch": ^2.6.2
     node-fetch: ^2.6.7
+    node-fetch-cjs: ^3.2.10
     reflect-metadata: ^0.1.13
     rxjs: ^7.5.2
   peerDependencies:
@@ -3999,13 +4000,13 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/node-fetch@npm:^2.5.12":
-  version: 2.6.1
-  resolution: "@types/node-fetch@npm:2.6.1"
+"@types/node-fetch@npm:^2.6.2":
+  version: 2.6.2
+  resolution: "@types/node-fetch@npm:2.6.2"
   dependencies:
     "@types/node": "*"
     form-data: ^3.0.0
-  checksum: a3e5d7f413d1638d795dff03f7b142b1b0e0c109ed210479000ce7b3ea11f9a6d89d9a024c96578d9249570c5fe5287a5f0f4aaba98199222230196ff2d6b283
+  checksum: 6f73b1470000d303d25a6fb92875ea837a216656cb7474f66cdd67bb014aa81a5a11e7ac9c21fe19bee9ecb2ef87c1962bceeaec31386119d1ac86e4c30ad7a6
   languageName: node
   linkType: hard
 
@@ -12056,6 +12057,13 @@ __metadata:
   dependencies:
     lodash: ^4.17.21
   checksum: e8c856c04a1645062112a72e59a98b203505ed5111ff84a3a5f40611afa229b578c7d50f1e6a7f17aa62baeea4a640d2e2f61f63afc05423aa267af10977fb2b
+  languageName: node
+  linkType: hard
+
+"node-fetch-cjs@npm:^3.2.10":
+  version: 3.2.10
+  resolution: "node-fetch-cjs@npm:3.2.10"
+  checksum: 3f95b4ac19722b22f9beb1172e7ed887a698e4a149a51cbe85b77ce3cfacb260878f795fb945191d7f6dd31536bbdc4d7a8932ee78cda846a2be4a73196eb75e
   languageName: node
   linkType: hard
 

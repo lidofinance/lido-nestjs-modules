@@ -1,11 +1,11 @@
-jest.mock('node-fetch');
+jest.mock('node-fetch-cjs');
 
 import { Test } from '@nestjs/testing';
 import { FetchModuleOptions } from '../src/interfaces/fetch.interface';
 import { FetchModule, FetchService } from '../src';
-import fetch from 'node-fetch';
+import fetch from 'node-fetch-cjs';
 
-const { Response } = jest.requireActual('node-fetch');
+const { Response } = jest.requireActual('node-fetch-cjs');
 const mockFetch = fetch as jest.MockedFunction<typeof fetch>;
 
 describe('Middleware', () => {

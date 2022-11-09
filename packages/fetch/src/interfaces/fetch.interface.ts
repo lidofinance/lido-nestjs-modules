@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { RequestInit as RequestInitSource, Response } from 'node-fetch';
+import { RequestInit as RequestInitSource, Response } from 'node-fetch-cjs';
 import { ModuleMetadata } from '@nestjs/common';
 import { MiddlewareCallback } from '@lido-nestjs/middleware';
-export { RequestInfo } from 'node-fetch';
+export { RequestInfo } from 'node-fetch-cjs';
 
 export interface FetchModuleOptions {
   baseUrls?: string[];
