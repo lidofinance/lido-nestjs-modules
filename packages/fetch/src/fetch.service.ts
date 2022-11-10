@@ -1,4 +1,4 @@
-import fetch, { Response } from 'node-fetch-cjs';
+import fetch, { Response } from '@lido-js/node-fetch-cjs';
 import { HttpException, Inject, Injectable, Optional } from '@nestjs/common';
 import { MiddlewareService } from '@lido-nestjs/middleware';
 import {

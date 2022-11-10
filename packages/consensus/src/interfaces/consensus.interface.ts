@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/ban-types */
 
-import { RequestInit } from 'node-fetch-cjs';
+import { RequestInit } from '@lido-js/node-fetch-cjs';
 import { operations } from './generated.interface';
 
 type CamelCase<S extends string> =

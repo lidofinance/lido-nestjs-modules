@@ -1,11 +1,11 @@
-jest.mock('node-fetch-cjs');
+jest.mock('@lido-js/node-fetch-cjs');
 
 import { Test } from '@nestjs/testing';
 import { HttpException } from '@nestjs/common';
 import { FetchModule, FetchService } from '../src';
-import fetch from 'node-fetch-cjs';
+import fetch from '@lido-js/node-fetch-cjs';
 
-const { Response } = jest.requireActual('node-fetch-cjs');
+const { Response } = jest.requireActual('@lido-js/node-fetch-cjs');
 const mockFetch = fetch as jest.MockedFunction<typeof fetch>;
 
 describe('Data fetching', () => {
