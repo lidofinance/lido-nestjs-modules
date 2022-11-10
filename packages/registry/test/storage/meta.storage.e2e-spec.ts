@@ -6,6 +6,7 @@ import {
   RegistryStorageService,
   RegistryMetaStorageService,
 } from '../../src';
+import { MikroORM } from '@mikro-orm/core';
 
 describe('Meta', () => {
   let storageService: RegistryMetaStorageService;
@@ -26,7 +27,8 @@ describe('Meta', () => {
     storageService = moduleRef.get(RegistryMetaStorageService);
     registryService = moduleRef.get(RegistryStorageService);
 
-    await registryService.onModuleInit();
+    const generator = moduleRef.get(MikroORM).getSchemaGenerator();
+    await generator.updateSchema();
   });
 
   afterEach(async () => {

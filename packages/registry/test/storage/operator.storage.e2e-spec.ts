@@ -1,5 +1,5 @@
 import { Test } from '@nestjs/testing';
-import { QueryOrder } from '@mikro-orm/core';
+import { MikroORM, QueryOrder } from '@mikro-orm/core';
 import { MikroOrmModule } from '@mikro-orm/nestjs';
 import { operator } from '../fixtures/operator.fixture';
 import {
@@ -27,7 +27,8 @@ describe('Operators', () => {
     storageService = moduleRef.get(RegistryOperatorStorageService);
     registryService = moduleRef.get(RegistryStorageService);
 
-    await registryService.onModuleInit();
+    const generator = moduleRef.get(MikroORM).getSchemaGenerator();
+    await generator.updateSchema();
   });
 
   afterEach(async () => {

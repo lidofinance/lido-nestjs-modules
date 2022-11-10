@@ -18,6 +18,7 @@ import {
 } from '../testing.utils';
 
 import { meta, operators } from '../fixtures/connect.fixture';
+import { MikroORM } from '@mikro-orm/core';
 
 describe('Registry', () => {
   let registryService: ValidatorRegistryService;
@@ -44,11 +45,13 @@ describe('Registry', () => {
     registryService = moduleRef.get(ValidatorRegistryService);
     storageService = moduleRef.get(RegistryStorageService);
 
-    await storageService.onModuleInit();
+    const generator = moduleRef.get(MikroORM).getSchemaGenerator();
+    await generator.updateSchema();
   });
 
   afterEach(async () => {
     await registryService.clear();
+
     await storageService.onModuleDestroy();
   });
 

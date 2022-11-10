@@ -11,6 +11,7 @@ import {
   KeyRegistryService,
   RegistryStorageService,
 } from '../../src';
+import { MikroORM } from '@mikro-orm/core';
 
 describe('Key', () => {
   const provider = new JsonRpcBatchProvider(process.env.EL_RPC_URL);
@@ -41,7 +42,9 @@ describe('Key', () => {
     validatorService = moduleRef.get(KeyRegistryService);
     keyStorage = moduleRef.get(RegistryKeyStorageService);
     storageService = moduleRef.get(RegistryStorageService);
-    await storageService.onModuleInit();
+
+    const generator = moduleRef.get(MikroORM).getSchemaGenerator();
+    await generator.updateSchema();
   });
 
   afterEach(async () => {

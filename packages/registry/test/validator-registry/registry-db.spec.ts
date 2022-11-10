@@ -13,6 +13,7 @@ import {
 } from '../../src/';
 import { keys, meta, operators } from '../fixtures/db.fixture';
 import { compareTestMeta } from '../testing.utils';
+import { MikroORM } from '@mikro-orm/core';
 
 describe('Registry', () => {
   const provider = new JsonRpcBatchProvider(process.env.EL_RPC_URL);
@@ -51,7 +52,8 @@ describe('Registry', () => {
     metaStorageService = moduleRef.get(RegistryMetaStorageService);
     operatorStorageService = moduleRef.get(RegistryOperatorStorageService);
 
-    await registryStorageService.onModuleInit();
+    const generator = moduleRef.get(MikroORM).getSchemaGenerator();
+    await generator.updateSchema();
 
     await keyStorageService.save(keys);
     await metaStorageService.save(meta);

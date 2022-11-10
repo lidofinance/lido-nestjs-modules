@@ -9,6 +9,7 @@ import {
   ValidatorRegistryService,
   RegistryStorageService,
 } from '../../src';
+import { MikroORM } from '@mikro-orm/core';
 
 describe('Sync module initializing', () => {
   const provider = getDefaultProvider('mainnet');
@@ -24,7 +25,9 @@ describe('Sync module initializing', () => {
     );
     const storageService = moduleRef.get(RegistryStorageService);
 
-    await storageService.onModuleInit();
+    const generator = moduleRef.get(MikroORM).getSchemaGenerator();
+    await generator.updateSchema();
+
     expect(registryService).toBeDefined();
     await storageService.onModuleDestroy();
   };

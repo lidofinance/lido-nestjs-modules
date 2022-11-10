@@ -2,6 +2,7 @@ import { MikroOrmModule } from '@mikro-orm/nestjs';
 import { ModuleMetadata } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { RegistryStorageModule, RegistryStorageService } from '../../src';
+import { MikroORM } from '@mikro-orm/core';
 
 describe('Sync module initializing', () => {
   const testModules = async (imports: ModuleMetadata['imports']) => {
@@ -10,7 +11,9 @@ describe('Sync module initializing', () => {
       RegistryStorageService,
     );
 
-    await storageService.onModuleInit();
+    const generator = moduleRef.get(MikroORM).getSchemaGenerator();
+    await generator.updateSchema();
+
     expect(storageService).toBeDefined();
     await storageService.onModuleDestroy();
   };

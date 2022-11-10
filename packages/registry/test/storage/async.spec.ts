@@ -3,6 +3,7 @@ import { DynamicModule, Injectable, Module } from '@nestjs/common';
 import { ModuleMetadata } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { RegistryStorageModule, RegistryStorageService } from '../../src';
+import { MikroORM } from '@mikro-orm/core';
 
 @Injectable()
 class TestService {}
@@ -26,7 +27,9 @@ describe('Async module initializing', () => {
       RegistryStorageService,
     );
 
-    await storageService.onModuleInit();
+    const generator = moduleRef.get(MikroORM).getSchemaGenerator();
+    await generator.updateSchema();
+
     expect(storageService).toBeDefined();
     await storageService.onModuleDestroy();
   };
