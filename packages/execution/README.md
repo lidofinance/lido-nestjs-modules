@@ -55,7 +55,7 @@ import { ConfigModule, ConfigService } from './my.service';
 
 @Module({
   imports: [
-    ConfigModule.forRoot(),
+    ConfigModule.forRoot(), // exports ConfigService
     FetchModule.forRoot(),
     FallbackProviderModule.forRootAsync({
       async useFactory(configService: ConfigService) {
@@ -69,4 +69,16 @@ import { ConfigModule, ConfigService } from './my.service';
   ],
 })
 export class MyModule {}
+
+// Usage
+import { SimpleFallbackJsonRpcBatchProvider } from '@lido-nestjs/execution';
+
+@Injectable
+export class MyService {
+    constructor(private provider: SimpleFallbackJsonRpcBatchProvider) {}
+
+    async doSomeWork() {
+        return await this.provider.getBlock(1000);
+    }
+}
 ```
