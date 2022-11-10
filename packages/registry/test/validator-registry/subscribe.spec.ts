@@ -13,6 +13,7 @@ import {
   RegistryMeta,
 } from '../../src/';
 import { keys, meta, operators } from '../fixtures/db.fixture';
+import { MikroORM } from '@mikro-orm/core';
 
 const wait = (ms: number) => new Promise((res) => setTimeout(res, ms));
 
@@ -57,7 +58,8 @@ describe('Subscribe with custom timer', () => {
     metaStorageService = moduleRef.get(RegistryMetaStorageService);
     operatorStorageService = moduleRef.get(RegistryOperatorStorageService);
 
-    await registryStorageService.onModuleInit();
+    const generator = moduleRef.get(MikroORM).getSchemaGenerator();
+    await generator.updateSchema();
 
     await keyStorageService.save(keys);
     await metaStorageService.save(meta);
@@ -154,7 +156,8 @@ describe('Subscribe without custom timer', () => {
     metaStorageService = moduleRef.get(RegistryMetaStorageService);
     operatorStorageService = moduleRef.get(RegistryOperatorStorageService);
 
-    await registryStorageService.onModuleInit();
+    const generator = moduleRef.get(MikroORM).getSchemaGenerator();
+    await generator.updateSchema();
 
     await keyStorageService.save(keys);
     await metaStorageService.save(meta);
