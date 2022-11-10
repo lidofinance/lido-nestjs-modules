@@ -12,7 +12,7 @@ module.exports = {
   moduleFileExtensions: ['js', 'json', 'ts'],
   testRegex: '.*\\.spec\\.ts$',
   collectCoverageFrom: ['packages/**/src/**/*.ts'],
-  coveragePathIgnorePatterns: ['generated'],
+  coveragePathIgnorePatterns: ['generated', 'migrations'],
   transform: {
     '^.+\\.ts?$': 'ts-jest',
   },
