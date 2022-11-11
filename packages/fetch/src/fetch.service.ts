@@ -1,4 +1,7 @@
-import fetch, { Response } from '@lido-js/node-fetch-cjs';
+import fetch, {
+  Response,
+  RequestInfo as RequestInfoDefault,
+} from '@lido-js/node-fetch-cjs';
 import { HttpException, Inject, Injectable, Optional } from '@nestjs/common';
 import { MiddlewareService } from '@lido-nestjs/middleware';
 import {
@@ -57,7 +60,10 @@ export class FetchService {
     try {
       const baseUrl = this.getBaseUrl(attempt);
       const fullUrl = this.getUrl(baseUrl, url);
-      const response = await fetch(fullUrl, init);
+      // node-fetch v3 lose the naive polyfill URLLike
+      // I add it in the fetch interface
+      // The reason is TS can't handle abstraction with .toString getter
+      const response = await fetch(fullUrl as RequestInfoDefault, init);
 
       if (!response.ok) {
         const errorBody = await this.extractErrorBody(response);

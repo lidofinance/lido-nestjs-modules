@@ -38,14 +38,14 @@ describe('Data fetching', () => {
       expect(mockFetch).toBeCalledWith(url, undefined);
     });
     // https://github.com/node-fetch/node-fetch/issues/1261
-    // test.skip('Object', async () => {
-    //   const url = new URL('/foo');
-    //   const result = await fetchService.fetchJson(url);
+    test('Object', async () => {
+      const url = { href: '/foo' };
+      const result = await fetchService.fetchJson(url);
 
-    //   expect(result).toEqual(expected);
-    //   expect(mockFetch).toBeCalledTimes(1);
-    //   expect(mockFetch).toBeCalledWith(url, undefined);
-    // });
+      expect(result).toEqual(expected);
+      expect(mockFetch).toBeCalledTimes(1);
+      expect(mockFetch).toBeCalledWith(url, undefined);
+    });
   });
 
   describe('Success', () => {
