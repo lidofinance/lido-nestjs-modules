@@ -24,10 +24,13 @@ describe('Hide secrets', () => {
         '[hidden-address-2',
         emptyString,
         specialCharactersRegex,
+        '0x0000000000000000000000000000000000000000',
+        '0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84',
       ];
+      const regex = [/(0x)?[0-9a-fA-F]{40}/];
       const replacer = SECRET_REPLACER;
       const level = 'debug';
-      const transports = transport({ secrets });
+      const transports = transport({ secrets, regex });
 
       let loggerService: LoggerService;
 
@@ -92,6 +95,54 @@ describe('Hide secrets', () => {
           secrets[1] +
           specialCharactersRegex;
         const expected = replacer + replacer;
+        const error = new Error(message);
+        loggerService.error(error);
+
+        expect(write).toBeCalledTimes(1);
+        expect(write).toBeCalledWith(expect.stringContaining(expected));
+        expect(write).toBeCalledWith(expect.not.stringContaining(message));
+      });
+
+      test('Address regex cleaning in error', () => {
+        const message = secrets[4];
+        const expected = replacer;
+
+        const error = new Error(message);
+        loggerService.error(error);
+
+        expect(write).toBeCalledTimes(1);
+        expect(write).toBeCalledWith(expect.stringContaining(expected));
+        expect(write).toBeCalledWith(expect.not.stringContaining(message));
+      });
+
+      test('Two different addresses regex cleaning in error', () => {
+        const message = secrets[4] + secrets[5];
+        const expected = replacer + replacer;
+
+        const error = new Error(message);
+        loggerService.error(error);
+
+        expect(write).toBeCalledTimes(1);
+        expect(write).toBeCalledWith(expect.stringContaining(expected));
+        expect(write).toBeCalledWith(expect.not.stringContaining(message));
+      });
+
+      test('Two same addresses regex cleaning in error', () => {
+        const message = secrets[5] + secrets[5];
+        const expected = replacer + replacer;
+
+        const error = new Error(message);
+        loggerService.error(error);
+
+        expect(write).toBeCalledTimes(1);
+        expect(write).toBeCalledWith(expect.stringContaining(expected));
+        expect(write).toBeCalledWith(expect.not.stringContaining(message));
+      });
+
+      test('Address regex + another secret cleaning in error', () => {
+        const message = secrets[4] + secrets[0];
+        const expected = replacer + replacer;
+
         const error = new Error(message);
         loggerService.error(error);
 
