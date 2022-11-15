@@ -21,11 +21,11 @@ const getMeta = (
 export const simple = (
   options: LoggerSimpleFormatOptions = {},
 ): winston.Logform.Format => {
-  const { secrets, fieldColors = {} } = options;
+  const { secrets, regex, fieldColors = {} } = options;
   winston.addColors(fieldColors);
 
   return winston.format.combine(
-    cleanSecrets({ secrets }),
+    cleanSecrets({ secrets, regex }),
     winston.format.colorize({ all: true }),
     winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
     winston.format.simple(),
