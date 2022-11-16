@@ -2650,9 +2650,11 @@ __metadata:
     "@nestjs/common": ^8.2.5
     "@nestjs/core": ^8.2.5
     "@nestjs/testing": ^8.2.5
+    "@types/traverse": ^0.6.32
     nest-winston: ^1.6.2
     reflect-metadata: ^0.1.13
     rxjs: ^7.5.2
+    traverse: ^0.6.7
     winston: ^3.4.0
   peerDependencies:
     "@nestjs/common": ^8.2.5
@@ -4151,6 +4153,13 @@ __metadata:
   version: 2.0.3
   resolution: "@types/toposort@npm:2.0.3"
   checksum: 018a372a899fd417d67ed85cb98bd3f15915020b865257b9e795e443bcfa0df79c6c44693ba88cbdd9e54ca872cecb91bf46764ec03c5b63968b2234804d14d2
+  languageName: node
+  linkType: hard
+
+"@types/traverse@npm:^0.6.32":
+  version: 0.6.32
+  resolution: "@types/traverse@npm:0.6.32"
+  checksum: 0d27f4758e1da79463c42cdd91de018095048e5c3963ad108b97044d5f43ea48b071da87062fdd4ff46407461802cc47367dd90b8f4a03a3dcf2ff94840d4909
   languageName: node
   linkType: hard
 
@@ -11037,7 +11046,7 @@ __metadata:
     rollup-plugin-delete: ^2.0.0
     rollup-plugin-typescript2: ^0.31.1
     ts-jest: ^27.1.4
-    tslib: ^2.3.1
+    tslib: ^2.4.1
     typechain: ^7.0.0
     typescript: ^4.5.5
   languageName: unknown
@@ -15867,6 +15876,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"traverse@npm:^0.6.7":
+  version: 0.6.7
+  resolution: "traverse@npm:0.6.7"
+  checksum: 21018085ab72f717991597e12e2b52446962ed59df591502e4d7e1a709bc0a989f7c3d451aa7d882666ad0634f1546d696c5edecda1f2fc228777df7bb529a1e
+  languageName: node
+  linkType: hard
+
 "traverse@npm:~0.6.6":
   version: 0.6.6
   resolution: "traverse@npm:0.6.6"
@@ -16050,6 +16066,13 @@ __metadata:
   version: 1.14.1
   resolution: "tslib@npm:1.14.1"
   checksum: dbe628ef87f66691d5d2959b3e41b9ca0045c3ee3c7c7b906cc1e328b39f199bb1ad9e671c39025bd56122ac57dfbf7385a94843b1cc07c60a4db74795829acd
+  languageName: node
+  linkType: hard
+
+"tslib@npm:^2.4.1":
+  version: 2.4.1
+  resolution: "tslib@npm:2.4.1"
+  checksum: 19480d6e0313292bd6505d4efe096a6b31c70e21cf08b5febf4da62e95c265c8f571f7b36fcc3d1a17e068032f59c269fab3459d6cd3ed6949eafecf64315fca
   languageName: node
   linkType: hard
 

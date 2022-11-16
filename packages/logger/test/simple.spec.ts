@@ -80,6 +80,22 @@ describe('Simple transport', () => {
       expect(write).toBeCalledWith(expect.stringContaining('warn'));
       expect(write).toBeCalledWith(expect.stringContaining(message));
     });
+
+    test('Array', () => {
+      loggerService.debug?.([message]);
+
+      expect(write).toBeCalledTimes(1);
+      expect(write).toBeCalledWith(expect.stringContaining('debug'));
+      expect(write).toBeCalledWith(expect.stringContaining(message));
+    });
+
+    test('Object', () => {
+      loggerService.debug?.({ key: message });
+
+      expect(write).toBeCalledTimes(1);
+      expect(write).toBeCalledWith(expect.stringContaining('debug'));
+      expect(write).toBeCalledWith(expect.stringContaining(message));
+    });
   });
 
   describe('Context', () => {

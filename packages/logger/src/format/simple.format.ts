@@ -21,21 +21,24 @@ const getMeta = (
 export const simple = (
   options: LoggerSimpleFormatOptions = {},
 ): winston.Logform.Format => {
-  const { secrets, fieldColors = {} } = options;
+  const { secrets, regex, fieldColors = {} } = options;
   winston.addColors(fieldColors);
 
   return winston.format.combine(
-    cleanSecrets({ secrets }),
     winston.format.colorize({ all: true }),
-    winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
+    cleanSecrets({ secrets, regex }),
     winston.format.simple(),
+    winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
     winston.format.printf((log) => {
-      const { timestamp, level, message, context, stack } = log;
+      const { timestamp, level, message, context, stack, ...rest } = log;
       const extra = context ? JSON.stringify(context) : '';
       const meta = getMeta(fieldColors, log);
 
-      return [timestamp, meta, `${level}:`, message, stack, extra]
-        .filter((v) => v != null && v !== '')
+      // If there are extra keys, then an array or an object was logged
+      const text = !Object.keys(rest).length ? message : JSON.stringify(rest);
+
+      return [timestamp, meta, `${level}:`, text, stack, extra]
+        .filter((v) => v !== null && v !== '')
         .join(' ');
     }),
   );
