@@ -150,6 +150,61 @@ describe('Hide secrets', () => {
         expect(write).toBeCalledWith(expect.stringContaining(expected));
         expect(write).toBeCalledWith(expect.not.stringContaining(message));
       });
+
+      test('Secret cleaning in log array', () => {
+        const secret = secrets[0];
+        const expected = replacer;
+
+        loggerService.log([secret]);
+
+        expect(write).toBeCalledTimes(1);
+        expect(write).toBeCalledWith(expect.stringContaining(expected));
+        expect(write).toBeCalledWith(expect.not.stringContaining(secret));
+      });
+
+      test('Address regex cleaning in log array', () => {
+        const message = secrets[4];
+        const expected = replacer;
+
+        loggerService.log([message]);
+
+        expect(write).toBeCalledTimes(1);
+        expect(write).toBeCalledWith(expect.stringContaining(expected));
+        expect(write).toBeCalledWith(expect.not.stringContaining(message));
+      });
+
+      test('Secret cleaning in simple object', () => {
+        const secret = secrets[0];
+        const expected = replacer;
+
+        loggerService.log({ secret });
+
+        expect(write).toBeCalledTimes(1);
+        expect(write).toBeCalledWith(expect.stringContaining(expected));
+        expect(write).toBeCalledWith(expect.not.stringContaining(secret));
+      });
+
+      test('Secret cleaning in deep object', () => {
+        const secret = secrets[0];
+        const expected = replacer;
+
+        loggerService.log({ x: 'x', y: { a: 1, 2: secret } });
+
+        expect(write).toBeCalledTimes(1);
+        expect(write).toBeCalledWith(expect.stringContaining(expected));
+        expect(write).toBeCalledWith(expect.not.stringContaining(secret));
+      });
+
+      test('Address regex + another secret cleaning in object', () => {
+        const secret = secrets[0] + secrets[4];
+        const expected = replacer + replacer;
+
+        loggerService.error({ test: secret });
+
+        expect(write).toBeCalledTimes(1);
+        expect(write).toBeCalledWith(expect.stringContaining(expected));
+        expect(write).toBeCalledWith(expect.not.stringContaining(secret));
+      });
     });
   });
 });

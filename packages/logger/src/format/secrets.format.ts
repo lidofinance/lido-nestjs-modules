@@ -1,4 +1,5 @@
 import * as winston from 'winston';
+import traverse from 'traverse';
 import { LoggerCleanSecretsOptions } from '../interfaces';
 
 export const SECRET_REPLACER = '<removed>';
@@ -12,10 +13,7 @@ export const cleanSecrets = winston.format(
     const secrets = opts.secrets ?? [];
     const regex = opts.regex ?? [];
 
-    info.message = replace(secrets, regex, info.message);
-    info.stack = replace(secrets, regex, info.stack);
-
-    return info;
+    return replace(secrets, regex, info);
   },
 );
 
@@ -32,14 +30,19 @@ const replace = <T extends unknown>(
 
     const withCleanedRegexes = regex.reduce((result, regex) => {
       const re = new RegExp(regex, 'g');
-      return regex ? result.replace(re, SECRET_REPLACER) : result;
+      return result.replace(re, SECRET_REPLACER);
     }, withCleanedSecrets);
 
     return withCleanedRegexes as T;
   }
 
-  if (Array.isArray(message)) {
-    return message.map((item) => replace(secrets, regex, item)) as T;
+  // Arrays are handled here as well
+  if (typeof message === 'object' && message !== null) {
+    return traverse(message).map(function (node) {
+      if (this.isLeaf) {
+        this.update(replace(secrets, regex, node));
+      }
+    }) as T;
   }
 
   return message;

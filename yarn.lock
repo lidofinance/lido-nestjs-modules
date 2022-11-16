@@ -2650,9 +2650,11 @@ __metadata:
     "@nestjs/common": ^8.2.5
     "@nestjs/core": ^8.2.5
     "@nestjs/testing": ^8.2.5
+    "@types/traverse": ^0.6.32
     nest-winston: ^1.6.2
     reflect-metadata: ^0.1.13
     rxjs: ^7.5.2
+    traverse: ^0.6.7
     winston: ^3.4.0
   peerDependencies:
     "@nestjs/common": ^8.2.5
@@ -4151,6 +4153,13 @@ __metadata:
   version: 2.0.3
   resolution: "@types/toposort@npm:2.0.3"
   checksum: 018a372a899fd417d67ed85cb98bd3f15915020b865257b9e795e443bcfa0df79c6c44693ba88cbdd9e54ca872cecb91bf46764ec03c5b63968b2234804d14d2
+  languageName: node
+  linkType: hard
+
+"@types/traverse@npm:^0.6.32":
+  version: 0.6.32
+  resolution: "@types/traverse@npm:0.6.32"
+  checksum: 0d27f4758e1da79463c42cdd91de018095048e5c3963ad108b97044d5f43ea48b071da87062fdd4ff46407461802cc47367dd90b8f4a03a3dcf2ff94840d4909
   languageName: node
   linkType: hard
 
@@ -15864,6 +15873,13 @@ __metadata:
   version: 0.0.3
   resolution: "tr46@npm:0.0.3"
   checksum: 726321c5eaf41b5002e17ffbd1fb7245999a073e8979085dacd47c4b4e8068ff5777142fc6726d6ca1fd2ff16921b48788b87225cbc57c72636f6efa8efbffe3
+  languageName: node
+  linkType: hard
+
+"traverse@npm:^0.6.7":
+  version: 0.6.7
+  resolution: "traverse@npm:0.6.7"
+  checksum: 21018085ab72f717991597e12e2b52446962ed59df591502e4d7e1a709bc0a989f7c3d451aa7d882666ad0634f1546d696c5edecda1f2fc228777df7bb529a1e
   languageName: node
   linkType: hard
 
