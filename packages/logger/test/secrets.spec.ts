@@ -184,12 +184,42 @@ describe('Hide secrets', () => {
         expect(write).toBeCalledWith(expect.not.stringContaining(secret));
       });
 
+      test('Secret cleaning in deep object with methods', () => {
+        const secret = secrets[0];
+        const expected = replacer;
+
+        loggerService.log({
+          x: 'x',
+          y: { a: 1, 2: [secret], fn: () => secret },
+        });
+
+        expect(write).toBeCalledTimes(1);
+        expect(write).toBeCalledWith(expect.stringContaining(expected));
+        expect(write).toBeCalledWith(expect.not.stringContaining(secret));
+      });
+
       test('Secret cleaning in deep object', () => {
         const secret = secrets[0];
         const expected = replacer;
 
         loggerService.log({ x: 'x', y: { a: 1, 2: secret } });
 
+        expect(write).toBeCalledTimes(1);
+        expect(write).toBeCalledWith(expect.stringContaining(expected));
+        expect(write).toBeCalledWith(expect.not.stringContaining(secret));
+      });
+
+      test('Secret cleaning does not mutate original object', () => {
+        const secret = secrets[0];
+        const expected = replacer;
+
+        const originalObj = { x: 'x', y: { z: { a: 1, 2: secret } } };
+        const obj = { x: 'x', y: { z: { a: 1, 2: secret } } };
+
+        loggerService.log(obj);
+
+        expect(obj === originalObj).toBe(false);
+        expect(obj).toStrictEqual(originalObj);
         expect(write).toBeCalledTimes(1);
         expect(write).toBeCalledWith(expect.stringContaining(expected));
         expect(write).toBeCalledWith(expect.not.stringContaining(secret));
