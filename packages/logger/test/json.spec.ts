@@ -77,6 +77,24 @@ describe('JSON transport', () => {
       expect(write).toBeCalledTimes(1);
       expect(write).toBeCalledWith(JSON.stringify(object) + '\n');
     });
+
+    test('Array', () => {
+      const object = { level: 'info', 0: message };
+
+      loggerService.log([message]);
+
+      expect(write).toBeCalledTimes(1);
+      expect(write).toBeCalledWith(JSON.stringify(object) + '\n');
+    });
+
+    test('Object', () => {
+      const object = { level: 'info', message };
+
+      loggerService.log(object);
+
+      expect(write).toBeCalledTimes(1);
+      expect(write).toBeCalledWith(JSON.stringify(object) + '\n');
+    });
   });
 
   describe('Context', () => {
