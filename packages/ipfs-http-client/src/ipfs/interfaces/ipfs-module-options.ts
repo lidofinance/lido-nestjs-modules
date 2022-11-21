@@ -7,8 +7,8 @@ export const IpfsModuleOptions =
 
 export interface IpfsModuleOptions extends Pick<ModuleMetadata, 'imports'> {
   url: string;
-  username: string;
-  password: string;
+  username?: string;
+  password?: string;
 }
 
 export interface IpfsModuleOptionsAsync
