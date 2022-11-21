@@ -1,5 +1,5 @@
 import { Test } from '@nestjs/testing';
-import { FetchModule, FetchService } from '@lido-nestjs/fetch';
+import { FetchModule } from '@lido-nestjs/fetch';
 import { IpfsGeneralService, IpfsModule } from '../../src';
 import {
   ModuleMetadata,
@@ -36,14 +36,8 @@ describe('Async module initializing', () => {
 
     const ipfsGeneralService = moduleRef.get(IpfsGeneralService);
 
-    const fetchService = moduleRef.get(FetchService);
-
     expect(ipfsGeneralService.add).toBeDefined();
     expect(ipfsGeneralService.get).toBeDefined();
-
-    // нужно ли?
-    expect(fetchService.fetchJson).toBeDefined();
-    expect(fetchService.fetchText).toBeDefined();
 
     return moduleRef;
   };
@@ -65,7 +59,7 @@ describe('Async module initializing', () => {
     ];
     await testModules(imports);
 
-    // global fecth module
+    // global fetсh module
     imports = [
       ConfigModule.forRoot(),
       FetchModule.forRoot(),
@@ -99,7 +93,7 @@ describe('Async module initializing', () => {
     ];
     await testModules(imports);
 
-    // global fecth module
+    // global fetсh module
     imports = [
       ConfigModule.forRoot(),
       FetchModule.forRoot(),

@@ -29,8 +29,7 @@
   },
   "dependencies": {
     "@lido-nestjs/di": "workspace:*",
-    "@lido-nestjs/fetch": "workspace:*",
-    "ethers": "^5.5.4"
+    "@lido-nestjs/fetch": "workspace:*"
   },
   "peerDependencies": {
     "@nestjs/common": "^8.2.5",

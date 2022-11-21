@@ -18,7 +18,7 @@ describe('Ipfs service', () => {
     Parameters<FetchService['fetchText']>
   >;
 
-  describe('username/password undefined', () => {
+  describe('username/password is not defined', () => {
     beforeEach(async () => {
       const module = {
         imports: [

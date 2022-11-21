@@ -10,7 +10,6 @@ import {
   DynamicModule,
 } from '@nestjs/common';
 
-// Is this Module declaration enough for checking async IpfsModule?
 @Injectable()
 class ConfigService {
   public url = '';
@@ -39,7 +38,7 @@ describe('Sync module initializing', () => {
     // just ipfs http client
     const ipfsGeneralService = moduleRef.get(IpfsGeneralService);
 
-    // wrap around ipfsService to store nide operators keys in ipfs
+    // wrap around ipfsService to store node operators keys in ipfs
     const ipfsNopKeysService = moduleRef.get(IpfsNopKeysService);
 
     expect(ipfsNopKeysService.addKeySign).toBeDefined();
@@ -76,10 +75,7 @@ describe('Sync module initializing', () => {
         username: '',
         password: '',
       }),
-      // why does it work without imports ?
-      IpfsNopKeysModule.forFeature({
-        // imports: [],
-      }),
+      IpfsNopKeysModule.forFeature({}),
     ];
 
     await testModules(imports);
@@ -122,10 +118,7 @@ describe('Sync module initializing', () => {
         },
         inject: [ConfigService],
       }),
-      IpfsNopKeysModule.forFeature({
-        // imports: [
-        // ],
-      }),
+      IpfsNopKeysModule.forFeature({}),
     ];
 
     await testModules(imports);
@@ -156,10 +149,7 @@ describe('Sync module initializing', () => {
         username: '',
         password: '',
       }),
-      // why does it work without imports ?
-      IpfsNopKeysModule.forRoot({
-        // imports: [],
-      }),
+      IpfsNopKeysModule.forRoot({}),
     ];
 
     await testModules(imports);
@@ -202,10 +192,7 @@ describe('Sync module initializing', () => {
         },
         inject: [ConfigService],
       }),
-      IpfsNopKeysModule.forRoot({
-        // imports: [
-        // ],
-      }),
+      IpfsNopKeysModule.forRoot({}),
     ];
 
     await testModules(imports);

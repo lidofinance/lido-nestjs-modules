@@ -23,9 +23,6 @@
   "files": [
     "dist/*"
   ],
-  "scripts": {
-    "lint": "eslint --ext ts ."
-  },
   "publishConfig": {
     "registry": "https://registry.npmjs.org/",
     "access": "public"

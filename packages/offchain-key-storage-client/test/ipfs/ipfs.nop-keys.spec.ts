@@ -21,9 +21,7 @@ describe('Ipfs service', () => {
           username: '',
           password: '',
         }),
-        IpfsNopKeysModule.forRoot({
-          // imports: [],
-        }),
+        IpfsNopKeysModule.forRoot({}),
       ],
     }).compile();
 

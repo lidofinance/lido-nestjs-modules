@@ -22,7 +22,6 @@ describe('Sync module initializing', () => {
       }),
     ]);
 
-    // Is there a difference with prev ?
     await testModules([
       IpfsModule.forFeature({
         imports: [FetchModule],
