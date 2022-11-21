@@ -90,7 +90,7 @@ export class FetchService {
     response: Response,
   ): Promise<string | Record<string, unknown>> {
     try {
-      return (await response.json()) as string | Record<string, unknown>;
+      return (await response.json()) as Record<string, unknown>;
     } catch (error) {
       return response.statusText;
     }
