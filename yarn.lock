@@ -2617,6 +2617,25 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@lido-nestjs/ipfs-http-client@workspace:*, @lido-nestjs/ipfs-http-client@workspace:packages/ipfs-http-client":
+  version: 0.0.0-use.local
+  resolution: "@lido-nestjs/ipfs-http-client@workspace:packages/ipfs-http-client"
+  dependencies:
+    "@lido-nestjs/di": "workspace:*"
+    "@lido-nestjs/fetch": "workspace:*"
+    "@nestjs/common": ^8.2.5
+    "@nestjs/core": ^8.2.5
+    "@nestjs/testing": ^8.2.5
+    reflect-metadata: ^0.1.13
+    rxjs: ^7.5.2
+  peerDependencies:
+    "@nestjs/common": ^8.2.5
+    "@nestjs/core": ^8.2.5
+    reflect-metadata: ^0.1.13
+    rxjs: ^7.5.2
+  languageName: unknown
+  linkType: soft
+
 "@lido-nestjs/key-validation@workspace:packages/key-validation":
   version: 0.0.0-use.local
   resolution: "@lido-nestjs/key-validation@workspace:packages/key-validation"
@@ -2680,6 +2699,25 @@ __metadata:
     reflect-metadata: ^0.1.13
     rxjs: ^7.5.2
     tslib: ^2.3.1
+  languageName: unknown
+  linkType: soft
+
+"@lido-nestjs/offchain-key-storage-client@workspace:packages/offchain-key-storage-client":
+  version: 0.0.0-use.local
+  resolution: "@lido-nestjs/offchain-key-storage-client@workspace:packages/offchain-key-storage-client"
+  dependencies:
+    "@lido-nestjs/ipfs-http-client": "workspace:*"
+    "@nestjs/common": ^8.2.5
+    "@nestjs/core": ^8.2.5
+    "@nestjs/testing": ^8.2.5
+    ethers: ^5.5.4
+    reflect-metadata: ^0.1.13
+    rxjs: ^7.5.2
+  peerDependencies:
+    "@nestjs/common": ^8.2.5
+    "@nestjs/core": ^8.2.5
+    reflect-metadata: ^0.1.13
+    rxjs: ^7.5.2
   languageName: unknown
   linkType: soft
 
