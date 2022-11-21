@@ -37,8 +37,7 @@ describe('Data fetching', () => {
       expect(mockFetch).toBeCalledTimes(1);
       expect(mockFetch).toBeCalledWith(url, undefined);
     });
-    // https://github.com/node-fetch/node-fetch/issues/1261
-    test('Object', async () => {
+    test('URL like object', async () => {
       const url = { href: '/foo' };
       const result = await fetchService.fetchJson(url);
 
