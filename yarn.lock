@@ -2468,6 +2468,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@lido-js/node-fetch-cjs@npm:^3.2.10":
+  version: 3.2.10
+  resolution: "@lido-js/node-fetch-cjs@npm:3.2.10"
+  checksum: 3eb882429bca2e4f6d6bc6b491e0f9b63a439b6564d74378048ab17eb894409cf2bbf2989dd38be44164fe18a46675fa7501fceb5ca01d07120f76638f93e243
+  languageName: node
+  linkType: hard
+
 "@lido-nestjs/consensus@workspace:packages/consensus":
   version: 0.0.0-use.local
   resolution: "@lido-nestjs/consensus@workspace:packages/consensus"
@@ -2477,7 +2484,7 @@ __metadata:
     "@nestjs/core": ^8.2.5
     "@nestjs/testing": ^8.2.5
     "@types/lodash.snakecase": ^4.1.6
-    "@types/node-fetch": ^2.5.12
+    "@types/node-fetch": ^2.6.2
     lodash.snakecase: ^4.1.1
     node-abort-controller: ^3.0.1
     node-fetch: ^2.6.7
@@ -2600,12 +2607,11 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@lido-nestjs/fetch@workspace:packages/fetch"
   dependencies:
+    "@lido-js/node-fetch-cjs": ^3.2.10
     "@lido-nestjs/middleware": "workspace:*"
     "@nestjs/common": ^8.2.5
     "@nestjs/core": ^8.2.5
     "@nestjs/testing": ^8.2.5
-    "@types/node-fetch": ^2.5.12
-    node-fetch: ^2.6.7
     reflect-metadata: ^0.1.13
     rxjs: ^7.5.2
   peerDependencies:
@@ -4112,13 +4118,13 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/node-fetch@npm:^2.5.12":
-  version: 2.6.1
-  resolution: "@types/node-fetch@npm:2.6.1"
+"@types/node-fetch@npm:^2.6.2":
+  version: 2.6.2
+  resolution: "@types/node-fetch@npm:2.6.2"
   dependencies:
     "@types/node": "*"
     form-data: ^3.0.0
-  checksum: a3e5d7f413d1638d795dff03f7b142b1b0e0c109ed210479000ce7b3ea11f9a6d89d9a024c96578d9249570c5fe5287a5f0f4aaba98199222230196ff2d6b283
+  checksum: 6f73b1470000d303d25a6fb92875ea837a216656cb7474f66cdd67bb014aa81a5a11e7ac9c21fe19bee9ecb2ef87c1962bceeaec31386119d1ac86e4c30ad7a6
   languageName: node
   linkType: hard
 

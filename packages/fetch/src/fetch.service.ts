@@ -1,4 +1,7 @@
-import fetch, { Response } from 'node-fetch';
+import fetch, {
+  Response,
+  RequestInfo as RequestInfoDefault,
+} from '@lido-js/node-fetch-cjs';
 import { HttpException, Inject, Injectable, Optional } from '@nestjs/common';
 import { MiddlewareService } from '@lido-nestjs/middleware';
 import {
@@ -29,7 +32,7 @@ export class FetchService {
 
   public async fetchJson<T>(url: RequestInfo, init?: RequestInit): Promise<T> {
     const response = await this.wrappedRequest(url, init);
-    return await response.json();
+    return (await response.json()) as T;
   }
 
   public async fetchText(
@@ -57,7 +60,10 @@ export class FetchService {
     try {
       const baseUrl = this.getBaseUrl(attempt);
       const fullUrl = this.getUrl(baseUrl, url);
-      const response = await fetch(fullUrl, init);
+      // node-fetch v3 lose the naive polyfill URLLike
+      // I add it in the fetch interface
+      // The reason is TS can't handle abstraction with .toString getter
+      const response = await fetch(fullUrl as RequestInfoDefault, init);
 
       if (!response.ok) {
         const errorBody = await this.extractErrorBody(response);
@@ -84,7 +90,7 @@ export class FetchService {
     response: Response,
   ): Promise<string | Record<string, unknown>> {
     try {
-      return await response.json();
+      return (await response.json()) as Record<string, unknown>;
     } catch (error) {
       return response.statusText;
     }

@@ -28,9 +28,8 @@
     "access": "public"
   },
   "dependencies": {
-    "@lido-nestjs/middleware": "workspace:*",
-    "@types/node-fetch": "^2.5.12",
-    "node-fetch": "^2.6.7"
+    "@lido-js/node-fetch-cjs": "^3.2.10",
+    "@lido-nestjs/middleware": "workspace:*"
   },
   "peerDependencies": {
     "@nestjs/common": "^8.2.5",
