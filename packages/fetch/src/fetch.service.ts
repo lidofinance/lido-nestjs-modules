@@ -1,4 +1,5 @@
-import fetch, { Response } from 'node-fetch';
+import type * as Fetch from 'node-fetch';
+
 import { HttpException, Inject, Injectable, Optional } from '@nestjs/common';
 import { MiddlewareService } from '@lido-nestjs/middleware';
 import {
@@ -12,6 +13,13 @@ import {
   RequestInit,
   FetchModuleOptions,
 } from './interfaces/fetch.interface';
+import { dynamicImport } from '@lido-nestjs/dynamic-esm';
+
+const fetchCall = async (url: RequestInfo, init?: RequestInit) => {
+  const mod = (await dynamicImport('node-fetch', module))
+    .default as typeof Fetch.default;
+  return mod(url, init);
+};
 
 @Injectable()
 export class FetchService {
@@ -20,7 +28,7 @@ export class FetchService {
     @Inject(FETCH_GLOBAL_OPTIONS_TOKEN)
     public options: FetchModuleOptions | null,
 
-    private middlewareService: MiddlewareService<Promise<Response>>,
+    private middlewareService: MiddlewareService<Promise<Fetch.Response>>,
   ) {
     this.options?.middlewares?.forEach((middleware) => {
       middlewareService.use(middleware);
@@ -29,7 +37,7 @@ export class FetchService {
 
   public async fetchJson<T>(url: RequestInfo, init?: RequestInit): Promise<T> {
     const response = await this.wrappedRequest(url, init);
-    return await response.json();
+    return (await response.json()) as T;
   }
 
   public async fetchText(
@@ -43,7 +51,7 @@ export class FetchService {
   protected async wrappedRequest(
     url: RequestInfo,
     init?: RequestInit,
-  ): Promise<Response> {
+  ): Promise<Fetch.Response> {
     return await this.middlewareService.go(() => this.request(url, init));
   }
 
@@ -51,13 +59,13 @@ export class FetchService {
     url: RequestInfo,
     init?: RequestInit,
     attempt = 0,
-  ): Promise<Response> {
+  ): Promise<Fetch.Response> {
     attempt++;
 
     try {
       const baseUrl = this.getBaseUrl(attempt);
       const fullUrl = this.getUrl(baseUrl, url);
-      const response = await fetch(fullUrl, init);
+      const response = await fetchCall(fullUrl, init);
 
       if (!response.ok) {
         const errorBody = await this.extractErrorBody(response);
@@ -81,10 +89,10 @@ export class FetchService {
   }
 
   protected async extractErrorBody(
-    response: Response,
+    response: Fetch.Response,
   ): Promise<string | Record<string, unknown>> {
     try {
-      return await response.json();
+      return (await response.json()) as string | Record<string, unknown>;
     } catch (error) {
       return response.statusText;
     }

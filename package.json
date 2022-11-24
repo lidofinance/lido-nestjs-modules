@@ -10,7 +10,7 @@
     "build": "rollup -c",
     "test": "jest --coverage --verbose",
     "test:e2e": "jest --testRegex=.e2e-spec.ts",
-    "test:package": "./test.package.sh",
+    "test:package": "node --experimental-vm-modules node_modules/jest/bin/jest.js --verbose packages/fetch/test/fetch.spec.ts",
     "test:watch": "jest --watch --coverage --verbose",
     "lint": "eslint --ext ts .",
     "typechain": "typechain --target=ethers-v5 --out-dir ./packages/contracts/src/generated ./packages/contracts/abi/*.json",

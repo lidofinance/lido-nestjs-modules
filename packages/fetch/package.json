@@ -28,9 +28,10 @@
     "access": "public"
   },
   "dependencies": {
+    "@lido-nestjs/dynamic-esm": "workspace:*",
     "@lido-nestjs/middleware": "workspace:*",
-    "@types/node-fetch": "^2.5.12",
-    "node-fetch": "^2.6.7"
+    "@types/node-fetch": "^2.6.2",
+    "node-fetch": "^3.2.10"
   },
   "peerDependencies": {
     "@nestjs/common": "^8.2.5",

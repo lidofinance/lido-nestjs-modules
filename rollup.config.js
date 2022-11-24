@@ -11,7 +11,7 @@ import typescript from 'rollup-plugin-typescript2';
 import del from 'rollup-plugin-delete';
 import resolve from '@rollup/plugin-node-resolve';
 
-const excludedWorkspaces = ['.'];
+const excludedWorkspaces = ['.', 'packages/dynamic-esm'];
 const extensions = ['.ts', '.d.ts'];
 const commonExternal = [];
 
@@ -26,7 +26,8 @@ const errors = {
 export default async () => {
   const packages = await listWorkspaces();
   const filteredPackages = packages.filter(
-    ({ location }) => !excludedWorkspaces.includes(location),
+    ({ location }) =>
+      console.log(location) || !excludedWorkspaces.includes(location),
   );
   const sortedPackages = topologicallySort(filteredPackages);
 

@@ -13,8 +13,8 @@
     "forceConsistentCasingInFileNames": true,
     "moduleResolution": "node",
     "module": "esnext",
-    "target": "es2017"
+    "target": "ES2020"
   },
   "include": ["**/src/**/*", "**/test/**/*"],
-  "exclude": ["node_modules"]
+  "exclude": ["node_modules", "packages/dynamic-esm"]
 }
