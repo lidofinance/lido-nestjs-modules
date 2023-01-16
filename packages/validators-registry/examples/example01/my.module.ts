@@ -1,10 +1,12 @@
 import { Module } from '@nestjs/common';
-import { ValidatorsRegistryModule, StorageModule } from '@lido-nestjs/validators-registry';
+import {
+  ValidatorsRegistryModule,
+  StorageModule,
+} from '@lido-nestjs/validators-registry';
 import { ConsensusModule } from '@lido-nestjs/consensus';
 import { FetchModule } from '@lido-nestjs/fetch';
 import { MyService } from './my.service';
 import { MikroOrmModule } from '@mikro-orm/nestjs';
-
 
 @Module({
   imports: [
