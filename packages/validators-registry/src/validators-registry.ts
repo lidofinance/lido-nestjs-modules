@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ConsensusService } from '@lido-nestjs/consensus';
-import { ValidatorsRegistryInterface, SlotId } from './interfaces';
+import { ValidatorsRegistryInterface, BlockId } from './interfaces';
 import {
   BlockHeader,
   Validator,
@@ -16,10 +16,16 @@ export class ValidatorsRegistry implements ValidatorsRegistryInterface {
     protected readonly storageService: StorageServiceInterface,
   ) {}
 
+  /**
+   * @inheritDoc
+   */
   public async getMeta(): Promise<ConsensusMeta | null> {
     return this.storageService.getConsensusMeta();
   }
 
+  /**
+   * @inheritDoc
+   */
   public async getValidators(
     pubkeys?: string[],
   ): Promise<ConsensusValidatorsAndMetadata> {
@@ -33,7 +39,10 @@ export class ValidatorsRegistry implements ValidatorsRegistryInterface {
     return previousMeta === null || previousMeta.slot < currentBlockHeader.slot;
   }
 
-  public async update(blockId: SlotId): Promise<ConsensusMeta | null> {
+  /**
+   * @inheritDoc
+   */
+  public async update(blockId: BlockId): Promise<ConsensusMeta | null> {
     const previousMeta = await this.storageService.getConsensusMeta();
     const blockHeader = await this.getSlotHeaderFromConsensus(blockId);
 
@@ -82,10 +91,10 @@ export class ValidatorsRegistry implements ValidatorsRegistryInterface {
   }
 
   protected async getSlotHeaderFromConsensus(
-    blockId: SlotId,
+    blockId: BlockId,
   ): Promise<BlockHeader> {
     const header = await this.consensusService.getBlockHeader({
-      blockId: blockId,
+      blockId: blockId.toString(),
     });
 
     /* istanbul ignore next */
@@ -94,7 +103,7 @@ export class ValidatorsRegistry implements ValidatorsRegistryInterface {
     const slot = header?.data?.header?.message?.slot;
 
     /**
-     * TODO Question: should we have an option to check `execution_optimistic === true`
+     * TODO Should we have an option to check `execution_optimistic === false`
      */
 
     // runtime type check
