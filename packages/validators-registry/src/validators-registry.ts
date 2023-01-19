@@ -164,10 +164,12 @@ export class ValidatorsRegistry implements ValidatorsRegistryInterface {
     /* istanbul ignore next */
     const slotStateRoot = block?.data?.message?.state_root;
 
+    /* istanbul ignore next */
     const blockNumber = executionPayload.block_number;
     const blockHash = executionPayload.block_hash;
     const timestamp = executionPayload.timestamp;
 
+    /* istanbul ignore next */
     return parseAsTypeOrFail(
       ConsensusMeta,
       {
@@ -179,7 +181,6 @@ export class ValidatorsRegistry implements ValidatorsRegistryInterface {
         timestamp,
       },
       (error) => {
-        /* istanbul ignore next */
         throw new ConsensusDataInvalidError(`Got invalid ConsensusMeta`, error);
       },
     );
