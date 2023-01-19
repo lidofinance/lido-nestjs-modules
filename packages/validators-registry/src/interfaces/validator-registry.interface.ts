@@ -1,6 +1,8 @@
 import { createInterface } from '@lido-nestjs/di';
 import { ConsensusValidatorsAndMetadata, ConsensusMeta } from '../types';
 import { BlockId } from './block-id';
+import { FilterQuery, FindOptions } from '@mikro-orm/core';
+import { ConsensusValidatorEntity } from '../storage/consensus-validator.entity';
 
 export const ValidatorsRegistryInterface =
   createInterface<ValidatorsRegistryInterface>('ValidatorsRegistryInterface');
@@ -24,5 +26,9 @@ export interface ValidatorsRegistryInterface {
   /**
    * Get Validators and metadata from registry internal state
    */
-  getValidators(pubkeys?: string[]): Promise<ConsensusValidatorsAndMetadata>;
+  getValidators(
+    pubkeys?: string[],
+    where?: FilterQuery<ConsensusValidatorEntity>,
+    options?: FindOptions<ConsensusValidatorEntity>,
+  ): Promise<ConsensusValidatorsAndMetadata>;
 }

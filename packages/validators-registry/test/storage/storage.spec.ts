@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { MikroORM } from '@mikro-orm/core';
 import { MikroOrmModule } from '@mikro-orm/nestjs';
 import {
+  ConsensusDataInvalidError,
   ConsensusMeta,
   StorageModule,
   StorageServiceInterface,
@@ -17,7 +18,6 @@ import {
   validators,
 } from '../fixtures/validators.fixture';
 import { migrations } from '../helpers/migrations';
-import { z } from 'zod';
 import { noop } from '../helpers/noop';
 
 describe('Storage', () => {
@@ -60,9 +60,7 @@ describe('Storage', () => {
   });
 
   test('getValidators', async () => {
-    await expect(
-      storageService.updateValidatorsAndMeta(validators, meta),
-    ).resolves.toEqual(2);
+    await storageService.updateValidatorsAndMeta(validators, meta);
 
     await expect(storageService.getValidators()).resolves.toEqual([
       validators[0],
@@ -126,8 +124,8 @@ describe('Storage', () => {
     await storageService.updateValidatorsAndMeta(validatorsCD, meta);
 
     await expect(
-      storageService.getValidators([validatorB.pubkey]),
-    ).resolves.toEqual([validatorB]);
+      storageService.getValidators([validatorC.pubkey]),
+    ).resolves.toEqual([validatorC]);
   });
 
   test('getValidators - filter by pubkey (uppercase)', async () => {
@@ -138,14 +136,36 @@ describe('Storage', () => {
     await storageService.updateValidatorsAndMeta(validatorsCD, meta);
 
     await expect(
-      storageService.getValidators([validatorB.pubkey.toLocaleUpperCase()]),
-    ).resolves.toEqual([validatorB]);
+      storageService.getValidators([validatorC.pubkey.toLocaleUpperCase()]),
+    ).resolves.toEqual([validatorC]);
+  });
+
+  test('getValidators - filter by pubkey (lowercase) + filter by index + orderBy + limit 1 + offset 0', async () => {
+    const validatorsAB = [validatorA, validatorB];
+    const validatorsABCD = [validatorA, validatorB, validatorC, validatorD];
+
+    await storageService.updateValidatorsAndMeta(validatorsAB, meta);
+    await storageService.updateValidatorsAndMeta(validatorsABCD, meta);
+
+    await expect(
+      storageService.getValidators(
+        [validatorA.pubkey, validatorB.pubkey, validatorC.pubkey],
+        {
+          index: {
+            $in: [validatorA.index, validatorC.index],
+          },
+        },
+        {
+          orderBy: { index: 'ASC' },
+          limit: 1,
+          offset: 1,
+        },
+      ),
+    ).resolves.toEqual([validatorC]);
   });
 
   test('getConsensusMeta', async () => {
-    await expect(
-      storageService.updateValidatorsAndMeta(validators, meta),
-    ).resolves.toEqual(2);
+    await storageService.updateValidatorsAndMeta(validators, meta);
 
     await expect(storageService.getConsensusMeta()).resolves.toEqual(meta);
   });
@@ -169,9 +189,7 @@ describe('Storage', () => {
   });
 
   test('getValidatorsAndMeta', async () => {
-    await expect(
-      storageService.updateValidatorsAndMeta(validators, meta),
-    ).resolves.toEqual(2);
+    await storageService.updateValidatorsAndMeta(validators, meta);
 
     await expect(storageService.getValidatorsAndMeta()).resolves.toEqual({
       validators,
@@ -196,6 +214,7 @@ describe('Storage', () => {
 
   test('updateValidatorsAndMeta should fail on bad meta', async () => {
     const badMeta: ConsensusMeta = {
+      epoch: 23,
       slot: 1000,
       slotStateRoot: '0x01',
       blockNumber: 1000,
@@ -205,7 +224,7 @@ describe('Storage', () => {
 
     await expect(
       storageService.updateValidatorsAndMeta(validators, badMeta),
-    ).rejects.toBeInstanceOf(z.ZodError);
+    ).rejects.toBeInstanceOf(ConsensusDataInvalidError);
   });
 
   test('updateValidatorsAndMeta should fail on bad validators', async () => {
@@ -217,7 +236,7 @@ describe('Storage', () => {
 
     await expect(
       storageService.updateValidatorsAndMeta([badValidator], meta),
-    ).rejects.toBeInstanceOf(z.ZodError);
+    ).rejects.toBeInstanceOf(ConsensusDataInvalidError);
   });
 
   test('updateValidatorsAndMeta should not fail on correct raw validator data', async () => {

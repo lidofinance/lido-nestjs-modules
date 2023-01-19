@@ -1,7 +1,14 @@
-import { BlockNumber, BlockTimestamp, Slot, ValidatorIndex } from '../../src';
+import {
+  BlockNumber,
+  BlockTimestamp,
+  Epoch,
+  Slot,
+  ValidatorIndex,
+} from '../../src';
 
 describe('Ethereum Numeric types', () => {
   const typeSchemas = [
+    { name: 'Epoch', type: Epoch },
     { name: 'Slot', type: Slot },
     { name: 'BlockNumber', type: BlockNumber },
     { name: 'ValidatorIndex', type: ValidatorIndex },

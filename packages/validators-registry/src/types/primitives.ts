@@ -77,6 +77,19 @@ export const Slot = z.union(
 export type Slot = z.infer<typeof Slot>;
 
 /**
+ * Epoch (JS Number)
+ * Possible values: 0...N (2^53-1)
+ */
+export const Epoch = z.union(
+  [IntegerNonNegative, IntegerFromStringNonNegative],
+  {
+    description: 'Epoch',
+  },
+);
+
+export type Epoch = z.infer<typeof Epoch>;
+
+/**
  * Block Index (JS Number)
  * Possible values: 0...N (2^53-1)
  */

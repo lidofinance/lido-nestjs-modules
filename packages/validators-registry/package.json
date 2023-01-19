@@ -31,8 +31,6 @@
     "@lido-nestjs/consensus": "workspace:*",
     "@lido-nestjs/di": "workspace:*",
     "@lido-nestjs/utils": "workspace:*",
-    "node-abort-controller": "^3.0.1",
-    "node-fetch": "^2.6.7",
     "zod": "^3.20.2"
   },
   "peerDependencies": {
@@ -50,9 +48,6 @@
     "@nestjs/common": "^8.2.5",
     "@nestjs/core": "^8.2.5",
     "@nestjs/testing": "^8.2.5",
-    "@types/lodash.snakecase": "^4.1.6",
-    "@types/node-fetch": "^2.5.12",
-    "openapi-typescript": "^4.5.0",
     "reflect-metadata": "^0.1.13",
     "rxjs": "^7.5.2"
   }

@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { z } from 'zod';
 import { MikroOrmModule } from '@mikro-orm/nestjs';
 import { Test, TestingModule } from '@nestjs/testing';
 import {
@@ -8,6 +7,7 @@ import {
   StorageModule,
   Validator,
   ValidatorStatusType,
+  ConsensusDataInvalidError,
 } from '../src';
 import { MikroORM } from '@mikro-orm/core';
 import { migrations } from './helpers/migrations';
@@ -130,7 +130,7 @@ describe('StorageModule', () => {
 
     expect(meta).toStrictEqual(consensusMetaA);
 
-    expect(metaAndValidators).toStrictEqual({
+    expect(metaAndValidators).toEqual({
       validators: expectedValidators,
       meta: consensusMetaA,
     });
@@ -158,7 +158,7 @@ describe('StorageModule', () => {
       },
     ];
 
-    expect(metaAndValidators).toStrictEqual({
+    expect(metaAndValidators).toEqual({
       validators: expectedValidators,
       meta: consensusMetaA,
     });
@@ -191,7 +191,7 @@ describe('StorageModule', () => {
       },
     ];
 
-    expect(metaAndValidators).toStrictEqual({
+    expect(metaAndValidators).toEqual({
       validators: expectedValidators,
       meta: consensusMetaB,
     });
@@ -199,13 +199,13 @@ describe('StorageModule', () => {
 
   test('update (no execution_payload in consensus block)', async () => {
     await expect(validatorsRegistry.update(slotC)).rejects.toBeInstanceOf(
-      z.ZodError,
+      ConsensusDataInvalidError,
     );
   });
 
   test('update (non-array validators response from consensus)', async () => {
     await expect(validatorsRegistry.update(slotD)).rejects.toStrictEqual(
-      new RangeError('Validators must be array'),
+      new ConsensusDataInvalidError('Validators must be array'),
     );
   });
 
@@ -217,21 +217,65 @@ describe('StorageModule', () => {
 
     getBlockHeaderMock.mockImplementation(() => undefined);
     await expect(validatorsRegistry.update('finalized')).rejects.toBeInstanceOf(
-      z.ZodError,
+      ConsensusDataInvalidError,
     );
 
     getBlockHeaderMock.mockImplementation(() => ({
       data: null,
     }));
     await expect(validatorsRegistry.update('finalized')).rejects.toBeInstanceOf(
-      z.ZodError,
+      ConsensusDataInvalidError,
     );
 
     getBlockHeaderMock.mockImplementation(() => ({
       data: {},
     }));
     await expect(validatorsRegistry.update('finalized')).rejects.toBeInstanceOf(
-      z.ZodError,
+      ConsensusDataInvalidError,
+    );
+  });
+
+  test('update (bad consensus block data)', async () => {
+    const getBlockV2Mock = jest.spyOn<any, any>(
+      consensusServiceMock,
+      'getBlockV2',
+    );
+
+    getBlockV2Mock.mockImplementation(() => undefined);
+    await expect(validatorsRegistry.update('finalized')).rejects.toBeInstanceOf(
+      ConsensusDataInvalidError,
+    );
+
+    getBlockV2Mock.mockImplementation(() => ({
+      data: null,
+    }));
+    await expect(validatorsRegistry.update('finalized')).rejects.toBeInstanceOf(
+      ConsensusDataInvalidError,
+    );
+
+    getBlockV2Mock.mockImplementation(() => ({
+      data: {},
+    }));
+    await expect(validatorsRegistry.update('finalized')).rejects.toBeInstanceOf(
+      ConsensusDataInvalidError,
+    );
+
+    getBlockV2Mock.mockImplementation(() => ({
+      data: {
+        message: {
+          slot: 42,
+          state_root:
+            '0x07b015be475bfb9e17a0203e8ec4c636a5d1fe1bab9c55c27193f8e6e67e76f5',
+          body: {
+            execution_payload: {
+              block_hash: '0x01',
+            },
+          },
+        },
+      },
+    }));
+    await expect(validatorsRegistry.update('finalized')).rejects.toBeInstanceOf(
+      ConsensusDataInvalidError,
     );
   });
 
@@ -245,7 +289,7 @@ describe('StorageModule', () => {
       data: [null],
     }));
     await expect(validatorsRegistry.update('finalized')).rejects.toBeInstanceOf(
-      z.ZodError,
+      ConsensusDataInvalidError,
     );
 
     getStateValidatorsMock.mockImplementation(() => ({
@@ -258,14 +302,14 @@ describe('StorageModule', () => {
       ],
     }));
     await expect(validatorsRegistry.update('finalized')).rejects.toBeInstanceOf(
-      z.ZodError,
+      ConsensusDataInvalidError,
     );
 
     getStateValidatorsMock.mockImplementation(() => ({
       data: [{}],
     }));
     await expect(validatorsRegistry.update('finalized')).rejects.toBeInstanceOf(
-      z.ZodError,
+      ConsensusDataInvalidError,
     );
   });
 });

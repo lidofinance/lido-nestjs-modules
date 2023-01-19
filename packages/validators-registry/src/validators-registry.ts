@@ -6,8 +6,12 @@ import {
   Validator,
   ConsensusMeta,
   ConsensusValidatorsAndMetadata,
+  Slot,
 } from './types';
-import { StorageServiceInterface } from './storage';
+import { FindOptions, FilterQuery, StorageServiceInterface } from './storage';
+import { parseAsTypeOrFail, calcEpochBySlot } from './utils';
+import { ConsensusDataInvalidError } from './errors';
+import { ConsensusValidatorEntity } from './storage/consensus-validator.entity';
 
 @Injectable()
 export class ValidatorsRegistry implements ValidatorsRegistryInterface {
@@ -28,8 +32,10 @@ export class ValidatorsRegistry implements ValidatorsRegistryInterface {
    */
   public async getValidators(
     pubkeys?: string[],
+    where?: FilterQuery<ConsensusValidatorEntity>,
+    options?: FindOptions<ConsensusValidatorEntity>,
   ): Promise<ConsensusValidatorsAndMetadata> {
-    return this.storageService.getValidatorsAndMeta(pubkeys);
+    return this.storageService.getValidatorsAndMeta(pubkeys, where, options);
   }
 
   protected isNewDataInConsensus(
@@ -76,17 +82,23 @@ export class ValidatorsRegistry implements ValidatorsRegistryInterface {
     const validators = validatorsData?.data;
 
     if (!Array.isArray(validators)) {
-      throw new RangeError('Validators must be array');
+      throw new ConsensusDataInvalidError(`Validators must be array`);
     }
 
     return validators.map((validator) => {
       // runtime type check
       /* istanbul ignore next */
-      return Validator.parse({
-        pubkey: validator.validator?.pubkey,
-        index: validator.index,
-        status: validator.status,
-      });
+      return parseAsTypeOrFail(
+        Validator,
+        {
+          pubkey: validator.validator?.pubkey,
+          index: validator.index,
+          status: validator.status,
+        },
+        (error) => {
+          throw new ConsensusDataInvalidError(`Got invalid validators`, error);
+        },
+      );
     });
   }
 
@@ -106,11 +118,16 @@ export class ValidatorsRegistry implements ValidatorsRegistryInterface {
      * TODO Should we have an option to check `execution_optimistic === false`
      */
 
-    // runtime type check
-    return BlockHeader.parse({
-      root,
-      slot,
-    });
+    return parseAsTypeOrFail(
+      BlockHeader,
+      {
+        root,
+        slot,
+      },
+      (error) => {
+        throw new ConsensusDataInvalidError(`Got invalid block header`, error);
+      },
+    );
   }
 
   protected async getConsensusMetaFromConsensus(
@@ -127,24 +144,44 @@ export class ValidatorsRegistry implements ValidatorsRegistryInterface {
         ? beaconBlockBody.execution_payload
         : null;
 
+    if (!executionPayload) {
+      throw new ConsensusDataInvalidError(
+        `No execution_payload data in a block`,
+      );
+    }
+
+    /* istanbul ignore next */
+    const slot = parseAsTypeOrFail(
+      Slot,
+      block?.data?.message?.slot,
+      (error) => {
+        throw new ConsensusDataInvalidError(`Got invalid slot`, error);
+      },
+    );
+
+    const epoch = calcEpochBySlot(slot);
+
     /* istanbul ignore next */
     const slotStateRoot = block?.data?.message?.state_root;
-    /* istanbul ignore next */
-    const slot = block?.data?.message?.slot;
-    /* istanbul ignore next */
-    const blockNumber = executionPayload?.block_number;
-    /* istanbul ignore next */
-    const blockHash = executionPayload?.block_hash;
-    /* istanbul ignore next */
-    const timestamp = executionPayload?.timestamp;
 
-    // runtime type check
-    return ConsensusMeta.parse({
-      slot,
-      slotStateRoot,
-      blockNumber,
-      blockHash,
-      timestamp,
-    });
+    const blockNumber = executionPayload.block_number;
+    const blockHash = executionPayload.block_hash;
+    const timestamp = executionPayload.timestamp;
+
+    return parseAsTypeOrFail(
+      ConsensusMeta,
+      {
+        epoch,
+        slot,
+        slotStateRoot,
+        blockNumber,
+        blockHash,
+        timestamp,
+      },
+      (error) => {
+        /* istanbul ignore next */
+        throw new ConsensusDataInvalidError(`Got invalid ConsensusMeta`, error);
+      },
+    );
   }
 }

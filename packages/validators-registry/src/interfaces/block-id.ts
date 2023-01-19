@@ -1,1 +1,1 @@
-export type BlockId = 'finalized' | 'latest' | string | number;
+export type BlockId = 'finalized' | 'head' | 'genesis' | string | number;

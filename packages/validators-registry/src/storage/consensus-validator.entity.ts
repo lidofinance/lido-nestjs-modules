@@ -1,6 +1,7 @@
 import {
   Entity,
   EntityRepositoryType,
+  Index,
   PrimaryKey,
   Property,
   t,
@@ -15,18 +16,14 @@ import { ConsensusValidatorRepository } from './consensus-validator.repository';
 export class ConsensusValidatorEntity implements Validator {
   [EntityRepositoryType]?: ConsensusValidatorRepository;
 
-  public constructor(validator: Validator) {
-    this.pubkey = validator.pubkey.toLocaleLowerCase();
-    this.index = validator.index;
-    this.status = validator.status;
-  }
-
   @PrimaryKey({ type: t.string })
-  pubkey: string;
+  pubkey!: string;
 
   @Property({ type: t.integer })
-  index: number;
+  @Index()
+  index!: number;
 
   @Property()
-  status: ValidatorStatus;
+  @Index()
+  status!: ValidatorStatus;
 }

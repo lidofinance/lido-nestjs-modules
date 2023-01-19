@@ -17,7 +17,8 @@ export class Migration20220225153937 extends Migration {
     this.addSql(`create table "consensus_validator" (
       "index" int not null, 
       "pubkey" varchar(98) primary key not null, 
-      "status" varchar(128) not null);
+      "status" varchar(128) not null,
+      constraint "index" unique ("index"));
   `);
 
     /**
@@ -25,6 +26,7 @@ export class Migration20220225153937 extends Migration {
      */
     this.addSql(`create table "consensus_meta" (
     "id" smallint primary key, 
+    "epoch" int not null, 
     "slot" int not null, 
     "slot_state_root" varchar(66) not null,
     "block_number" int not null,

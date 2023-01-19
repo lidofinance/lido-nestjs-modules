@@ -15,25 +15,29 @@ Package exports `ValidatorsRegistry` that implements the following interface:
 
 ```typescript
 export interface ValidatorsRegistryInterface {
-  /**
-   * Update internal state of validators in the registry to the Consensus Layer (CL) state
-   * according to `blockId`.
-   *
-   * @param {BlockId} blockId - Values: 'head', 'genesis', 'finalized', <slot>, <hex encoded blockRoot with 0x prefix>
-   *
-   * If the registry internal state is newer or the same to the CL state - does nothing.
-   */
-  update(blockId: BlockId): Promise<ConsensusMeta | null>;
+    /**
+     * Update internal state of validators in the registry to the Consensus Layer (CL) state
+     * according to `blockId`.
+     *
+     * @param {BlockId} blockId - Values: 'head', 'genesis', 'finalized', <slot>, <hex encoded blockRoot with 0x prefix>
+     *
+     * If the registry internal state is newer or the same to the CL state - does nothing.
+     */
+    update(blockId: BlockId): Promise<ConsensusMeta | null>;
 
-  /**
-   * Get Metadata from registry internal state
-   */
-  getMeta(): Promise<ConsensusMeta | null>;
+    /**
+     * Get Metadata from registry internal state
+     */
+    getMeta(): Promise<ConsensusMeta | null>;
 
-  /**
-   * Get Validators and metadata from registry internal state
-   */
-  getValidators(pubkeys?: string[]): Promise<ConsensusValidatorsAndMetadata>;
+    /**
+     * Get Validators and metadata from registry internal state
+     */
+    getValidators(
+        pubkeys?: string[],
+        where?: FilterQuery<ConsensusValidatorEntity>,
+        options?: FindOptions<ConsensusValidatorEntity>,
+    ): Promise<ConsensusValidatorsAndMetadata>;
 }
 ```
 

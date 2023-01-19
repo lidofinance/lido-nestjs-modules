@@ -1,6 +1,7 @@
 import { ConsensusMeta } from '../../src';
 
 export const meta: ConsensusMeta = {
+  epoch: 2860,
   slot: 34321,
   slotStateRoot:
     '0xc9dfcb6980e062a5267280fe13885b7f1e382f31c8bcf9c3dfc567159a3eff97',
@@ -11,6 +12,7 @@ export const meta: ConsensusMeta = {
 };
 
 export const metaNew: ConsensusMeta = {
+  epoch: 2860,
   slot: 34322,
   slotStateRoot:
     '0xc9dfcb6980e062a5267280fe13885b7f1e382f31c8bcf9c3dfc567159a3eff97',

@@ -355,6 +355,7 @@ export const blocks = {
 };
 
 export const consensusMetaA: ConsensusMeta = {
+  epoch: Math.floor(Number(blockA.data.message.slot) / 12),
   slot: Number(blockA.data.message.slot),
   slotStateRoot: blockA.data.message.state_root,
   timestamp: Number(blockA.data.message.body.execution_payload.timestamp),
@@ -363,6 +364,7 @@ export const consensusMetaA: ConsensusMeta = {
 };
 
 export const consensusMetaB: ConsensusMeta = {
+  epoch: Math.floor(Number(blockB.data.message.slot) / 12),
   slot: Number(blockB.data.message.slot),
   slotStateRoot: blockB.data.message.state_root,
   timestamp: Number(blockB.data.message.body.execution_payload.timestamp),

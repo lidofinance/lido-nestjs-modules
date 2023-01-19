@@ -6,7 +6,7 @@ export enum ValidatorStatus {
   PENDING_QUEUED = 'pending_queued',
   ACTIVE_ONGOING = 'active_ongoing',
   ACTIVE_EXITING = 'active_exiting',
-  ACTIVE_SLASHING = 'active_slashed',
+  ACTIVE_SLASHED = 'active_slashed',
   EXITED_UNSLASHED = 'exited_unslashed',
   EXITED_SLASHED = 'exited_slashed',
   WITHDRAWAL_POSSIBLE = 'withdrawal_possible',
