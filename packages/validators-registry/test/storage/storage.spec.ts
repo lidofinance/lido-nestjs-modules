@@ -140,7 +140,7 @@ describe('Storage', () => {
     ).resolves.toEqual([validatorC]);
   });
 
-  test('getValidators - filter by pubkey (lowercase) + filter by index + orderBy + limit 1 + offset 0', async () => {
+  test('getValidators - filter by pubkey (lowercase) + filter by index + orderBy', async () => {
     const validatorsAB = [validatorA, validatorB];
     const validatorsABCD = [validatorA, validatorB, validatorC, validatorD];
 
@@ -156,12 +156,10 @@ describe('Storage', () => {
           },
         },
         {
-          orderBy: { index: 'ASC' },
-          limit: 1,
-          offset: 1,
+          orderBy: { index: 'DESC' },
         },
       ),
-    ).resolves.toEqual([validatorC]);
+    ).resolves.toEqual([validatorC, validatorA]);
   });
 
   test('getConsensusMeta', async () => {

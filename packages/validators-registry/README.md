@@ -23,7 +23,7 @@ export interface ValidatorsRegistryInterface {
      *
      * If the registry internal state is newer or the same to the CL state - does nothing.
      */
-    update(blockId: BlockId): Promise<ConsensusMeta | null>;
+    update(blockId: BlockId): Promise<ConsensusMeta>;
 
     /**
      * Get Metadata from registry internal state
