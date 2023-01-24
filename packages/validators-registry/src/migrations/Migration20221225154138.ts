@@ -5,7 +5,7 @@ import { Migration } from '@mikro-orm/migrations';
  *
  * This migration can be used in the applications that use this module.
  */
-export class Migration20220225153937 extends Migration {
+export class Migration20221225154138 extends Migration {
   /**
    * @see ConsensusValidatorEntity
    * @see ConsensusMetaEntity
