@@ -153,14 +153,6 @@ export class StorageService
       qb = qb.orderBy(options.orderBy);
     }
 
-    if (options && options.limit) {
-      qb = qb.limit(options.limit);
-    }
-
-    if (options && options.offset) {
-      qb = qb.offset(options.offset);
-    }
-
     const rawValidators: Validator[] = await qb.execute('all', false);
 
     const validators = rawValidators.map((v) => ({

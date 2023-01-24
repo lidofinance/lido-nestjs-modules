@@ -39,21 +39,21 @@ export class ValidatorsRegistry implements ValidatorsRegistryInterface {
   }
 
   protected isNewDataInConsensus(
-    previousMeta: ConsensusMeta | null,
+    previousMeta: ConsensusMeta,
     currentBlockHeader: BlockHeader,
   ): boolean {
-    return previousMeta === null || previousMeta.slot < currentBlockHeader.slot;
+    return previousMeta.slot < currentBlockHeader.slot;
   }
 
   /**
    * @inheritDoc
    */
-  public async update(blockId: BlockId): Promise<ConsensusMeta | null> {
+  public async update(blockId: BlockId): Promise<ConsensusMeta> {
     const previousMeta = await this.storageService.getConsensusMeta();
     const blockHeader = await this.getSlotHeaderFromConsensus(blockId);
 
-    if (!this.isNewDataInConsensus(previousMeta, blockHeader)) {
-      return null;
+    if (previousMeta && !this.isNewDataInConsensus(previousMeta, blockHeader)) {
+      return previousMeta;
     }
 
     const consensusMeta = await this.getConsensusMetaFromConsensus(
