@@ -19,10 +19,11 @@ export class MiddlewareService<T> {
   }
 
   use(callback: MiddlewareCallback<T>) {
-    this.go = ((stack) => (next) => {
-      return stack(callback.bind(this, next.bind(this)));
+    this.go = ((stack) => (next, ctx) => {
+      return stack(callback.bind(this, next.bind(this), ctx), ctx);
     })(this.go);
   }
 
-  go = (next: MiddlewareNext<T>) => next();
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars,@typescript-eslint/no-explicit-any
+  go = (next: MiddlewareNext<T>, _: any = undefined) => next();
 }

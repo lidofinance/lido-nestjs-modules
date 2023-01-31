@@ -156,8 +156,11 @@ export class ExtendedJsonRpcBatchProvider extends JsonRpcProvider {
       });
 
       this._concurrencyLimiter(() => {
-        return this._fetchMiddlewareService.go(() =>
-          this.fetchJson(this.connection, JSON.stringify(batchRequest)),
+        return this._fetchMiddlewareService.go(
+          () => this.fetchJson(this.connection, JSON.stringify(batchRequest)),
+          {
+            provider: this,
+          },
         );
       }).then(
         (batchResult: JsonRpcResponse[]) => {

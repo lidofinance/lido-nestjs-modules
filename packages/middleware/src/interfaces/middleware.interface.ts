@@ -2,7 +2,7 @@
 import { ModuleMetadata } from '@nestjs/common';
 
 export interface MiddlewareCallback<T> {
-  (next: MiddlewareNext<T>): T;
+  (next: MiddlewareNext<T>, ctx: any): T;
 }
 
 export interface MiddlewareNext<T> {
