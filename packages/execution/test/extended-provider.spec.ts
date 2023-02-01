@@ -227,6 +227,21 @@ describe('Execution module. ', () => {
       expect(mockCallback.mock.calls[3][0]).toBe('second');
     });
 
+    test('should provide the correct context to middleware', async () => {
+      await createMocks(1, 1);
+
+      const mockCallback = jest.fn();
+
+      mockedProvider.use((next, ctx) => {
+        mockCallback(ctx.provider.connection.url);
+        return next();
+      });
+
+      await mockedProvider.getBlock(10000);
+
+      expect(mockCallback).toBeCalledWith('http://localhost');
+    });
+
     test('should support EIP-1898', async () => {
       await createMocks(2, 2);
 

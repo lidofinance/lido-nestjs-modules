@@ -40,6 +40,22 @@ describe('Middleware', () => {
     expect(mockCallback.mock.calls[2][0]).toBe('main');
   });
 
+  test('Middlewares with context', () => {
+    const mockCallback = jest.fn();
+
+    middlewareService.use((next, ctx) => {
+      mockCallback(ctx.foo);
+      return next();
+    });
+
+    const context = { foo: 'bar' };
+    middlewareService.go(() => mockCallback('main'), context);
+
+    expect(mockCallback).toBeCalledTimes(2);
+    expect(mockCallback.mock.calls[0][0]).toBe('bar');
+    expect(mockCallback.mock.calls[1][0]).toBe('main');
+  });
+
   test('Return value', async () => {
     const expected = 42;
     const mockCallback = jest.fn().mockReturnValue(expected);
