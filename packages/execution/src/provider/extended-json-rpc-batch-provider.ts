@@ -162,35 +162,50 @@ export class ExtendedJsonRpcBatchProvider extends JsonRpcProvider {
             provider: this,
           },
         );
-      }).then(
-        (batchResult: JsonRpcResponse[]) => {
-          this.emit('debug', {
-            action: 'response',
-            request: deepCopy(batchRequest),
-            response: deepCopy(batchResult),
-            provider: this,
-          });
+      })
+        .then(
+          (batchResult: JsonRpcResponse[]) => {
+            this.emit('debug', {
+              action: 'response',
+              request: deepCopy(batchRequest),
+              response: deepCopy(batchResult),
+              provider: this,
+            });
 
-          const resultMap = batchResult.reduce((resultMap, payload) => {
-            resultMap[payload.id] = payload;
-            return resultMap;
-          }, {} as Record<number, JsonRpcResponse>);
+            const resultMap = batchResult.reduce((resultMap, payload) => {
+              resultMap[payload.id] = payload;
+              return resultMap;
+            }, {} as Record<number, JsonRpcResponse>);
 
-          // For each batch, feed it to the correct Promise, depending
-          // on whether it was a success or error
-          batch.forEach((inflightRequest) => {
-            const payload = resultMap[inflightRequest.request.id];
-            if (payload.error) {
-              const error = new FetchError(payload.error.message);
-              error.code = payload.error.code;
-              error.data = payload.error.data;
+            // For each batch, feed it to the correct Promise, depending
+            // on whether it was a success or error
+            batch.forEach((inflightRequest) => {
+              const payload = resultMap[inflightRequest.request.id];
+              if (payload.error) {
+                const error = new FetchError(payload.error.message);
+                error.code = payload.error.code;
+                error.data = payload.error.data;
+                inflightRequest.reject(error);
+              } else {
+                inflightRequest.resolve(payload.result);
+              }
+            });
+          },
+          (error: Error) => {
+            this.emit('debug', {
+              action: 'response',
+              error: error,
+              request: deepCopy(batchRequest),
+              provider: this,
+            });
+
+            batch.forEach((inflightRequest) => {
               inflightRequest.reject(error);
-            } else {
-              inflightRequest.resolve(payload.result);
-            }
-          });
-        },
-        (error: Error) => {
+            });
+          },
+        )
+        .catch((error: Error) => {
+          // catch errors happening in the 'then' callback
           this.emit('debug', {
             action: 'response',
             error: error,
@@ -201,8 +216,7 @@ export class ExtendedJsonRpcBatchProvider extends JsonRpcProvider {
           batch.forEach((inflightRequest) => {
             inflightRequest.reject(error);
           });
-        },
-      );
+        });
     }
 
     this._batchAggregator && clearTimeout(this._batchAggregator);

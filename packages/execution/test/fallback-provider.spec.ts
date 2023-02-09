@@ -10,6 +10,7 @@ import {
   fakeFetchImplThatAlwaysFails,
   fakeFetchImplThatCanOnlyDoNetworkDetection,
   fixtures,
+  makeFakeFetchImplReturnsNull,
   makeFakeFetchImplThatFailsAfterNRequests,
   makeFakeFetchImplThatFailsFirstNRequests,
   makeFakeFetchImplThrowsError,
@@ -413,6 +414,29 @@ describe('Execution module. ', () => {
       ).rejects.toThrow(
         "Fallback provider [1] network is different to other provider's networks",
       );
+
+      mockedNetworksEqual.mockReset();
+    });
+
+    test('should not fail on malformed response from RPC', async () => {
+      await createMocks(2);
+
+      const mockedNetworksEqual = jest
+        .spyOn(mockedProvider, 'networksEqual')
+        .mockImplementation((): boolean => {
+          return true;
+        });
+
+      mockedFallbackProviderFetch[0].mockImplementation(
+        makeFakeFetchImplReturnsNull(),
+      );
+
+      mockedFallbackProviderFetch[1].mockImplementation(
+        makeFetchImplWithSpecificNetwork(1),
+      );
+
+      const block = await mockedProvider.getBlock('latest');
+      expect(block.number).toBe(10000);
 
       mockedNetworksEqual.mockReset();
     });
