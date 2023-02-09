@@ -271,6 +271,12 @@ export const makeFakeFetchImplThrowsError = (error: Error) => {
   };
 };
 
+export const makeFakeFetchImplReturnsNull = () => {
+  return async (): Promise<unknown> => {
+    return null;
+  };
+};
+
 export const fakeFetchImplThatAlwaysFails = async (): Promise<never> => {
   throw new Error('Always fail');
 };
