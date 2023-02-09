@@ -32,9 +32,7 @@ export const retrier = (
       if (logger && logWarning) {
         logger.warn(
           err,
-          'Retrying after (%dms). Remaining retries [%d]',
-          minBackoffMs,
-          maxRetryCount,
+          `Retrying after (${minBackoffMs}ms). Remaining retries [${maxRetryCount}]`,
         );
       }
       if (maxRetryCount <= 1 || minBackoffMs >= maxBackoffMs) {
