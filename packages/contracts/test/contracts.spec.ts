@@ -38,6 +38,9 @@ import {
   SECURITY_CONTRACT_TOKEN,
   WSTETH_CONTRACT_ADDRESSES,
   WSTETH_CONTRACT_TOKEN,
+  LidoLocatorContractModule,
+  LIDO_LOCATOR_CONTRACT_ADDRESSES,
+  LIDO_LOCATOR_CONTRACT_TOKEN,
 } from '../src';
 import { ContractModule } from '../src/contract.module';
 import {
@@ -137,6 +140,14 @@ describe('Chains', () => {
       LidoContractModule,
       LIDO_CONTRACT_TOKEN,
       LIDO_CONTRACT_ADDRESSES,
+    );
+  });
+
+  test('lido locator', async () => {
+    await testAddress(
+      LidoLocatorContractModule,
+      LIDO_LOCATOR_CONTRACT_TOKEN,
+      LIDO_LOCATOR_CONTRACT_ADDRESSES,
     );
   });
 
