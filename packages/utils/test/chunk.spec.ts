@@ -16,6 +16,11 @@ describe('chunk', () => {
     expect(result).toEqual([]);
   });
 
+  test('zero chunk size', () => {
+    const result = chunk([1, 2], 0);
+    expect(result).toEqual([]);
+  });
+
   test('chunk count greater than array length', () => {
     const result = chunk([1, 2], 100);
     expect(result).toEqual([[1, 2]]);

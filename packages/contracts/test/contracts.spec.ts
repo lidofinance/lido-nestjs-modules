@@ -40,6 +40,11 @@ import {
   WSTETH_CONTRACT_TOKEN,
 } from '../src';
 import { ContractModule } from '../src/contract.module';
+import {
+  STAKING_ROUTER_CONTRACT_ADDRESSES,
+  STAKING_ROUTER_CONTRACT_TOKEN,
+} from '../src/staking-router/staking-router.constants';
+import { StakingRouterContractModule } from '../src/staking-router/staking-router.module';
 
 describe('Chains', () => {
   const getContract = async (
@@ -164,6 +169,14 @@ describe('Chains', () => {
       SecurityContractModule,
       SECURITY_CONTRACT_TOKEN,
       SECURITY_CONTRACT_ADDRESSES,
+    );
+  });
+
+  test('staking router', async () => {
+    await testAddress(
+      StakingRouterContractModule,
+      STAKING_ROUTER_CONTRACT_TOKEN,
+      STAKING_ROUTER_CONTRACT_ADDRESSES,
     );
   });
 
