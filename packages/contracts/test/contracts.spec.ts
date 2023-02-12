@@ -38,8 +38,16 @@ import {
   SECURITY_CONTRACT_TOKEN,
   WSTETH_CONTRACT_ADDRESSES,
   WSTETH_CONTRACT_TOKEN,
+  LidoLocatorContractModule,
+  LIDO_LOCATOR_CONTRACT_ADDRESSES,
+  LIDO_LOCATOR_CONTRACT_TOKEN,
 } from '../src';
 import { ContractModule } from '../src/contract.module';
+import {
+  STAKING_ROUTER_CONTRACT_ADDRESSES,
+  STAKING_ROUTER_CONTRACT_TOKEN,
+} from '../src/staking-router/staking-router.constants';
+import { StakingRouterContractModule } from '../src/staking-router/staking-router.module';
 
 describe('Chains', () => {
   const getContract = async (
@@ -135,6 +143,14 @@ describe('Chains', () => {
     );
   });
 
+  test('lido locator', async () => {
+    await testAddress(
+      LidoLocatorContractModule,
+      LIDO_LOCATOR_CONTRACT_TOKEN,
+      LIDO_LOCATOR_CONTRACT_ADDRESSES,
+    );
+  });
+
   test('execution rewards vault', async () => {
     await testAddress(
       ExecutionRewardsVaultContractModule,
@@ -164,6 +180,14 @@ describe('Chains', () => {
       SecurityContractModule,
       SECURITY_CONTRACT_TOKEN,
       SECURITY_CONTRACT_ADDRESSES,
+    );
+  });
+
+  test('staking router', async () => {
+    await testAddress(
+      StakingRouterContractModule,
+      STAKING_ROUTER_CONTRACT_TOKEN,
+      STAKING_ROUTER_CONTRACT_ADDRESSES,
     );
   });
 

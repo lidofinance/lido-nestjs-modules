@@ -27,6 +27,9 @@ export * from './ldo/ldo.module';
 export * from './lido/lido.constants';
 export * from './lido/lido.module';
 
+export * from './lido-locator/lido-locator.constants';
+export * from './lido-locator/lido-locator.module';
+
 export * from './oracle/oracle.constants';
 export * from './oracle/oracle.module';
 
@@ -35,6 +38,9 @@ export * from './registry/registry.module';
 
 export * from './security/security.constants';
 export * from './security/security.module';
+
+export * from './staking-router/staking-router.constants';
+export * from './staking-router/staking-router.module';
 
 export * from './wsteth/wsteth.constants';
 export * from './wsteth/wsteth.module';
