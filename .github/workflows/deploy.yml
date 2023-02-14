@@ -16,7 +16,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v3
         with:
-          node-version: '14'
+          node-version: '16'
           cache: 'yarn'
       - name: Install dependencies
         run: yarn install --immutable
@@ -36,4 +36,6 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: yarn multi-semantic-release --deps.bump=satisfy --deps.release=inherit --sequential-init
+        run: |
+          npm config set workspaces-update false
+          yarn multi-semantic-release --deps.bump=satisfy --deps.release=inherit --sequential-init
