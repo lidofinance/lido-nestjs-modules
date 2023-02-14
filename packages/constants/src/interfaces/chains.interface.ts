@@ -9,4 +9,5 @@ export enum CHAINS {
   Kintsugi = 1337702,
   Kiln = 1337802,
   Zhejiang = 1337803,
+  devnet4 = 1337808,
 }
