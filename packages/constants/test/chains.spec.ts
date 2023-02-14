@@ -11,5 +11,6 @@ describe('Chains', () => {
     expect(CHAINS.Moonbase).toBeDefined();
     expect(CHAINS.Kintsugi).toBeDefined();
     expect(CHAINS.Kiln).toBeDefined();
+    expect(CHAINS.Zhejiang).toBeDefined();
   });
 });
