@@ -40,6 +40,10 @@ const replace = <T extends unknown>(
   if (typeof message === 'object' && message !== null) {
     return traverse(message).map(function (node) {
       if (this.isLeaf) {
+        if (this.level > 10) {
+          this.update('Maximum secret sanitizing depth reached.');
+          return;
+        }
         this.update(replace(secrets, regex, node));
       }
     }) as T;

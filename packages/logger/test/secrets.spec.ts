@@ -209,6 +209,24 @@ describe('Hide secrets', () => {
         expect(write).toBeCalledWith(expect.not.stringContaining(secret));
       });
 
+      test('Secret cleaning in super deep object', () => {
+        loggerService.log({
+          a: {
+            a: {
+              a: {
+                a: { a: { a: { a: { a: { a: { a: { a: 'Depth' } } } } } } },
+              },
+            },
+          },
+        });
+
+        expect(write).toBeCalledTimes(1);
+        expect(write).toBeCalledWith(
+          expect.stringContaining('Maximum secret sanitizing depth reached.'),
+        );
+        expect(write).toBeCalledWith(expect.not.stringContaining('Depth'));
+      });
+
       test('Secret cleaning does not mutate original object', () => {
         const secret = secrets[0];
         const expected = replacer;
