@@ -2612,9 +2612,11 @@ __metadata:
     "@nestjs/core": ^8.2.5
     "@nestjs/testing": ^8.2.5
     "@types/node-fetch": ^2.5.12
+    "@types/stream-json": ^1.7.3
     node-fetch: ^2.6.7
     reflect-metadata: ^0.1.13
     rxjs: ^7.5.2
+    stream-json: ^1.7.5
   peerDependencies:
     "@nestjs/common": ^8.2.5
     "@nestjs/core": ^8.2.5
@@ -4300,6 +4302,25 @@ __metadata:
   version: 2.0.1
   resolution: "@types/stack-utils@npm:2.0.1"
   checksum: 205fdbe3326b7046d7eaf5e494d8084f2659086a266f3f9cf00bccc549c8e36e407f88168ad4383c8b07099957ad669f75f2532ed4bc70be2b037330f7bae019
+  languageName: node
+  linkType: hard
+
+"@types/stream-chain@npm:*":
+  version: 2.0.1
+  resolution: "@types/stream-chain@npm:2.0.1"
+  dependencies:
+    "@types/node": "*"
+  checksum: 6a59da0374a74ad6aff48c669c72d3060d428d1015af94b00d290ede68706781a8419daf490af7935f0f9f2796da6965aead74ad1795f72c488630451241db55
+  languageName: node
+  linkType: hard
+
+"@types/stream-json@npm:^1.7.3":
+  version: 1.7.3
+  resolution: "@types/stream-json@npm:1.7.3"
+  dependencies:
+    "@types/node": "*"
+    "@types/stream-chain": "*"
+  checksum: cafa47c27bbd0cf446d1c90442cf53240a8a8a3828e73ba456720d6612b03d32d04067c9c0e54105b94584f37c7ed2f1a941b0600fbc6c095c25c1b401d184bb
   languageName: node
   linkType: hard
 
@@ -15595,6 +15616,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"stream-chain@npm:^2.2.5":
+  version: 2.2.5
+  resolution: "stream-chain@npm:2.2.5"
+  checksum: c83cbf504bd11e2bcbe761a92801295b3decac7ffa4092ceffca2eb1b5d0763bcc511fa22cd8044e8a18c21ca66794fd10c8d9cd1292a3e6c0d83a4194c6b8ed
+  languageName: node
+  linkType: hard
+
 "stream-combiner2@npm:~1.1.1":
   version: 1.1.1
   resolution: "stream-combiner2@npm:1.1.1"
@@ -15612,6 +15640,15 @@ __metadata:
     end-of-stream: ^1.1.0
     stream-shift: ^1.0.0
   checksum: f243de78e9fcc60757994efc4e8ecae9f01a4b2c6a505d786b11fcaa68b1a75ca54afc1669eac9e08f19ff0230792fc40d0f3e3e2935d76971b4903af18b76ab
+  languageName: node
+  linkType: hard
+
+"stream-json@npm:^1.7.5":
+  version: 1.7.5
+  resolution: "stream-json@npm:1.7.5"
+  dependencies:
+    stream-chain: ^2.2.5
+  checksum: d6229cd0342cbfb2f0d4be2b289cd2fe283aaa808329ec5c925b9840fc694fa91400f10bbf3275ac39c039f314fe6ab844d380341e738654ce224482f266ad2b
   languageName: node
   linkType: hard
 
