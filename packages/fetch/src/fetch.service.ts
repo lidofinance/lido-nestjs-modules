@@ -27,29 +27,40 @@ export class FetchService {
     });
   }
 
-  public async fetchJson<T>(url: RequestInfo, init?: RequestInit): Promise<T> {
-    const response = await this.wrappedRequest(url, init);
+  public async fetchJson<T>(
+    url: RequestInfo,
+    options?: RequestInit,
+  ): Promise<T> {
+    const response = await this.wrappedRequest(url, options);
     return await response.json();
   }
 
   public async fetchText(
     url: RequestInfo,
-    init?: RequestInit,
+    options?: RequestInit,
   ): Promise<string> {
-    const response = await this.wrappedRequest(url, init);
+    const response = await this.wrappedRequest(url, options);
     return await response.text();
+  }
+
+  public async fetchStream(
+    url: RequestInfo,
+    options?: RequestInit,
+  ): Promise<NodeJS.ReadableStream> {
+    const response = await this.wrappedRequest(url, options);
+    return response.body;
   }
 
   protected async wrappedRequest(
     url: RequestInfo,
-    init?: RequestInit,
+    options?: RequestInit,
   ): Promise<Response> {
-    return await this.middlewareService.go(() => this.request(url, init));
+    return await this.middlewareService.go(() => this.request(url, options));
   }
 
   protected async request(
     url: RequestInfo,
-    init?: RequestInit,
+    options?: RequestInit,
     attempt = 0,
   ): Promise<Response> {
     attempt++;
@@ -57,7 +68,7 @@ export class FetchService {
     try {
       const baseUrl = this.getBaseUrl(attempt);
       const fullUrl = this.getUrl(baseUrl, url);
-      const response = await fetch(fullUrl, init);
+      const response = await fetch(fullUrl, options);
 
       if (!response.ok) {
         const errorBody = await this.extractErrorBody(response);
@@ -66,16 +77,16 @@ export class FetchService {
 
       return response;
     } catch (error) {
-      const possibleAttempt = this.getRetryAttempts(init);
+      const possibleAttempt = this.getRetryAttempts(options);
       if (attempt > possibleAttempt) throw error;
 
-      await this.delay(init);
-      return await this.request(url, init, attempt);
+      await this.delay(options);
+      return await this.request(url, options, attempt);
     }
   }
 
-  protected async delay(init?: RequestInit): Promise<void> {
-    const timeout = this.getDelayTimeout(init);
+  protected async delay(options?: RequestInit): Promise<void> {
+    const timeout = this.getDelayTimeout(options);
     if (timeout <= 0) return;
     return new Promise((resolve) => setTimeout(resolve, timeout));
   }
@@ -90,8 +101,8 @@ export class FetchService {
     }
   }
 
-  protected getRetryAttempts(init?: RequestInit): number {
-    const localAttempts = init?.retryPolicy?.attempts;
+  protected getRetryAttempts(options?: RequestInit): number {
+    const localAttempts = options?.retryPolicy?.attempts;
     const globalAttempts = this.options?.retryPolicy?.attempts;
 
     if (localAttempts != null) return localAttempts;
@@ -99,8 +110,8 @@ export class FetchService {
     return FETCH_GLOBAL_RETRY_DEFAULT_ATTEMPTS;
   }
 
-  protected getDelayTimeout(init?: RequestInit): number {
-    const localDelay = init?.retryPolicy?.delay;
+  protected getDelayTimeout(options?: RequestInit): number {
+    const localDelay = options?.retryPolicy?.delay;
     const globalDelay = this.options?.retryPolicy?.delay;
 
     if (localDelay != null) return localDelay;
