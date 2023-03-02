@@ -55,6 +55,18 @@ export class ConsensusBeaconService extends ConsensusBaseService {
     );
   }
 
+  /** Returns filterable stream of validators with their balance, status and index. */
+  public async getStateValidatorsStream(
+    args: ConsensusMethodArgs<'getStateValidators'>,
+  ): Promise<NodeJS.ReadableStream> {
+    const { stateId, id, status, options } = args;
+    const search = this.getSearchString({ id, status });
+    return await this.fetchStream(
+      `/eth/v1/beacon/states/${stateId}/validators${search}`,
+      options,
+    );
+  }
+
   /** Returns validator specified by state and id or public key along with status and balance. */
   public async getStateValidator(
     args: ConsensusMethodArgs<'getStateValidator'>,

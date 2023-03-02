@@ -29,6 +29,13 @@ export class ConsensusBaseService {
     return await this.fetchService.fetchJson(path, init);
   }
 
+  public async fetchStream(
+    path: string,
+    init?: RequestInit,
+  ): Promise<NodeJS.ReadableStream> {
+    return await this.fetchService.fetchStream(path, init);
+  }
+
   public getSearchString(
     queryObject: Record<string, string[] | string | number | undefined>,
   ): string {
