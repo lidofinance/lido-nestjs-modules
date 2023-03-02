@@ -43,7 +43,9 @@
     "@nestjs/common": "^8.2.5",
     "@nestjs/core": "^8.2.5",
     "@nestjs/testing": "^8.2.5",
+    "@types/stream-json": "^1.7.3",
     "reflect-metadata": "^0.1.13",
-    "rxjs": "^7.5.2"
+    "rxjs": "^7.5.2",
+    "stream-json": "^1.7.5"
   }
 }
