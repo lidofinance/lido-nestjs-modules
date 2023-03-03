@@ -1,6 +1,7 @@
 import { Test } from '@nestjs/testing';
 import { FetchModule, FetchService } from '@lido-nestjs/fetch';
 import { ConsensusModule, ConsensusService } from '../src';
+import { Readable } from 'stream';
 
 describe('Beacon endpoints', () => {
   let consensusService: ConsensusService;
@@ -8,6 +9,10 @@ describe('Beacon endpoints', () => {
   let mockFetch: jest.SpyInstance<
     ReturnType<FetchService['fetchJson']>,
     Parameters<FetchService['fetchJson']>
+  >;
+  let mockFetchStream: jest.SpyInstance<
+    ReturnType<FetchService['fetchStream']>,
+    Parameters<FetchService['fetchStream']>
   >;
 
   beforeEach(async () => {
@@ -21,6 +26,10 @@ describe('Beacon endpoints', () => {
     mockFetch = jest
       .spyOn(fetchService, 'fetchJson')
       .mockImplementation(async () => null);
+
+    mockFetchStream = jest
+      .spyOn(fetchService, 'fetchStream')
+      .mockImplementation(async () => Readable.from(Buffer.from('')));
   });
 
   test('getGenesis', async () => {
@@ -69,6 +78,20 @@ describe('Beacon endpoints', () => {
 
     expect(mockFetch).toBeCalledTimes(1);
     expect(mockFetch).toBeCalledWith(
+      '/eth/v1/beacon/states/head/validators?id=1%2C2&status=active',
+      undefined,
+    );
+  });
+
+  test('getStateValidatorsStream', async () => {
+    await consensusService.getStateValidatorsStream({
+      stateId: 'head',
+      id: ['1', '2'],
+      status: ['active'],
+    });
+
+    expect(mockFetchStream).toBeCalledTimes(1);
+    expect(mockFetchStream).toBeCalledWith(
       '/eth/v1/beacon/states/head/validators?id=1%2C2&status=active',
       undefined,
     );
