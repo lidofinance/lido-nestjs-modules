@@ -2481,7 +2481,7 @@ __metadata:
   dependencies:
     "@lido-nestjs/fetch": "workspace:*"
     "@nestjs/common": ^8.2.5
-    "@nestjs/core": ^8.2.5
+    "@nestjs/core": ^9.0.5
     "@nestjs/testing": ^8.2.5
     "@types/lodash.snakecase": ^4.1.6
     "@types/node-fetch": ^2.5.12
@@ -2493,7 +2493,7 @@ __metadata:
     rxjs: ^7.5.2
   peerDependencies:
     "@nestjs/common": ^8.2.5
-    "@nestjs/core": ^8.2.5
+    "@nestjs/core": ^9.0.5
     reflect-metadata: ^0.1.13
     rxjs: ^7.5.2
     tslib: ^2.3.1
@@ -2505,13 +2505,13 @@ __metadata:
   resolution: "@lido-nestjs/constants@workspace:packages/constants"
   dependencies:
     "@nestjs/common": ^8.2.5
-    "@nestjs/core": ^8.2.5
+    "@nestjs/core": ^9.0.5
     "@nestjs/testing": ^8.2.5
     reflect-metadata: ^0.1.13
     rxjs: ^7.5.2
   peerDependencies:
     "@nestjs/common": ^8.2.5
-    "@nestjs/core": ^8.2.5
+    "@nestjs/core": ^9.0.5
     reflect-metadata: ^0.1.13
     rxjs: ^7.5.2
     tslib: ^2.3.1
@@ -2526,14 +2526,14 @@ __metadata:
     "@ethersproject/providers": ^5.5.3
     "@lido-nestjs/constants": "workspace:*"
     "@nestjs/common": ^8.2.5
-    "@nestjs/core": ^8.2.5
+    "@nestjs/core": ^9.0.5
     "@nestjs/testing": ^8.2.5
     ethers: ^5.5.4
     reflect-metadata: ^0.1.13
     rxjs: ^7.5.2
   peerDependencies:
     "@nestjs/common": ^8.2.5
-    "@nestjs/core": ^8.2.5
+    "@nestjs/core": ^9.0.5
     reflect-metadata: ^0.1.13
     rxjs: ^7.5.2
     tslib: ^2.3.1
@@ -2545,13 +2545,13 @@ __metadata:
   resolution: "@lido-nestjs/decorators@workspace:packages/decorators"
   dependencies:
     "@nestjs/common": ^8.2.5
-    "@nestjs/core": ^8.2.5
+    "@nestjs/core": ^9.0.5
     "@nestjs/testing": ^8.2.5
     reflect-metadata: ^0.1.13
     rxjs: ^7.5.2
   peerDependencies:
     "@nestjs/common": ^8.2.5
-    "@nestjs/core": ^8.2.5
+    "@nestjs/core": ^9.0.5
     reflect-metadata: ^0.1.13
     rxjs: ^7.5.2
     tslib: ^2.3.1
@@ -2563,13 +2563,13 @@ __metadata:
   resolution: "@lido-nestjs/di@workspace:packages/di"
   dependencies:
     "@nestjs/common": ^8.2.5
-    "@nestjs/core": ^8.2.5
+    "@nestjs/core": ^9.0.5
     "@nestjs/testing": ^8.2.5
     reflect-metadata: ^0.1.13
     rxjs: ^7.5.2
   peerDependencies:
     "@nestjs/common": ^8.2.5
-    "@nestjs/core": ^8.2.5
+    "@nestjs/core": ^9.0.5
     reflect-metadata: ^0.1.13
     rxjs: ^7.5.2
     tslib: ^2.3.1
@@ -2590,13 +2590,13 @@ __metadata:
     "@lido-nestjs/logger": "workspace:*"
     "@lido-nestjs/middleware": "workspace:*"
     "@nestjs/common": ^8.2.5
-    "@nestjs/core": ^8.2.5
+    "@nestjs/core": ^9.0.5
     "@nestjs/testing": ^8.2.5
     reflect-metadata: ^0.1.13
     rxjs: ^7.5.2
   peerDependencies:
     "@nestjs/common": ^8.2.5
-    "@nestjs/core": ^8.2.5
+    "@nestjs/core": ^9.0.5
     reflect-metadata: ^0.1.13
     rxjs: ^7.5.2
     tslib: ^2.3.1
@@ -2609,7 +2609,7 @@ __metadata:
   dependencies:
     "@lido-nestjs/middleware": "workspace:*"
     "@nestjs/common": ^8.2.5
-    "@nestjs/core": ^8.2.5
+    "@nestjs/core": ^9.0.5
     "@nestjs/testing": ^8.2.5
     "@types/node-fetch": ^2.5.12
     "@types/stream-json": ^1.7.3
@@ -2619,7 +2619,7 @@ __metadata:
     stream-json: ^1.7.5
   peerDependencies:
     "@nestjs/common": ^8.2.5
-    "@nestjs/core": ^8.2.5
+    "@nestjs/core": ^9.0.5
     reflect-metadata: ^0.1.13
     rxjs: ^7.5.2
     tslib: ^2.3.1
@@ -2633,13 +2633,13 @@ __metadata:
     "@lido-nestjs/di": "workspace:*"
     "@lido-nestjs/fetch": "workspace:*"
     "@nestjs/common": ^8.2.5
-    "@nestjs/core": ^8.2.5
+    "@nestjs/core": ^9.0.5
     "@nestjs/testing": ^8.2.5
     reflect-metadata: ^0.1.13
     rxjs: ^7.5.2
   peerDependencies:
     "@nestjs/common": ^8.2.5
-    "@nestjs/core": ^8.2.5
+    "@nestjs/core": ^9.0.5
     reflect-metadata: ^0.1.13
     rxjs: ^7.5.2
   languageName: unknown
@@ -2657,14 +2657,14 @@ __metadata:
     "@lido-nestjs/di": "workspace:*"
     "@lido-nestjs/utils": "workspace:*"
     "@nestjs/common": ^8.2.5
-    "@nestjs/core": ^8.2.5
+    "@nestjs/core": ^9.0.5
     "@nestjs/testing": ^8.2.5
     piscina: 3.2.0
     reflect-metadata: ^0.1.13
     rxjs: ^7.5.2
   peerDependencies:
     "@nestjs/common": ^8.2.5
-    "@nestjs/core": ^8.2.5
+    "@nestjs/core": ^9.0.5
     reflect-metadata: ^0.1.13
     rxjs: ^7.5.2
     tslib: ^2.3.1
@@ -2676,7 +2676,7 @@ __metadata:
   resolution: "@lido-nestjs/logger@workspace:packages/logger"
   dependencies:
     "@nestjs/common": ^8.2.5
-    "@nestjs/core": ^8.2.5
+    "@nestjs/core": ^9.0.5
     "@nestjs/testing": ^8.2.5
     "@types/traverse": ^0.6.32
     nest-winston: ^1.6.2
@@ -2686,7 +2686,7 @@ __metadata:
     winston: ^3.4.0
   peerDependencies:
     "@nestjs/common": ^8.2.5
-    "@nestjs/core": ^8.2.5
+    "@nestjs/core": ^9.0.5
     reflect-metadata: ^0.1.13
     rxjs: ^7.5.2
     tslib: ^2.3.1
@@ -2698,13 +2698,13 @@ __metadata:
   resolution: "@lido-nestjs/middleware@workspace:packages/middleware"
   dependencies:
     "@nestjs/common": ^8.2.5
-    "@nestjs/core": ^8.2.5
+    "@nestjs/core": ^9.0.5
     "@nestjs/testing": ^8.2.5
     reflect-metadata: ^0.1.13
     rxjs: ^7.5.2
   peerDependencies:
     "@nestjs/common": ^8.2.5
-    "@nestjs/core": ^8.2.5
+    "@nestjs/core": ^9.0.5
     reflect-metadata: ^0.1.13
     rxjs: ^7.5.2
     tslib: ^2.3.1
@@ -2717,14 +2717,14 @@ __metadata:
   dependencies:
     "@lido-nestjs/ipfs-http-client": "workspace:*"
     "@nestjs/common": ^8.2.5
-    "@nestjs/core": ^8.2.5
+    "@nestjs/core": ^9.0.5
     "@nestjs/testing": ^8.2.5
     ethers: ^5.5.4
     reflect-metadata: ^0.1.13
     rxjs: ^7.5.2
   peerDependencies:
     "@nestjs/common": ^8.2.5
-    "@nestjs/core": ^8.2.5
+    "@nestjs/core": ^9.0.5
     reflect-metadata: ^0.1.13
     rxjs: ^7.5.2
   languageName: unknown
@@ -2745,7 +2745,7 @@ __metadata:
     "@mikro-orm/nestjs": ^5.0.2
     "@mikro-orm/sqlite": ^5.2.0
     "@nestjs/common": ^8.2.5
-    "@nestjs/core": ^8.2.5
+    "@nestjs/core": ^9.0.5
     "@nestjs/testing": ^8.2.5
     "@types/cron": ^2
     cron: ^2.0.0
@@ -2757,7 +2757,7 @@ __metadata:
     "@mikro-orm/migrations": ^5.2.0
     "@mikro-orm/nestjs": ^5.0.2
     "@nestjs/common": ^8.2.5
-    "@nestjs/core": ^8.2.5
+    "@nestjs/core": ^9.0.5
     reflect-metadata: ^0.1.13
     rxjs: ^7.5.2
     tslib: ^2.3.1
@@ -2769,13 +2769,13 @@ __metadata:
   resolution: "@lido-nestjs/utils@workspace:packages/utils"
   dependencies:
     "@nestjs/common": ^8.2.5
-    "@nestjs/core": ^8.2.5
+    "@nestjs/core": ^9.0.5
     "@nestjs/testing": ^8.2.5
     reflect-metadata: ^0.1.13
     rxjs: ^7.5.2
   peerDependencies:
     "@nestjs/common": ^8.2.5
-    "@nestjs/core": ^8.2.5
+    "@nestjs/core": ^9.0.5
     reflect-metadata: ^0.1.13
     rxjs: ^7.5.2
     tslib: ^2.3.1
@@ -2790,7 +2790,7 @@ __metadata:
     "@lido-nestjs/di": "workspace:*"
     "@lido-nestjs/utils": "workspace:*"
     "@nestjs/common": ^8.2.5
-    "@nestjs/core": ^8.2.5
+    "@nestjs/core": ^9.0.5
     "@nestjs/testing": ^8.2.5
     reflect-metadata: ^0.1.13
     rxjs: ^7.5.2
@@ -2801,7 +2801,7 @@ __metadata:
     "@mikro-orm/migrations": ^5.2.0
     "@mikro-orm/nestjs": ^5.0.2
     "@nestjs/common": ^8.2.5
-    "@nestjs/core": ^8.2.5
+    "@nestjs/core": ^9.0.5
     reflect-metadata: ^0.1.13
     rxjs: ^7.5.2
     tslib: ^2.3.1
@@ -2835,6 +2835,13 @@ __metadata:
   bin:
     workspaces-list: lib/bin/workspaces-list.js
   checksum: a0e75c623d6853cd5ee72259fe85b1c3a4465b8420e23f5e3cd45b7c35e25aeeaf3c3d503605bc9833e873492f6408fabc925f0aeeada57565b810b4dbf21b3f
+  languageName: node
+  linkType: hard
+
+"@lukeed/csprng@npm:^1.0.0":
+  version: 1.0.1
+  resolution: "@lukeed/csprng@npm:1.0.1"
+  checksum: fd84d6832775052d6bff3e78b0bc7f4b29b2fafa71b04826b0713f55d9a447a0b273d4eb70d02d89bb879e9d768cd9716da818dafa32ba6f7ecb639cbdc6806d
   languageName: node
   linkType: hard
 
@@ -3093,22 +3100,21 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@nestjs/core@npm:^8.2.5":
-  version: 8.3.0
-  resolution: "@nestjs/core@npm:8.3.0"
+"@nestjs/core@npm:^9.0.5":
+  version: 9.3.9
+  resolution: "@nestjs/core@npm:9.3.9"
   dependencies:
     "@nuxtjs/opencollective": 0.3.2
     fast-safe-stringify: 2.1.1
     iterare: 1.2.1
-    object-hash: 2.2.0
     path-to-regexp: 3.2.0
-    tslib: 2.3.1
-    uuid: 8.3.2
+    tslib: 2.5.0
+    uid: 2.0.1
   peerDependencies:
-    "@nestjs/common": ^8.0.0
-    "@nestjs/microservices": ^8.0.0
-    "@nestjs/platform-express": ^8.0.0
-    "@nestjs/websockets": ^8.0.0
+    "@nestjs/common": ^9.0.0
+    "@nestjs/microservices": ^9.0.0
+    "@nestjs/platform-express": ^9.0.0
+    "@nestjs/websockets": ^9.0.0
     reflect-metadata: ^0.1.12
     rxjs: ^7.1.0
   peerDependenciesMeta:
@@ -3118,7 +3124,7 @@ __metadata:
       optional: true
     "@nestjs/websockets":
       optional: true
-  checksum: 1b3a5a6d2b05a40ce074ecca2962f96ece1834310a09eaf371a1e96c74d48569f85769278c18c90e8d231299c8b0e1dc866ea8d62ae189c82d67a11d53d42a74
+  checksum: b2a29c8b61b8b7bbc8d883d4ff9aed80504e28c11bd627fccbeb11a7920559b8d885efecee4799c3bd9c2cd0224dd519c7b2dcdfa9f523855529143596e1837a
   languageName: node
   linkType: hard
 
@@ -13206,13 +13212,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"object-hash@npm:2.2.0":
-  version: 2.2.0
-  resolution: "object-hash@npm:2.2.0"
-  checksum: 55ba841e3adce9c4f1b9b46b41983eda40f854e0d01af2802d3ae18a7085a17168d6b81731d43fdf1d6bcbb3c9f9c56d22c8fea992203ad90a38d7d919bc28f1
-  languageName: node
-  linkType: hard
-
 "object-inspect@npm:^1.11.0, object-inspect@npm:^1.12.0, object-inspect@npm:^1.9.0":
   version: 1.12.0
   resolution: "object-inspect@npm:1.12.0"
@@ -16528,6 +16527,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"tslib@npm:2.5.0":
+  version: 2.5.0
+  resolution: "tslib@npm:2.5.0"
+  checksum: ae3ed5f9ce29932d049908ebfdf21b3a003a85653a9a140d614da6b767a93ef94f460e52c3d787f0e4f383546981713f165037dc2274df212ea9f8a4541004e1
+  languageName: node
+  linkType: hard
+
 "tslib@npm:^1.8.1, tslib@npm:^1.9.0":
   version: 1.14.1
   resolution: "tslib@npm:1.14.1"
@@ -16770,6 +16776,15 @@ __metadata:
   version: 0.0.6
   resolution: "uid-number@npm:0.0.6"
   checksum: ff17525bb9b17313b839222efa1fe69baf136992cf675e8d1d50e9b1ef4563742968e390a96a57645d99cf8b283866c36ef9747bbf186bbbf2ef601b60ed4443
+  languageName: node
+  linkType: hard
+
+"uid@npm:2.0.1":
+  version: 2.0.1
+  resolution: "uid@npm:2.0.1"
+  dependencies:
+    "@lukeed/csprng": ^1.0.0
+  checksum: 0a3c697d8dd1f3b647afa35c411b11fd8fa2fb6dbd8a49fe109a4aa5214068c2c58781aa6e4516dfd16f0fc524fb7bba0833e9c1dc1ed3f1965b520349be9ad5
   languageName: node
   linkType: hard
 
