@@ -12,89 +12,43 @@
   },
   {
     "inputs": [],
-    "name": "ErrorAppAuthLidoFailed",
-    "type": "error"
-  },
-  {
-    "inputs": [],
-    "name": "ErrorDepositContractZeroAddress",
-    "type": "error"
-  },
-  {
-    "inputs": [],
-    "name": "ErrorDirectETHTransfer",
-    "type": "error"
-  },
-  {
-    "inputs": [],
-    "name": "ErrorEmptyWithdrawalsCredentials",
-    "type": "error"
-  },
-  {
-    "inputs": [],
-    "name": "ErrorExitedValidatorsCountCannotDecrease",
-    "type": "error"
-  },
-  {
-    "inputs": [],
-    "name": "ErrorNotExpectedBalance",
-    "type": "error"
-  },
-  {
-    "inputs": [],
-    "name": "ErrorStakingModuleIdTooLarge",
-    "type": "error"
-  },
-  {
-    "inputs": [],
-    "name": "ErrorStakingModuleNotActive",
-    "type": "error"
-  },
-  {
-    "inputs": [],
-    "name": "ErrorStakingModuleNotPaused",
-    "type": "error"
-  },
-  {
-    "inputs": [],
-    "name": "ErrorStakingModuleStatusTheSame",
-    "type": "error"
-  },
-  {
-    "inputs": [],
-    "name": "ErrorStakingModuleUnregistered",
-    "type": "error"
-  },
-  {
-    "inputs": [],
-    "name": "ErrorStakingModuleWrongName",
-    "type": "error"
-  },
-  {
-    "inputs": [],
-    "name": "ErrorStakingModulesLimitExceeded",
+    "name": "AppAuthLidoFailed",
     "type": "error"
   },
   {
     "inputs": [
       {
-        "internalType": "string",
-        "name": "field",
-        "type": "string"
+        "internalType": "uint256",
+        "name": "firstArrayLength",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "secondArrayLength",
+        "type": "uint256"
       }
     ],
-    "name": "ErrorValueOver100Percent",
+    "name": "ArraysLengthMismatch",
     "type": "error"
   },
   {
-    "inputs": [
-      {
-        "internalType": "string",
-        "name": "field",
-        "type": "string"
-      }
-    ],
-    "name": "ErrorZeroAddress",
+    "inputs": [],
+    "name": "DepositContractZeroAddress",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "DirectETHTransfer",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "EmptyWithdrawalsCredentials",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "ExitedValidatorsCountCannotDecrease",
     "type": "error"
   },
   {
@@ -103,13 +57,102 @@
     "type": "error"
   },
   {
-    "inputs": [],
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "etherValue",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "depositsCount",
+        "type": "uint256"
+      }
+    ],
+    "name": "InvalidDepositsValue",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "actual",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "expected",
+        "type": "uint256"
+      }
+    ],
+    "name": "InvalidPublicKeysBatchLength",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "code",
+        "type": "uint256"
+      }
+    ],
     "name": "InvalidReportData",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "actual",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "expected",
+        "type": "uint256"
+      }
+    ],
+    "name": "InvalidSignaturesBatchLength",
     "type": "error"
   },
   {
     "inputs": [],
     "name": "NonZeroContractVersionOnInit",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "StakingModuleAddressExists",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "StakingModuleNotActive",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "StakingModuleNotPaused",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "StakingModuleStatusTheSame",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "StakingModuleUnregistered",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "StakingModuleWrongName",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "StakingModulesLimitExceeded",
     "type": "error"
   },
   {
@@ -150,6 +193,28 @@
     "type": "error"
   },
   {
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "field",
+        "type": "string"
+      }
+    ],
+    "name": "ValueOver100Percent",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "field",
+        "type": "string"
+      }
+    ],
+    "name": "ZeroAddress",
+    "type": "error"
+  },
+  {
     "anonymous": false,
     "inputs": [
       {
@@ -160,6 +225,44 @@
       }
     ],
     "name": "ContractVersionSet",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "stakingModuleId",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "bytes",
+        "name": "lowLevelRevertData",
+        "type": "bytes"
+      }
+    ],
+    "name": "ExitedAndStuckValidatorsCountsUpdateFailed",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "stakingModuleId",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "bytes",
+        "name": "lowLevelRevertData",
+        "type": "bytes"
+      }
+    ],
+    "name": "RewardsMintedReportFailed",
     "type": "event"
   },
   {
@@ -407,6 +510,25 @@
     "type": "event"
   },
   {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "stakingModuleId",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "bytes",
+        "name": "lowLevelRevertData",
+        "type": "bytes"
+      }
+    ],
+    "name": "WithdrawalsCredentialsChangeFailed",
+    "type": "event"
+  },
+  {
     "inputs": [],
     "name": "DEFAULT_ADMIN_ROLE",
     "outputs": [
@@ -453,6 +575,32 @@
         "internalType": "bytes32",
         "name": "",
         "type": "bytes32"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "MAX_STAKING_MODULES_COUNT",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "MAX_STAKING_MODULE_NAME_LENGTH",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
       }
     ],
     "stateMutability": "view",
@@ -586,7 +734,7 @@
     "inputs": [
       {
         "internalType": "uint256",
-        "name": "_maxDepositsCount",
+        "name": "_depositsCount",
         "type": "uint256"
       },
       {
@@ -601,13 +749,7 @@
       }
     ],
     "name": "deposit",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "depositsCount",
-        "type": "uint256"
-      }
-    ],
+    "outputs": [],
     "stateMutability": "payable",
     "type": "function"
   },
@@ -619,7 +761,7 @@
         "type": "uint256"
       }
     ],
-    "name": "getAllNodeOperatorReports",
+    "name": "getAllNodeOperatorDigests",
     "outputs": [
       {
         "components": [
@@ -634,54 +776,54 @@
             "type": "bool"
           },
           {
-            "internalType": "bool",
-            "name": "isTargetLimitActive",
-            "type": "bool"
-          },
-          {
-            "internalType": "uint256",
-            "name": "targetValidatorsCount",
-            "type": "uint256"
-          },
-          {
-            "internalType": "uint256",
-            "name": "stuckValidatorsCount",
-            "type": "uint256"
-          },
-          {
-            "internalType": "uint256",
-            "name": "refundedValidatorsCount",
-            "type": "uint256"
-          },
-          {
-            "internalType": "uint256",
-            "name": "stuckPenaltyEndTimestamp",
-            "type": "uint256"
-          },
-          {
             "components": [
               {
+                "internalType": "bool",
+                "name": "isTargetLimitActive",
+                "type": "bool"
+              },
+              {
                 "internalType": "uint256",
-                "name": "totalExited",
+                "name": "targetValidatorsCount",
                 "type": "uint256"
               },
               {
                 "internalType": "uint256",
-                "name": "totalDeposited",
+                "name": "stuckValidatorsCount",
                 "type": "uint256"
               },
               {
                 "internalType": "uint256",
-                "name": "depositable",
+                "name": "refundedValidatorsCount",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "stuckPenaltyEndTimestamp",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "totalExitedValidators",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "totalDepositedValidators",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "depositableValidatorsCount",
                 "type": "uint256"
               }
             ],
-            "internalType": "struct StakingRouter.ValidatorsReport",
-            "name": "validatorsReport",
+            "internalType": "struct StakingRouter.NodeOperatorSummary",
+            "name": "summary",
             "type": "tuple"
           }
         ],
-        "internalType": "struct StakingRouter.NodeOperatorReport[]",
+        "internalType": "struct StakingRouter.NodeOperatorDigest[]",
         "name": "",
         "type": "tuple[]"
       }
@@ -691,10 +833,20 @@
   },
   {
     "inputs": [],
-    "name": "getAllStakingModuleReports",
+    "name": "getAllStakingModuleDigests",
     "outputs": [
       {
         "components": [
+          {
+            "internalType": "uint256",
+            "name": "nodeOperatorsCount",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "activeNodeOperatorsCount",
+            "type": "uint256"
+          },
           {
             "components": [
               {
@@ -753,39 +905,29 @@
             "type": "tuple"
           },
           {
-            "internalType": "uint256",
-            "name": "nodeOperatorsCount",
-            "type": "uint256"
-          },
-          {
-            "internalType": "uint256",
-            "name": "activeNodeOperatorsCount",
-            "type": "uint256"
-          },
-          {
             "components": [
               {
                 "internalType": "uint256",
-                "name": "totalExited",
+                "name": "totalExitedValidators",
                 "type": "uint256"
               },
               {
                 "internalType": "uint256",
-                "name": "totalDeposited",
+                "name": "totalDepositedValidators",
                 "type": "uint256"
               },
               {
                 "internalType": "uint256",
-                "name": "depositable",
+                "name": "depositableValidatorsCount",
                 "type": "uint256"
               }
             ],
-            "internalType": "struct StakingRouter.ValidatorsReport",
-            "name": "validatorsReport",
+            "internalType": "struct StakingRouter.StakingModuleSummary",
+            "name": "summary",
             "type": "tuple"
           }
         ],
-        "internalType": "struct StakingRouter.StakingModuleReport[]",
+        "internalType": "struct StakingRouter.StakingModuleDigest[]",
         "name": "",
         "type": "tuple[]"
       }
@@ -848,7 +990,7 @@
     "name": "getLido",
     "outputs": [
       {
-        "internalType": "contract ILido",
+        "internalType": "address",
         "name": "",
         "type": "address"
       }
@@ -869,7 +1011,7 @@
         "type": "uint256[]"
       }
     ],
-    "name": "getNodeOperatorReports",
+    "name": "getNodeOperatorDigests",
     "outputs": [
       {
         "components": [
@@ -884,55 +1026,55 @@
             "type": "bool"
           },
           {
-            "internalType": "bool",
-            "name": "isTargetLimitActive",
-            "type": "bool"
-          },
-          {
-            "internalType": "uint256",
-            "name": "targetValidatorsCount",
-            "type": "uint256"
-          },
-          {
-            "internalType": "uint256",
-            "name": "stuckValidatorsCount",
-            "type": "uint256"
-          },
-          {
-            "internalType": "uint256",
-            "name": "refundedValidatorsCount",
-            "type": "uint256"
-          },
-          {
-            "internalType": "uint256",
-            "name": "stuckPenaltyEndTimestamp",
-            "type": "uint256"
-          },
-          {
             "components": [
               {
+                "internalType": "bool",
+                "name": "isTargetLimitActive",
+                "type": "bool"
+              },
+              {
                 "internalType": "uint256",
-                "name": "totalExited",
+                "name": "targetValidatorsCount",
                 "type": "uint256"
               },
               {
                 "internalType": "uint256",
-                "name": "totalDeposited",
+                "name": "stuckValidatorsCount",
                 "type": "uint256"
               },
               {
                 "internalType": "uint256",
-                "name": "depositable",
+                "name": "refundedValidatorsCount",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "stuckPenaltyEndTimestamp",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "totalExitedValidators",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "totalDepositedValidators",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "depositableValidatorsCount",
                 "type": "uint256"
               }
             ],
-            "internalType": "struct StakingRouter.ValidatorsReport",
-            "name": "validatorsReport",
+            "internalType": "struct StakingRouter.NodeOperatorSummary",
+            "name": "summary",
             "type": "tuple"
           }
         ],
-        "internalType": "struct StakingRouter.NodeOperatorReport[]",
-        "name": "summaries",
+        "internalType": "struct StakingRouter.NodeOperatorDigest[]",
+        "name": "digests",
         "type": "tuple[]"
       }
     ],
@@ -957,7 +1099,7 @@
         "type": "uint256"
       }
     ],
-    "name": "getNodeOperatorReports",
+    "name": "getNodeOperatorDigests",
     "outputs": [
       {
         "components": [
@@ -971,6 +1113,79 @@
             "name": "isActive",
             "type": "bool"
           },
+          {
+            "components": [
+              {
+                "internalType": "bool",
+                "name": "isTargetLimitActive",
+                "type": "bool"
+              },
+              {
+                "internalType": "uint256",
+                "name": "targetValidatorsCount",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "stuckValidatorsCount",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "refundedValidatorsCount",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "stuckPenaltyEndTimestamp",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "totalExitedValidators",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "totalDepositedValidators",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "depositableValidatorsCount",
+                "type": "uint256"
+              }
+            ],
+            "internalType": "struct StakingRouter.NodeOperatorSummary",
+            "name": "summary",
+            "type": "tuple"
+          }
+        ],
+        "internalType": "struct StakingRouter.NodeOperatorDigest[]",
+        "name": "",
+        "type": "tuple[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "_stakingModuleId",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "_nodeOperatorId",
+        "type": "uint256"
+      }
+    ],
+    "name": "getNodeOperatorSummary",
+    "outputs": [
+      {
+        "components": [
           {
             "internalType": "bool",
             "name": "isTargetLimitActive",
@@ -997,31 +1212,24 @@
             "type": "uint256"
           },
           {
-            "components": [
-              {
-                "internalType": "uint256",
-                "name": "totalExited",
-                "type": "uint256"
-              },
-              {
-                "internalType": "uint256",
-                "name": "totalDeposited",
-                "type": "uint256"
-              },
-              {
-                "internalType": "uint256",
-                "name": "depositable",
-                "type": "uint256"
-              }
-            ],
-            "internalType": "struct StakingRouter.ValidatorsReport",
-            "name": "validatorsReport",
-            "type": "tuple"
+            "internalType": "uint256",
+            "name": "totalExitedValidators",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "totalDepositedValidators",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "depositableValidatorsCount",
+            "type": "uint256"
           }
         ],
-        "internalType": "struct StakingRouter.NodeOperatorReport[]",
-        "name": "summaries",
-        "type": "tuple[]"
+        "internalType": "struct StakingRouter.NodeOperatorSummary",
+        "name": "summary",
+        "type": "tuple"
       }
     ],
     "stateMutability": "view",
@@ -1221,6 +1429,116 @@
     "type": "function"
   },
   {
+    "inputs": [
+      {
+        "internalType": "uint256[]",
+        "name": "_stakingModuleIds",
+        "type": "uint256[]"
+      }
+    ],
+    "name": "getStakingModuleDigests",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "uint256",
+            "name": "nodeOperatorsCount",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "activeNodeOperatorsCount",
+            "type": "uint256"
+          },
+          {
+            "components": [
+              {
+                "internalType": "uint24",
+                "name": "id",
+                "type": "uint24"
+              },
+              {
+                "internalType": "address",
+                "name": "stakingModuleAddress",
+                "type": "address"
+              },
+              {
+                "internalType": "uint16",
+                "name": "stakingModuleFee",
+                "type": "uint16"
+              },
+              {
+                "internalType": "uint16",
+                "name": "treasuryFee",
+                "type": "uint16"
+              },
+              {
+                "internalType": "uint16",
+                "name": "targetShare",
+                "type": "uint16"
+              },
+              {
+                "internalType": "uint8",
+                "name": "status",
+                "type": "uint8"
+              },
+              {
+                "internalType": "string",
+                "name": "name",
+                "type": "string"
+              },
+              {
+                "internalType": "uint64",
+                "name": "lastDepositAt",
+                "type": "uint64"
+              },
+              {
+                "internalType": "uint256",
+                "name": "lastDepositBlock",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "exitedValidatorsCount",
+                "type": "uint256"
+              }
+            ],
+            "internalType": "struct StakingRouter.StakingModule",
+            "name": "state",
+            "type": "tuple"
+          },
+          {
+            "components": [
+              {
+                "internalType": "uint256",
+                "name": "totalExitedValidators",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "totalDepositedValidators",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "depositableValidatorsCount",
+                "type": "uint256"
+              }
+            ],
+            "internalType": "struct StakingRouter.StakingModuleSummary",
+            "name": "summary",
+            "type": "tuple"
+          }
+        ],
+        "internalType": "struct StakingRouter.StakingModuleDigest[]",
+        "name": "digests",
+        "type": "tuple[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [],
     "name": "getStakingModuleIds",
     "outputs": [
@@ -1315,6 +1633,11 @@
         "internalType": "uint256",
         "name": "_stakingModuleId",
         "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "_maxDepositsValue",
+        "type": "uint256"
       }
     ],
     "name": "getStakingModuleMaxDepositsCount",
@@ -1350,108 +1673,17 @@
   {
     "inputs": [
       {
-        "internalType": "uint256[]",
-        "name": "_stakingModuleIds",
-        "type": "uint256[]"
+        "internalType": "uint256",
+        "name": "_stakingModuleId",
+        "type": "uint256"
       }
     ],
-    "name": "getStakingModuleReports",
+    "name": "getStakingModuleStatus",
     "outputs": [
       {
-        "components": [
-          {
-            "components": [
-              {
-                "internalType": "uint24",
-                "name": "id",
-                "type": "uint24"
-              },
-              {
-                "internalType": "address",
-                "name": "stakingModuleAddress",
-                "type": "address"
-              },
-              {
-                "internalType": "uint16",
-                "name": "stakingModuleFee",
-                "type": "uint16"
-              },
-              {
-                "internalType": "uint16",
-                "name": "treasuryFee",
-                "type": "uint16"
-              },
-              {
-                "internalType": "uint16",
-                "name": "targetShare",
-                "type": "uint16"
-              },
-              {
-                "internalType": "uint8",
-                "name": "status",
-                "type": "uint8"
-              },
-              {
-                "internalType": "string",
-                "name": "name",
-                "type": "string"
-              },
-              {
-                "internalType": "uint64",
-                "name": "lastDepositAt",
-                "type": "uint64"
-              },
-              {
-                "internalType": "uint256",
-                "name": "lastDepositBlock",
-                "type": "uint256"
-              },
-              {
-                "internalType": "uint256",
-                "name": "exitedValidatorsCount",
-                "type": "uint256"
-              }
-            ],
-            "internalType": "struct StakingRouter.StakingModule",
-            "name": "state",
-            "type": "tuple"
-          },
-          {
-            "internalType": "uint256",
-            "name": "nodeOperatorsCount",
-            "type": "uint256"
-          },
-          {
-            "internalType": "uint256",
-            "name": "activeNodeOperatorsCount",
-            "type": "uint256"
-          },
-          {
-            "components": [
-              {
-                "internalType": "uint256",
-                "name": "totalExited",
-                "type": "uint256"
-              },
-              {
-                "internalType": "uint256",
-                "name": "totalDeposited",
-                "type": "uint256"
-              },
-              {
-                "internalType": "uint256",
-                "name": "depositable",
-                "type": "uint256"
-              }
-            ],
-            "internalType": "struct StakingRouter.ValidatorsReport",
-            "name": "validatorsReport",
-            "type": "tuple"
-          }
-        ],
-        "internalType": "struct StakingRouter.StakingModuleReport[]",
-        "name": "reports",
-        "type": "tuple[]"
+        "internalType": "enum StakingRouter.StakingModuleStatus",
+        "name": "",
+        "type": "uint8"
       }
     ],
     "stateMutability": "view",
@@ -1465,12 +1697,29 @@
         "type": "uint256"
       }
     ],
-    "name": "getStakingModuleStatus",
+    "name": "getStakingModuleSummary",
     "outputs": [
       {
-        "internalType": "enum StakingRouter.StakingModuleStatus",
-        "name": "",
-        "type": "uint8"
+        "components": [
+          {
+            "internalType": "uint256",
+            "name": "totalExitedValidators",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "totalDepositedValidators",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "depositableValidatorsCount",
+            "type": "uint256"
+          }
+        ],
+        "internalType": "struct StakingRouter.StakingModuleSummary",
+        "name": "summary",
+        "type": "tuple"
       }
     ],
     "stateMutability": "view",
@@ -1674,6 +1923,13 @@
       }
     ],
     "name": "initialize",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "onValidatorsCountsByNodeOperatorReportingFinished",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
@@ -1904,7 +2160,7 @@
             "type": "uint256"
           }
         ],
-        "internalType": "struct StakingRouter.ValidatorsCountCorrection",
+        "internalType": "struct StakingRouter.ValidatorsCountsCorrection",
         "name": "_correction",
         "type": "tuple"
       }
@@ -1979,6 +2235,34 @@
       }
     ],
     "name": "updateStakingModule",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "_stakingModuleId",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "_nodeOperatorId",
+        "type": "uint256"
+      },
+      {
+        "internalType": "bool",
+        "name": "_isTargetLimitActive",
+        "type": "bool"
+      },
+      {
+        "internalType": "uint256",
+        "name": "_targetLimit",
+        "type": "uint256"
+      }
+    ],
+    "name": "updateTargetValidatorsLimits",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
