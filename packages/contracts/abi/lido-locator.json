@@ -67,6 +67,11 @@
             "internalType": "address",
             "name": "withdrawalVault",
             "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "oracleDaemonConfig",
+            "type": "address"
           }
         ],
         "internalType": "struct LidoLocator.Config",
@@ -79,7 +84,7 @@
   },
   {
     "inputs": [],
-    "name": "ErrorZeroAddress",
+    "name": "ZeroAddress",
     "type": "error"
   },
   {
@@ -188,6 +193,19 @@
   {
     "inputs": [],
     "name": "lido",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "oracleDaemonConfig",
     "outputs": [
       {
         "internalType": "address",
