@@ -12,6 +12,5 @@ describe('Chains', () => {
     expect(CHAINS.Kintsugi).toBeDefined();
     expect(CHAINS.Kiln).toBeDefined();
     expect(CHAINS.Zhejiang).toBeDefined();
-    expect(CHAINS.devnet4).toBeDefined();
   });
 });

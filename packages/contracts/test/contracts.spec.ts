@@ -7,12 +7,15 @@ import {
   AragonVotingManagerContractModule,
   DepositContractModule,
   EasyTrackContractModule,
+  ExecutionRewardsVaultContractModule,
   LdoContractModule,
   LidoContractModule,
-  ExecutionRewardsVaultContractModule,
+  LidoLocatorContractModule,
   OracleContractModule,
   RegistryContractModule,
   SecurityContractModule,
+  StakingRouterContractModule,
+  WithdrawalQueueContractModule,
   WstethContractModule,
   ALLOWED_LIST_CONTRACT_ADDRESSES,
   ALLOWED_LIST_CONTRACT_TOKEN,
@@ -24,30 +27,28 @@ import {
   DEPOSIT_CONTRACT_TOKEN,
   EASYTRACK_CONTRACT_ADDRESSES,
   EASYTRACK_CONTRACT_TOKEN,
+  EXECUTION_REWARDS_VAULT_CONTRACT_ADDRESSES,
+  EXECUTION_REWARDS_VAULT_CONTRACT_TOKEN,
   LDO_CONTRACT_ADDRESSES,
   LDO_CONTRACT_TOKEN,
   LIDO_CONTRACT_ADDRESSES,
   LIDO_CONTRACT_TOKEN,
-  EXECUTION_REWARDS_VAULT_CONTRACT_ADDRESSES,
-  EXECUTION_REWARDS_VAULT_CONTRACT_TOKEN,
+  LIDO_LOCATOR_CONTRACT_ADDRESSES,
+  LIDO_LOCATOR_CONTRACT_TOKEN,
   ORACLE_CONTRACT_ADDRESSES,
   ORACLE_CONTRACT_TOKEN,
   REGISTRY_CONTRACT_ADDRESSES,
   REGISTRY_CONTRACT_TOKEN,
   SECURITY_CONTRACT_ADDRESSES,
   SECURITY_CONTRACT_TOKEN,
-  WSTETH_CONTRACT_ADDRESSES,
-  WSTETH_CONTRACT_TOKEN,
-  LidoLocatorContractModule,
-  LIDO_LOCATOR_CONTRACT_ADDRESSES,
-  LIDO_LOCATOR_CONTRACT_TOKEN,
-} from '../src';
-import { ContractModule } from '../src/contract.module';
-import {
   STAKING_ROUTER_CONTRACT_ADDRESSES,
   STAKING_ROUTER_CONTRACT_TOKEN,
-} from '../src/staking-router/staking-router.constants';
-import { StakingRouterContractModule } from '../src/staking-router/staking-router.module';
+  WITHDRAWAL_QUEUE_CONTRACT_ADDRESSES,
+  WITHDRAWAL_QUEUE_CONTRACT_TOKEN,
+  WSTETH_CONTRACT_ADDRESSES,
+  WSTETH_CONTRACT_TOKEN,
+} from '../src';
+import { ContractModule } from '../src/contract.module';
 
 describe('Chains', () => {
   const getContract = async (
@@ -188,6 +189,14 @@ describe('Chains', () => {
       StakingRouterContractModule,
       STAKING_ROUTER_CONTRACT_TOKEN,
       STAKING_ROUTER_CONTRACT_ADDRESSES,
+    );
+  });
+
+  test('withdrawal queue', async () => {
+    await testAddress(
+      WithdrawalQueueContractModule,
+      WITHDRAWAL_QUEUE_CONTRACT_TOKEN,
+      WITHDRAWAL_QUEUE_CONTRACT_ADDRESSES,
     );
   });
 
