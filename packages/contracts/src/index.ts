@@ -42,5 +42,8 @@ export * from './security/security.module';
 export * from './staking-router/staking-router.constants';
 export * from './staking-router/staking-router.module';
 
+export * from './withdrawal-queue/withdrawal-queue.constants';
+export * from './withdrawal-queue/withdrawal-queue.module';
+
 export * from './wsteth/wsteth.constants';
 export * from './wsteth/wsteth.module';
