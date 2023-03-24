@@ -14,7 +14,17 @@ export function OneAtTime() {
       this: { logger?: LoggerService },
       ...args
     ) {
-      if (isExecuting) return;
+      if (isExecuting) {
+        const fakeError = new Error();
+        const stack = fakeError.stack;
+        this.logger?.warn(
+          `'OneAtTime' prevented simultaneous execution for ${propertyName}`,
+          {
+            stack,
+          },
+        );
+        return;
+      }
 
       try {
         isExecuting = true;
