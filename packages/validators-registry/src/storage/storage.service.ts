@@ -174,23 +174,26 @@ export class StorageService
     where?: FilterQuery<ConsensusValidatorEntity>,
     options?: FindOptions<ConsensusValidatorEntity>,
   ): Promise<ConsensusValidatorsAndMetadata> {
-    return this.entityManager.transactional(async () => {
-      const meta = await this.getConsensusMeta();
+    return this.entityManager.transactional(
+      async () => {
+        const meta = await this.getConsensusMeta();
 
-      if (meta === null) {
+        if (meta === null) {
+          return {
+            meta,
+            validators: [],
+          };
+        }
+
+        const validators = await this.getValidators(pubkeys, where, options);
+
         return {
           meta,
-          validators: [],
+          validators,
         };
-      }
-
-      const validators = await this.getValidators(pubkeys, where, options);
-
-      return {
-        meta,
-        validators,
-      };
-    });
+      },
+      { isolationLevel: IsolationLevel.REPEATABLE_READ },
+    );
   }
 
   protected pubkeysToSet(pubkeys?: string[]) {
