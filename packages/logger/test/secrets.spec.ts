@@ -210,7 +210,8 @@ describe('Hide secrets', () => {
       });
 
       test('Secret cleaning in super deep object', () => {
-        loggerService.log({
+        // Depth: > 10
+        const logItem = {
           a: {
             a: {
               a: {
@@ -218,11 +219,34 @@ describe('Hide secrets', () => {
               },
             },
           },
-        });
+        };
+
+        // Depth: exactly 10
+        const expectedLogItem = {
+          a: {
+            a: {
+              a: {
+                a: {
+                  a: {
+                    a: {
+                      a: {
+                        a: {
+                          a: 'Maximum secret sanitizing depth reached.',
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        };
+
+        loggerService.log(logItem);
 
         expect(write).toBeCalledTimes(1);
         expect(write).toBeCalledWith(
-          expect.stringContaining('Maximum secret sanitizing depth reached.'),
+          expect.stringContaining(JSON.stringify(expectedLogItem)),
         );
         expect(write).toBeCalledWith(expect.not.stringContaining('Depth'));
       });
