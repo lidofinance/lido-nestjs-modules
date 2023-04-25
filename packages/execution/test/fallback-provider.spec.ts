@@ -709,10 +709,10 @@ describe('Execution module. ', () => {
       // to ensure the second provider is active
       await mockedProvider.getBlock(10000);
 
-      // 'getBlock' fetch
+      // no second 'getBlock' fetch
       expect(mockedFallbackProviderFetch[0]).toBeCalledTimes(1);
 
-      // 'getBlock' fetch call to second provider that does not fail
+      // second 'getBlock' fetch call to second provider that does not fail
       expect(mockedFallbackProviderFetch[1]).toBeCalledTimes(2);
     });
   });
