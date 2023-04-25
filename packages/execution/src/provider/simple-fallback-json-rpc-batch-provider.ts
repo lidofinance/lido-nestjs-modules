@@ -18,7 +18,11 @@ import {
 } from '../common/networks';
 import { EventType, Listener } from '@ethersproject/abstract-provider';
 import { NoNewBlocksWhilePollingError } from '../error/no-new-blocks-while-polling.error';
-import { isErrorHasCode, nonRetryableErrors } from '../common/errors';
+import {
+  isErrorHasCode,
+  isCallExceptionServerError,
+  nonRetryableErrors,
+} from '../common/errors';
 import { AllProvidersFailedError } from '../error/all-providers-failed.error';
 import { FeeHistory, getFeeHistory } from '../ethers/fee-history';
 
@@ -203,7 +207,11 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
   }
 
   protected errorShouldBeReThrown(error: Error | unknown): boolean {
-    return isErrorHasCode(error) && nonRetryableErrors.includes(error.code);
+    return (
+      isErrorHasCode(error) &&
+      nonRetryableErrors.includes(error.code) &&
+      !isCallExceptionServerError(error)
+    );
   }
 
   public async perform(

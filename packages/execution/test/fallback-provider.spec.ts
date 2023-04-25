@@ -663,5 +663,57 @@ describe('Execution module. ', () => {
         fixtures.eth_getBalance.eip1898_blockHash,
       );
     });
+
+    test('should not fail on CALL_EXCEPTION server error and switch to another provider', async () => {
+      await createMocks(2);
+
+      // will trigger network detection
+      await mockedProvider.getBlock(10000);
+
+      // network detection + getBlock
+      expect(mockedFallbackProviderFetch[0]).toBeCalledTimes(2);
+
+      // network detection only
+      expect(mockedFallbackProviderFetch[1]).toBeCalledTimes(1);
+
+      const makeError = () => {
+        const err = new Error(`CALL_EXCEPTION server error`);
+        (<Error & { code: number | string }>err).code = 'CALL_EXCEPTION';
+        (<Error & { serverError: object }>err).serverError = {
+          code: 'ECONNRESET',
+          url: 'http://some-rpc-provider',
+        };
+        return err;
+      };
+
+      mockedFallbackProviderFetch[0].mockReset();
+      mockedFallbackProviderFetch[0].mockClear();
+      mockedFallbackProviderFetch[1].mockClear();
+
+      mockedFallbackProviderFetch[0].mockImplementation(
+        makeFakeFetchImplThrowsError(makeError()),
+      );
+
+      expect(mockedFallbackProviderFetch[0]).toBeCalledTimes(0);
+      expect(mockedFallbackProviderFetch[1]).toBeCalledTimes(0);
+
+      // first provider will fail and 'getBlock' fetch call will be switched to second provider
+      await mockedProvider.getBlock(42);
+
+      // 'getBlock' fetch call to first provider that fails
+      expect(mockedFallbackProviderFetch[0]).toBeCalledTimes(1);
+
+      // 'getBlock' fetch call to second provider that does not fail
+      expect(mockedFallbackProviderFetch[1]).toBeCalledTimes(1);
+
+      // to ensure the second provider is active
+      await mockedProvider.getBlock(10000);
+
+      // 'getBlock' fetch
+      expect(mockedFallbackProviderFetch[0]).toBeCalledTimes(1);
+
+      // 'getBlock' fetch call to second provider that does not fail
+      expect(mockedFallbackProviderFetch[1]).toBeCalledTimes(2);
+    });
   });
 });

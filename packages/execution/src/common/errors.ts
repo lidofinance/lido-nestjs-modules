@@ -79,10 +79,20 @@ export const nonRetryableErrors: (string | number)[] = [
 ];
 
 export type ErrorWithCode = Error & { code: number | string };
+export type ServerError = ErrorWithCode & { serverError: object };
 
 export const isErrorHasCode = (error: unknown): error is ErrorWithCode => {
   return (
     error instanceof Error &&
     Object.prototype.hasOwnProperty.call(error, 'code')
+  );
+};
+
+export const isCallExceptionServerError = (
+  error: ErrorWithCode,
+): error is ServerError => {
+  return (
+    error.code === ErrorCode.CALL_EXCEPTION &&
+    Object.prototype.hasOwnProperty.call(error, 'serverError')
   );
 };
