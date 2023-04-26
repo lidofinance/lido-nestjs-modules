@@ -21,6 +21,7 @@ const replace = <T extends unknown>(
   secrets: string[],
   regex: RegExp[],
   message: T,
+  traversal = true,
 ): T => {
   if (typeof message === 'string') {
     const withCleanedSecrets = secrets.reduce((result, secret) => {
@@ -37,15 +38,15 @@ const replace = <T extends unknown>(
   }
 
   // Arrays are handled here as well
-  if (typeof message === 'object' && message !== null) {
+  if (typeof message === 'object' && message !== null && traversal === true) {
     return traverse(message).map(function (node) {
-      if (this.isLeaf) {
-        if (this.level > 10) {
-          this.update('Maximum secret sanitizing depth reached.');
-          return;
-        }
-        this.update(replace(secrets, regex, node));
+      if (this.level >= 10) {
+        this.update('Maximum secret sanitizing depth reached.');
+        this.stop();
+        return;
       }
+      // IMPORTANT: Specify no traversing on recursive reads
+      this.update(replace(secrets, regex, node, false));
     }) as T;
   }
 
