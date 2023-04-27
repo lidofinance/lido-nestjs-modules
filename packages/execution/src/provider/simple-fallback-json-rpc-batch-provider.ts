@@ -68,7 +68,9 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
   protected activeFallbackProviderIndex: number;
   protected detectNetworkFirstRun = true;
   protected resetTimer: ReturnType<typeof setTimeout> | null = null;
-  protected lastPerformError: Error | null | unknown = null;
+  // it is crucial not to mix these two errors
+  protected lastPerformError: Error | null | unknown = null; // last error for 'perform' operations, is batch-oriented
+  protected lastError: Error | null | unknown = null; // last error for whole provider
 
   public constructor(
     config: SimpleFallbackProviderConfig,
@@ -242,6 +244,7 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
           this.provider.provider.perform(method, params),
         );
       } catch (e) {
+        this.lastError = e;
         if (this.errorShouldBeReThrown(e)) {
           throw e;
         }
@@ -267,7 +270,7 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
     const allProvidersFailedError = new AllProvidersFailedError(
       'All attempts to do ETH1 RPC request failed',
     );
-    allProvidersFailedError.originalError = lastError;
+    allProvidersFailedError.cause = lastError;
     throw allProvidersFailedError;
   }
 
@@ -285,6 +288,7 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
       } else {
         this.fallbackProviders[index].network = null;
         this.fallbackProviders[index].unreachable = true;
+        this.lastError = result.reason;
       }
     });
 
@@ -326,9 +330,12 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
     });
 
     if (!previousNetwork) {
-      throw new Error(
+      const error = new AllProvidersFailedError(
         'All fallback endpoints are unreachable or all fallback networks differ between each other',
       );
+
+      error.cause = this.lastError;
+      throw error;
     }
 
     if (this.detectNetworkFirstRun) {
@@ -362,5 +369,9 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
 
   protected networksEqual(networkA: Network, networkB: Network): boolean {
     return networksEqual(networkA, networkB);
+  }
+
+  public get activeProviderIndex() {
+    return this.activeFallbackProviderIndex;
   }
 }

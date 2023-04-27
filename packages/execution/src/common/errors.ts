@@ -91,8 +91,5 @@ export const isErrorHasCode = (error: unknown): error is ErrorWithCode => {
 export const isCallExceptionServerError = (
   error: ErrorWithCode,
 ): error is ServerError => {
-  return (
-    error.code === ErrorCode.CALL_EXCEPTION &&
-    Object.prototype.hasOwnProperty.call(error, 'serverError')
-  );
+  return Object.prototype.hasOwnProperty.call(error, 'serverError');
 };

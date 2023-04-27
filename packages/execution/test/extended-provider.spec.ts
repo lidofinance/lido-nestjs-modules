@@ -8,7 +8,7 @@ import {
 } from './fixtures/fake-json-rpc';
 import { range } from './utils';
 import { nullTransport, LoggerModule } from '@lido-nestjs/logger';
-import { JsonRpcRequest, JsonRpcResponse } from '../src';
+import { JsonRpcRequest, JsonRpcResponse, FetchError } from '../src';
 import { MiddlewareCallback } from '@lido-nestjs/middleware';
 
 type MockedExtendedJsonRpcBatchProvider = ExtendedJsonRpcBatchProvider & {
@@ -322,6 +322,80 @@ describe('Execution module. ', () => {
       expect(feeHistory).toHaveProperty('oldestBlock');
       expect(feeHistory).toHaveProperty('reward');
       expect(feeHistory.reward.length).toBe(0);
+    });
+
+    test('should throw exception on JsonRpc error when node reached rpc batching limit', async () => {
+      await createMocks(10, 10);
+
+      // this will trigger network detection and provider initialization
+      await mockedProvider.getBlock(1000);
+
+      const fakeFetchImplWithRPCError = async (): Promise<JsonRpcResponse> => {
+        return {
+          jsonrpc: '2.0',
+          id: <number>(<unknown>null), // real scenario from Erigon node
+          error: {
+            code: -32000,
+            message: 'rpc batch limit reached',
+          },
+        };
+      };
+
+      mockedProviderFetch.mockImplementation(fakeFetchImplWithRPCError);
+
+      await expect(
+        async () => await mockedProvider.getBlock(42),
+      ).rejects.toThrowError(
+        new FetchError(
+          'Unexpected batch result. Possible reason: "rpc batch limit reached".',
+        ),
+      );
+      expect(mockedProviderFetch).toBeCalledTimes(3);
+    });
+
+    test('should throw exception on JsonRpc error when node reached rpc batching limit without any error message', async () => {
+      await createMocks(10, 10);
+
+      // this will trigger network detection and provider initialization
+      await mockedProvider.getBlock(1000);
+
+      const fakeFetchImplWithRPCError = async (): Promise<JsonRpcResponse> => {
+        return {
+          jsonrpc: '2.0',
+          id: 1,
+        };
+      };
+
+      mockedProviderFetch.mockImplementation(fakeFetchImplWithRPCError);
+
+      await expect(
+        async () => await mockedProvider.getBlock(42),
+      ).rejects.toThrowError(new FetchError('Unexpected batch result.'));
+      expect(mockedProviderFetch).toBeCalledTimes(3);
+    });
+
+    test('should throw exception on JsonRpc error when partial rpc response received from node', async () => {
+      await createMocks(10, 10);
+
+      // this will trigger network detection and provider initialization
+      await mockedProvider.getBlock(1000);
+
+      const fakeFetchImplWithRPCError = async (): Promise<
+        JsonRpcResponse[]
+      > => {
+        return [];
+      };
+
+      mockedProviderFetch.mockImplementation(fakeFetchImplWithRPCError);
+
+      await expect(async () => {
+        // these requests will be batched
+        await mockedProvider.getBlock(42);
+        await mockedProvider.getBlock(32);
+      }).rejects.toThrowError(
+        new FetchError('Partial payload batch result. Response 44 not found'),
+      );
+      expect(mockedProviderFetch).toBeCalledTimes(3);
     });
   });
 });
