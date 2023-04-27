@@ -32,7 +32,14 @@ describe('Registry', () => {
         allowGlobalContext: true,
         entities: ['./packages/registry/**/*.entity.ts'],
       }),
-      BatchProviderModule.forRoot({ url: process.env.EL_RPC_URL as string }),
+      BatchProviderModule.forRoot({
+        url: process.env.EL_RPC_URL as string,
+        requestPolicy: {
+          jsonRpcMaxBatchSize: 50,
+          maxConcurrentRequests: 10,
+          batchAggregationWaitMs: 10,
+        },
+      }),
       LoggerModule.forRoot({ transports: [nullTransport()] }),
       ValidatorRegistryModule.forFeatureAsync({
         inject: [ExtendedJsonRpcBatchProvider],
