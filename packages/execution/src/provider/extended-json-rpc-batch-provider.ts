@@ -122,12 +122,6 @@ export class ExtendedJsonRpcBatchProvider extends JsonRpcProvider {
     this._fetchMiddlewareService = new MiddlewareService<Promise<any>>({
       middlewares: fetchMiddlewares,
     });
-
-    // if (this._requestPolicy.jsonRpcMaxBatchSize < 2) {
-    //   throw new Error(
-    //     'requestPolicy.jsonRpcMaxBatchSize should be greater than 1',
-    //   );
-    // }
   }
 
   public static _formatter: Formatter | null = null;
