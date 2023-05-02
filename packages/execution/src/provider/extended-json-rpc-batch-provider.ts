@@ -18,6 +18,7 @@ import { BlockTag } from '../ethers/block-tag';
 import { TransactionRequest } from '@ethersproject/abstract-provider/src.ts/index';
 import { MiddlewareCallback, MiddlewareService } from '@lido-nestjs/middleware';
 import { FeeHistory, getFeeHistory } from '../ethers/fee-history';
+import { ErrorCode } from '../error/codes/error-codes';
 
 export interface RequestPolicy {
   jsonRpcMaxBatchSize: number;
@@ -164,7 +165,7 @@ export class ExtendedJsonRpcBatchProvider extends JsonRpcProvider {
         );
       })
         .then(
-          (batchResult: JsonRpcResponse[]) => {
+          (batchResult: JsonRpcResponse[] | JsonRpcResponse) => {
             this.emit('debug', {
               action: 'response',
               request: deepCopy(batchRequest),
@@ -172,16 +173,37 @@ export class ExtendedJsonRpcBatchProvider extends JsonRpcProvider {
               provider: this,
             });
 
+            if (!Array.isArray(batchResult)) {
+              const errMessage = 'Unexpected batch result.';
+              const jsonRpcErrorMessage = batchResult.error?.message;
+              const detailedMessage = jsonRpcErrorMessage
+                ? ` Possible reason: "${jsonRpcErrorMessage}".`
+                : '';
+
+              const error = new FetchError(errMessage + detailedMessage);
+              error.code = ErrorCode.UNEXPECTED_BATCH_RESULT;
+              error.data = batchResult.error;
+
+              throw error;
+            }
+
             const resultMap = batchResult.reduce((resultMap, payload) => {
               resultMap[payload.id] = payload;
               return resultMap;
-            }, {} as Record<number, JsonRpcResponse>);
+            }, {} as Record<number, JsonRpcResponse | undefined>);
 
             // For each batch, feed it to the correct Promise, depending
             // on whether it was a success or error
             batch.forEach((inflightRequest) => {
               const payload = resultMap[inflightRequest.request.id];
-              if (payload.error) {
+              if (!payload) {
+                const error = new FetchError(
+                  `Partial payload batch result. Response ${inflightRequest.request.id} not found`,
+                );
+                error.code = ErrorCode.PARTIAL_BATCH_RESULT;
+                error.data = batchResult;
+                inflightRequest.reject(error);
+              } else if (payload.error) {
                 const error = new FetchError(payload.error.message);
                 error.code = payload.error.code;
                 error.data = payload.error.data;

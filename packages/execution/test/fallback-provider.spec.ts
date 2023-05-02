@@ -24,6 +24,8 @@ import { NonEmptyArray } from '../src/interfaces/non-empty-array';
 import { MiddlewareCallback } from '@lido-nestjs/middleware';
 import { Network } from '@ethersproject/networks';
 import { nonRetryableErrors } from '../src/common/errors';
+import { ErrorCode, Logger } from '@ethersproject/logger';
+import { AllProvidersFailedError } from '../src';
 
 export type MockedExtendedJsonRpcBatchProvider =
   ExtendedJsonRpcBatchProvider & {
@@ -152,6 +154,7 @@ describe('Execution module. ', () => {
 
       // first provider should do both fetches only
       await mockedProvider.getBlock(10000);
+      expect(mockedProvider.activeProviderIndex).toBe(0);
       expect(mockedProviderDetectNetwork).toBeCalledTimes(1);
       expect(mockedFallbackProviderFetch[0]).toBeCalledTimes(2);
       expect(mockedFallbackProviderFetch[1]).toBeCalledTimes(1);
@@ -160,6 +163,7 @@ describe('Execution module. ', () => {
 
       // first provider should do both fetches only
       await mockedProvider.getBlock(10001);
+      expect(mockedProvider.activeProviderIndex).toBe(0);
       expect(mockedProviderDetectNetwork).toBeCalledTimes(2);
       expect(mockedFallbackProviderFetch[0]).toBeCalledTimes(3);
       expect(mockedFallbackProviderFetch[1]).toBeCalledTimes(1);
@@ -217,7 +221,9 @@ describe('Execution module. ', () => {
       );
 
       // will do a fallback from 1st provider to 2nd provider
+      expect(mockedProvider.activeProviderIndex).toBe(0);
       const blockA = await mockedProvider.getBlock('latest');
+      expect(mockedProvider.activeProviderIndex).toBe(1);
       expect(blockA.number).toBe(10068);
 
       // mocking first provider to return certain block data
@@ -228,7 +234,9 @@ describe('Execution module. ', () => {
       await sleep(2500); // will do a reset
 
       // data from first provider
+      expect(mockedProvider.activeProviderIndex).toBe(0);
       const blockB = await mockedProvider.getBlock('latest');
+      expect(mockedProvider.activeProviderIndex).toBe(0);
       expect(blockB.number).toBe(10032);
     });
 
@@ -239,7 +247,7 @@ describe('Execution module. ', () => {
         fakeFetchImplThatCanOnlyDoNetworkDetection,
       );
 
-      // first provider should will do network detection and then 'getBlock'
+      // first provider should do network detection and then 'getBlock'
       await expect(
         async () => await mockedProvider.getBlock(10000),
       ).rejects.toThrow('All attempts to do ETH1 RPC request failed');
@@ -374,6 +382,31 @@ describe('Execution module. ', () => {
       ).rejects.toThrow(
         'All fallback endpoints are unreachable or all fallback networks differ between each other',
       );
+    });
+
+    test('should fail and return error cause when there are no providers that are reachable', async () => {
+      await createMocks(2);
+
+      mockedFallbackProviderFetch[0].mockImplementation(
+        fakeFetchImplThatAlwaysFails,
+      );
+      mockedFallbackProviderFetch[1].mockImplementation(
+        fakeFetchImplThatAlwaysFails,
+      );
+
+      let error: AllProvidersFailedError | null = null;
+      try {
+        await mockedProvider.getBlock(1000);
+      } catch (e) {
+        error = <AllProvidersFailedError>e;
+      }
+
+      expect(error?.message).toBe(
+        'All fallback endpoints are unreachable or all fallback networks differ between each other',
+      );
+      expect(error).toBeInstanceOf(AllProvidersFailedError);
+      expect(error?.originalError).toBeInstanceOf(Error);
+      expect(error?.cause).toBeInstanceOf(Error);
     });
 
     test('should fail when some fallback endpoints have different networks chainId', async () => {
@@ -677,13 +710,43 @@ describe('Execution module. ', () => {
       expect(mockedFallbackProviderFetch[1]).toBeCalledTimes(1);
 
       const makeError = () => {
-        const err = new Error(`CALL_EXCEPTION server error`);
-        (<Error & { code: number | string }>err).code = 'CALL_EXCEPTION';
-        (<Error & { serverError: object }>err).serverError = {
-          code: 'ECONNRESET',
-          url: 'http://some-rpc-provider',
-        };
-        return err;
+        const etherslogger = new Logger('0.0.0');
+
+        // making some ETIMEDOUT server error
+        const serverError = etherslogger.makeError(
+          'missing response',
+          Logger.errors.SERVER_ERROR,
+          {
+            requestBody: {
+              method: 'eth_call',
+              params: [
+                {
+                  blockHash:
+                    '0xafcede9d00617b7befdea44c0ad4d9f6a6f82909f12f796c8233ed290a5c6d91',
+                },
+              ],
+              id: 204601,
+              jsonrpc: '2.0',
+            },
+            requestMethod: 'POST',
+            serverError: {
+              errno: -60,
+              code: 'ETIMEDOUT',
+              syscall: 'connect',
+              address: '127.0.0.1',
+              port: 80,
+            },
+            url: 'http://some-rpc-provider',
+          },
+        );
+
+        const callException = etherslogger.makeError(
+          'call exception error',
+          ErrorCode.CALL_EXCEPTION,
+          { error: serverError },
+        );
+
+        return callException;
       };
 
       mockedFallbackProviderFetch[0].mockReset();

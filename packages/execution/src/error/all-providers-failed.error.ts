@@ -1,11 +1,15 @@
 export class AllProvidersFailedError extends Error {
   public name = 'AllProvidersFailedError';
-  public message: string;
   public code = 0;
-  public originalError: Error | unknown;
+  public cause: Error | unknown;
+
+  // for backward-compatibility
+  public get originalError(): Error | unknown {
+    return this.cause;
+  }
 
   public constructor(message: string) {
-    super('');
-    this.message = message;
+    super(message);
+    Object.setPrototypeOf(this, new.target.prototype);
   }
 }

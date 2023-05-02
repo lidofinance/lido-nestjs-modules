@@ -20,7 +20,7 @@ import { EventType, Listener } from '@ethersproject/abstract-provider';
 import { NoNewBlocksWhilePollingError } from '../error/no-new-blocks-while-polling.error';
 import {
   isErrorHasCode,
-  isCallExceptionServerError,
+  isEthersServerError,
   nonRetryableErrors,
 } from '../common/errors';
 import { AllProvidersFailedError } from '../error/all-providers-failed.error';
@@ -68,7 +68,9 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
   protected activeFallbackProviderIndex: number;
   protected detectNetworkFirstRun = true;
   protected resetTimer: ReturnType<typeof setTimeout> | null = null;
-  protected lastPerformError: Error | null | unknown = null;
+  // it is crucial not to mix these two errors
+  protected lastPerformError: Error | null | unknown = null; // last error for 'perform' operations, is batch-oriented
+  protected lastError: Error | null | unknown = null; // last error for whole provider
 
   public constructor(
     config: SimpleFallbackProviderConfig,
@@ -206,11 +208,11 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
     this.logger.log(`Switched to next provider for execution layer`);
   }
 
-  protected errorShouldBeReThrown(error: Error | unknown): boolean {
+  protected isNonRetryableError(error: Error | unknown): boolean {
     return (
+      !isEthersServerError(error) &&
       isErrorHasCode(error) &&
-      nonRetryableErrors.includes(error.code) &&
-      !isCallExceptionServerError(error)
+      nonRetryableErrors.includes(error.code)
     );
   }
 
@@ -224,7 +226,7 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
       this.config.minBackoffMs,
       this.config.maxBackoffMs,
       this.config.logRetries,
-      (e) => this.errorShouldBeReThrown(e),
+      (e) => this.isNonRetryableError(e),
     );
 
     let attempt = 0;
@@ -232,7 +234,6 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
     // will perform maximum `this.config.maxRetries` retries for fetching data with single provider
     // after failure will switch to next provider
     // maximum number of switching is limited to total fallback provider count
-    let lastError: Error | unknown;
     while (attempt < this.fallbackProviders.length) {
       try {
         attempt++;
@@ -242,14 +243,15 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
           this.provider.provider.perform(method, params),
         );
       } catch (e) {
-        if (this.errorShouldBeReThrown(e)) {
+        this.lastError = e;
+        // checking that error should not be retried on another provider
+        if (this.isNonRetryableError(e)) {
           throw e;
         }
 
         this.logger.error(
           'Error while doing ETH1 RPC request. Will try to switch to another provider',
         );
-        lastError = e;
         this.logger.error(e);
 
         // This check is needed to avoid multiple `switchToNextProvider` calls when doing one JSON-RPC batch.
@@ -267,7 +269,7 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
     const allProvidersFailedError = new AllProvidersFailedError(
       'All attempts to do ETH1 RPC request failed',
     );
-    allProvidersFailedError.originalError = lastError;
+    allProvidersFailedError.cause = this.lastError;
     throw allProvidersFailedError;
   }
 
@@ -285,6 +287,7 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
       } else {
         this.fallbackProviders[index].network = null;
         this.fallbackProviders[index].unreachable = true;
+        this.lastError = result.reason;
       }
     });
 
@@ -326,9 +329,12 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
     });
 
     if (!previousNetwork) {
-      throw new Error(
+      const error = new AllProvidersFailedError(
         'All fallback endpoints are unreachable or all fallback networks differ between each other',
       );
+
+      error.cause = this.lastError;
+      throw error;
     }
 
     if (this.detectNetworkFirstRun) {
@@ -362,5 +368,9 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
 
   protected networksEqual(networkA: Network, networkB: Network): boolean {
     return networksEqual(networkA, networkB);
+  }
+
+  public get activeProviderIndex() {
+    return this.activeFallbackProviderIndex;
   }
 }

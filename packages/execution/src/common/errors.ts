@@ -79,7 +79,8 @@ export const nonRetryableErrors: (string | number)[] = [
 ];
 
 export type ErrorWithCode = Error & { code: number | string };
-export type ServerError = ErrorWithCode & { serverError: object };
+export type HasErrorProperty = { error: object };
+export type HasServerErrorProperty = { serverError: object };
 
 export const isErrorHasCode = (error: unknown): error is ErrorWithCode => {
   return (
@@ -87,12 +88,29 @@ export const isErrorHasCode = (error: unknown): error is ErrorWithCode => {
     Object.prototype.hasOwnProperty.call(error, 'code')
   );
 };
+export const hasErrorProperty = (error: unknown): error is HasErrorProperty => {
+  return Object.prototype.hasOwnProperty.call(error, 'error');
+};
 
-export const isCallExceptionServerError = (
-  error: ErrorWithCode,
-): error is ServerError => {
+export const hasServerErrorProperty = (
+  error: unknown,
+): error is HasServerErrorProperty => {
+  return Object.prototype.hasOwnProperty.call(error, 'serverError');
+};
+
+/**
+ * Detect that ethers error is a server error.
+ *
+ * Note: Ethers v5 error management is not very clean,
+ * and ethers error can be nested.
+ *
+ */
+export const isEthersServerError = (error: unknown) => {
   return (
-    error.code === ErrorCode.CALL_EXCEPTION &&
-    Object.prototype.hasOwnProperty.call(error, 'serverError')
+    hasServerErrorProperty(error) || // nesting level 0
+    (hasErrorProperty(error) && hasServerErrorProperty(error.error)) || // nesting level 1
+    (hasErrorProperty(error) &&
+      hasErrorProperty(error.error) &&
+      hasServerErrorProperty(error.error.error)) // nesting level 2
   );
 };

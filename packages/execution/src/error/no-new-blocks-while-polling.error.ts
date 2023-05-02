@@ -1,11 +1,10 @@
 export class NoNewBlocksWhilePollingError extends Error {
   public name = 'NoNewBlocksWhilePollingError';
-  public message: string;
   public latestObservedBlockNumber: number;
 
   public constructor(message: string, latestObservedBlockNumber: number) {
-    super('');
-    this.message = message;
+    super(message);
+    Object.setPrototypeOf(this, new.target.prototype);
     this.latestObservedBlockNumber = latestObservedBlockNumber;
   }
 }
