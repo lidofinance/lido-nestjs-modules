@@ -20,7 +20,7 @@ import { EventType, Listener } from '@ethersproject/abstract-provider';
 import { NoNewBlocksWhilePollingError } from '../error/no-new-blocks-while-polling.error';
 import {
   isErrorHasCode,
-  isCallExceptionServerError,
+  isEthersServerError,
   nonRetryableErrors,
 } from '../common/errors';
 import { AllProvidersFailedError } from '../error/all-providers-failed.error';
@@ -208,11 +208,11 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
     this.logger.log(`Switched to next provider for execution layer`);
   }
 
-  protected errorShouldBeReThrown(error: Error | unknown): boolean {
+  protected isNonRetryableError(error: Error | unknown): boolean {
     return (
+      !isEthersServerError(error) &&
       isErrorHasCode(error) &&
-      nonRetryableErrors.includes(error.code) &&
-      !isCallExceptionServerError(error)
+      nonRetryableErrors.includes(error.code)
     );
   }
 
@@ -226,7 +226,7 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
       this.config.minBackoffMs,
       this.config.maxBackoffMs,
       this.config.logRetries,
-      (e) => this.errorShouldBeReThrown(e),
+      (e) => this.isNonRetryableError(e),
     );
 
     let attempt = 0;
@@ -234,7 +234,6 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
     // will perform maximum `this.config.maxRetries` retries for fetching data with single provider
     // after failure will switch to next provider
     // maximum number of switching is limited to total fallback provider count
-    let lastError: Error | unknown;
     while (attempt < this.fallbackProviders.length) {
       try {
         attempt++;
@@ -245,14 +244,14 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
         );
       } catch (e) {
         this.lastError = e;
-        if (this.errorShouldBeReThrown(e)) {
+        // checking that error should not be retried on another provider
+        if (this.isNonRetryableError(e)) {
           throw e;
         }
 
         this.logger.error(
           'Error while doing ETH1 RPC request. Will try to switch to another provider',
         );
-        lastError = e;
         this.logger.error(e);
 
         // This check is needed to avoid multiple `switchToNextProvider` calls when doing one JSON-RPC batch.
@@ -270,7 +269,7 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
     const allProvidersFailedError = new AllProvidersFailedError(
       'All attempts to do ETH1 RPC request failed',
     );
-    allProvidersFailedError.cause = lastError;
+    allProvidersFailedError.cause = this.lastError;
     throw allProvidersFailedError;
   }
 

@@ -24,7 +24,7 @@ import { NonEmptyArray } from '../src/interfaces/non-empty-array';
 import { MiddlewareCallback } from '@lido-nestjs/middleware';
 import { Network } from '@ethersproject/networks';
 import { nonRetryableErrors } from '../src/common/errors';
-import { Logger } from '@ethersproject/logger';
+import { ErrorCode, Logger } from '@ethersproject/logger';
 import { AllProvidersFailedError } from '../src';
 
 export type MockedExtendedJsonRpcBatchProvider =
@@ -713,7 +713,7 @@ describe('Execution module. ', () => {
         const etherslogger = new Logger('0.0.0');
 
         // making some ETIMEDOUT server error
-        return etherslogger.makeError(
+        const serverError = etherslogger.makeError(
           'missing response',
           Logger.errors.SERVER_ERROR,
           {
@@ -739,6 +739,14 @@ describe('Execution module. ', () => {
             url: 'http://some-rpc-provider',
           },
         );
+
+        const callException = etherslogger.makeError(
+          'call exception error',
+          ErrorCode.CALL_EXCEPTION,
+          { error: serverError },
+        );
+
+        return callException;
       };
 
       mockedFallbackProviderFetch[0].mockReset();
