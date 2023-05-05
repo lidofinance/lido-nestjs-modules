@@ -37,10 +37,10 @@ export class RegistryOperatorFetchService {
       name,
       active,
       rewardAddress,
-      stakingLimit,
-      stoppedValidators,
-      totalSigningKeys,
-      usedSigningKeys,
+      totalVettedValidators,
+      totalExitedValidators,
+      totalAddedValidators,
+      totalDepositedValidators,
     } = operator;
 
     return {
@@ -48,10 +48,10 @@ export class RegistryOperatorFetchService {
       active,
       name,
       rewardAddress,
-      stakingLimit: stakingLimit.toNumber(),
-      stoppedValidators: stoppedValidators.toNumber(),
-      totalSigningKeys: totalSigningKeys.toNumber(),
-      usedSigningKeys: usedSigningKeys.toNumber(),
+      stakingLimit: totalVettedValidators.toNumber(),
+      stoppedValidators: totalExitedValidators.toNumber(),
+      totalSigningKeys: totalAddedValidators.toNumber(),
+      usedSigningKeys: totalDepositedValidators.toNumber(),
     };
   }
 
