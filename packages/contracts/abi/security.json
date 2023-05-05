@@ -110,7 +110,7 @@
   },
   {
     "inputs": [],
-    "name": "SignatureNotSorted",
+    "name": "SignaturesNotSorted",
     "type": "error"
   },
   {

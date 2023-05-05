@@ -643,19 +643,19 @@
         "type": "address"
       },
       {
-        "name": "stakingLimit",
+        "name": "totalVettedValidators",
         "type": "uint64"
       },
       {
-        "name": "stoppedValidators",
+        "name": "totalExitedValidators",
         "type": "uint64"
       },
       {
-        "name": "totalSigningKeys",
+        "name": "totalAddedValidators",
         "type": "uint64"
       },
       {
-        "name": "usedSigningKeys",
+        "name": "totalDepositedValidators",
         "type": "uint64"
       }
     ],
