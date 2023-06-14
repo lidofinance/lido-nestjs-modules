@@ -148,7 +148,7 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
     if (eventName === 'block') {
       startDieTimer(-1);
 
-      super.on(eventName, function (this: unknown, ...args) {
+      return super.on(eventName, function (this: unknown, ...args) {
         startDieTimer(args[0]);
         return listener.apply(this, args);
       });
