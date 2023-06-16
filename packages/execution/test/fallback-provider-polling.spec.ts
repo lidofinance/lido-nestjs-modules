@@ -105,9 +105,30 @@ describe('Execution module. ', () => {
         (err) => err instanceof NoNewBlocksWhilePollingError,
       );
 
-      expect(listenerMock).toBeCalledTimes(2);
+      expect(listenerMock).toBeCalledTimes(1);
       expect(errors.length).toBe(1);
       expect(noNewBlocksErrors.length).toBe(1);
+
+      mockedProvider.removeAllListeners();
+    });
+
+    it('should call listener 1 time without errors', async () => {
+      const errors: Error[] = [];
+      const listener = jest.fn();
+      const blockNumber = 12345;
+
+      mockedProvider.on('block', listener);
+      mockedProvider.on('error', (err) => errors.push(err));
+      expect(listener).not.toHaveBeenCalled();
+
+      // Emit a block event
+      mockedProvider.emit('block', blockNumber);
+      await sleep(10);
+
+      // Ensure that the listener was called with the correct arguments
+      expect(listener).toHaveBeenCalledTimes(1);
+      expect(listener).toHaveBeenCalledWith(blockNumber);
+      expect(errors.length).toBe(0);
 
       mockedProvider.removeAllListeners();
     });
