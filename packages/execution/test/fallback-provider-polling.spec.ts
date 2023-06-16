@@ -129,6 +129,8 @@ describe('Execution module. ', () => {
       expect(listener).toHaveBeenCalledTimes(1);
       expect(listener).toHaveBeenCalledWith(blockNumber);
       expect(errors.length).toBe(0);
+
+      mockedProvider.removeAllListeners();
     });
   });
 });
