@@ -9,7 +9,7 @@ import { ContractModule } from '../contract.module';
 @Module({})
 export class LidoLocatorContractModule extends ContractModule {
   static module = LidoLocatorContractModule;
-  static contractFactory = LidoLocator__factory;
+  static contractFactory = () => LidoLocator__factory;
   static contractToken = LIDO_LOCATOR_CONTRACT_TOKEN;
   static defaultAddresses = LIDO_LOCATOR_CONTRACT_ADDRESSES;
 }

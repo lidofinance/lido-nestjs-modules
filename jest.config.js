@@ -15,12 +15,7 @@ module.exports = {
   collectCoverageFrom: ['packages/**/src/**/*.ts'],
   coveragePathIgnorePatterns: ['generated', 'migrations'],
   transform: {
-    '^.+\\.ts?$': [
-      'ts-jest',
-      {
-        useESM: true,
-      },
-    ]
+    '^.+\\.ts?$': ['ts-jest'],
   },
   testEnvironment: 'node',
   setupFiles: ['dotenv/config'],

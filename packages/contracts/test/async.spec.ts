@@ -1,5 +1,5 @@
-import { getDefaultProvider, Provider as ProviderType } from 'ethers';
-import { AbstractProvider as Provider } from 'ethers/src.ts/providers/abstract-provider';
+import { getDefaultProvider } from 'ethers';
+import { AbstractProvider as Provider } from 'ethers';
 import { zeroPadValue } from 'ethers';
 import {
   DynamicModule,
@@ -32,7 +32,7 @@ class TestModule {
   }
 }
 
-describe('Async module initializing', async () => {
+describe('Async module initializing', () => {
   const testModules = async (metadata: ModuleMetadata) => {
     const moduleRef = await Test.createTestingModule(metadata).compile();
     const contract: Lido = moduleRef.get(LIDO_CONTRACT_TOKEN);
@@ -49,10 +49,10 @@ describe('Async module initializing', async () => {
       },
       inject: [TestService],
     });
-    const providers = [{ provide: Provider, useValue: provider }];
+    const nestProviders = [{ provide: Provider, useValue: provider }];
 
-    const imports = [TestModule.forRoot(), module];
-    await testModules({ imports, providers });
+    const nestImports = [TestModule.forRoot(), module];
+    await testModules({ imports: nestImports, providers: nestProviders });
   });
 
   test('forFeatureAsync, Test module, Provider', async () => {

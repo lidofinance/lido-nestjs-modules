@@ -48,7 +48,7 @@ import {
   WSTETH_CONTRACT_ADDRESSES,
   WSTETH_CONTRACT_TOKEN,
 } from '../src';
-import { ContractModule } from '../src/contract.module';
+import { ContractModule } from '../src';
 import { Network } from 'ethers';
 
 describe('Chains', () => {
@@ -78,7 +78,7 @@ describe('Chains', () => {
     await Promise.all(
       Object.entries(addressMap).map(async ([chainId, address]) => {
         const contract = await getContract(Module, token, chainId);
-        expect(contract.address).toBe(address);
+        expect(await contract.getAddress()).toBe(address);
       }),
     );
   };

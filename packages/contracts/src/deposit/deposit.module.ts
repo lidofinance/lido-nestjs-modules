@@ -9,7 +9,7 @@ import { ContractModule } from '../contract.module';
 @Module({})
 export class DepositContractModule extends ContractModule {
   static module = DepositContractModule;
-  static contractFactory = Deposit__factory;
+  static contractFactory = () => Deposit__factory;
   static contractToken = DEPOSIT_CONTRACT_TOKEN;
   static defaultAddresses = DEPOSIT_CONTRACT_ADDRESSES;
 }

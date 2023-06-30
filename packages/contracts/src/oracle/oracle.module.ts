@@ -9,7 +9,7 @@ import { ContractModule } from '../contract.module';
 @Module({})
 export class OracleContractModule extends ContractModule {
   static module = OracleContractModule;
-  static contractFactory = Oracle__factory;
+  static contractFactory = () => Oracle__factory;
   static contractToken = ORACLE_CONTRACT_TOKEN;
   static defaultAddresses = ORACLE_CONTRACT_ADDRESSES;
 }

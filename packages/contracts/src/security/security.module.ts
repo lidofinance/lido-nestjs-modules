@@ -9,7 +9,7 @@ import { ContractModule } from '../contract.module';
 @Module({})
 export class SecurityContractModule extends ContractModule {
   static module = SecurityContractModule;
-  static contractFactory = Security__factory;
+  static contractFactory = () => Security__factory;
   static contractToken = SECURITY_CONTRACT_TOKEN;
   static defaultAddresses = SECURITY_CONTRACT_ADDRESSES;
 }

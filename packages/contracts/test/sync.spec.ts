@@ -1,15 +1,20 @@
-import { getDefaultProvider, Provider } from '@ethersproject/providers';
-import { getNetwork } from '@ethersproject/networks';
+import {
+  getDefaultProvider,
+  AbstractProvider as Provider,
+  Network,
+} from 'ethers';
 import { ModuleMetadata } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { Lido, LidoContractModule, LIDO_CONTRACT_TOKEN } from '../src';
 
 describe('Sync module initializing', () => {
-  const provider = getDefaultProvider(process.env.EL_RPC_URL);
+  const provider = getDefaultProvider(
+    process.env.EL_RPC_URL ?? 'http://localhost:8545',
+  );
 
   jest
-    .spyOn(provider, 'detectNetwork')
-    .mockImplementation(async () => getNetwork('mainnet'));
+    .spyOn(provider, '_detectNetwork')
+    .mockImplementation(async () => new Network('mainnet', 1));
 
   const testModules = async (metadata: ModuleMetadata) => {
     const moduleRef = await Test.createTestingModule(metadata).compile();

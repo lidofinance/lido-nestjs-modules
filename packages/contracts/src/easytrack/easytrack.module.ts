@@ -9,7 +9,7 @@ import { ContractModule } from '../contract.module';
 @Module({})
 export class EasyTrackContractModule extends ContractModule {
   static module = EasyTrackContractModule;
-  static contractFactory = Easytrack__factory;
+  static contractFactory = () => Easytrack__factory;
   static contractToken = EASYTRACK_CONTRACT_TOKEN;
   static defaultAddresses = EASYTRACK_CONTRACT_ADDRESSES;
 }

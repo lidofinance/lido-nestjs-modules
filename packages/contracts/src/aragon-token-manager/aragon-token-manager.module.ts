@@ -9,7 +9,7 @@ import { ContractModule } from '../contract.module';
 @Module({})
 export class AragonTokenManagerContractModule extends ContractModule {
   static module = AragonTokenManagerContractModule;
-  static contractFactory = AragonTokenManager__factory;
+  static contractFactory = () => AragonTokenManager__factory;
   static contractToken = ARAGON_TOKEN_MANAGER_CONTRACT_TOKEN;
   static defaultAddresses = ARAGON_TOKEN_MANAGER_CONTRACT_ADDRESSES;
 }

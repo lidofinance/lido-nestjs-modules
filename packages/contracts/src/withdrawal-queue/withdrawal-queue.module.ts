@@ -9,7 +9,7 @@ import { ContractModule } from '../contract.module';
 @Module({})
 export class WithdrawalQueueContractModule extends ContractModule {
   static module = WithdrawalQueueContractModule;
-  static contractFactory = WithdrawalQueue__factory;
+  static contractFactory = () => WithdrawalQueue__factory;
   static contractToken = WITHDRAWAL_QUEUE_CONTRACT_TOKEN;
   static defaultAddresses = WITHDRAWAL_QUEUE_CONTRACT_ADDRESSES;
 }

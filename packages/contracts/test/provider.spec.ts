@@ -1,10 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { ModuleMetadata } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
-import { Wallet, getDefaultProvider, Network } from 'ethers';
+import { Wallet, getDefaultProvider, Network, zeroPadValue } from 'ethers';
 import { Lido, LidoContractModule, LIDO_CONTRACT_TOKEN } from '../src';
 
-const privateKey = '0x12';
+const privateKey = zeroPadValue('0x12', 32);
 
 describe('Providers', () => {
   const provider = getDefaultProvider(

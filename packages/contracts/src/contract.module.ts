@@ -1,7 +1,6 @@
 import { DynamicModule } from '@nestjs/common';
 import { Provider as ProviderType, Signer as SignerType } from 'ethers';
-import { AbstractProvider as Provider } from 'ethers/src.ts/providers/abstract-provider';
-import { AbstractSigner as Signer } from 'ethers/src.ts/providers/abstract-signer';
+import { AbstractProvider as Provider, AbstractSigner as Signer } from 'ethers';
 import {
   ContractFactoryOptions,
   ContractModuleAsyncOptions,
@@ -12,9 +11,9 @@ import { ModuleRef } from '@nestjs/core';
 
 export class ContractModule {
   static module = ContractModule;
-  static contractFactory: ContractFactory;
-  static contractToken: symbol;
-  static defaultAddresses: Record<number, string>;
+  static readonly contractFactory: () => ContractFactory;
+  static readonly contractToken: symbol;
+  static readonly defaultAddresses: Record<number, string>;
 
   static forRoot(options?: ContractModuleSyncOptions): DynamicModule {
     return {
@@ -82,7 +81,8 @@ export class ContractModule {
       this.defaultAddresses,
     );
 
-    return this.contractFactory.connect(address, provider);
+    const factory = await this.contractFactory();
+    return factory.connect(address, provider);
   }
 
   protected static async detectChainId(
@@ -97,6 +97,8 @@ export class ContractModule {
     if (providerOrSigner instanceof Signer) {
       const signer: Signer = providerOrSigner;
 
+      // very hard to simulate
+      /* istanbul ignore next */
       if (!signer.provider) {
         throw new Error('Signer does not have provider supplied');
       }

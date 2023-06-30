@@ -9,7 +9,7 @@ import { ContractModule } from '../contract.module';
 @Module({})
 export class WstethContractModule extends ContractModule {
   static module = WstethContractModule;
-  static contractFactory = Wsteth__factory;
+  static contractFactory = () => Wsteth__factory;
   static contractToken = WSTETH_CONTRACT_TOKEN;
   static defaultAddresses = WSTETH_CONTRACT_ADDRESSES;
 }
