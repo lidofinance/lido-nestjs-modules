@@ -1,5 +1,6 @@
-import { getDefaultProvider, Provider } from '@ethersproject/providers';
-import { hexZeroPad } from '@ethersproject/bytes';
+import { getDefaultProvider, Provider as ProviderType } from 'ethers';
+import { AbstractProvider as Provider } from 'ethers/src.ts/providers/abstract-provider';
+import { zeroPadValue } from 'ethers';
 import {
   DynamicModule,
   Injectable,
@@ -9,8 +10,10 @@ import {
 import { Test } from '@nestjs/testing';
 import { Lido, LidoContractModule, LIDO_CONTRACT_TOKEN } from '../src';
 
-const address = hexZeroPad('0x12', 20);
-const provider = getDefaultProvider(process.env.EL_RPC_URL);
+const address = zeroPadValue('0x12', 20);
+const provider = getDefaultProvider(
+  process.env.EL_RPC_URL ?? 'http://localhost:8545',
+);
 
 @Injectable()
 class TestService {
@@ -29,14 +32,14 @@ class TestModule {
   }
 }
 
-describe('Async module initializing', () => {
+describe('Async module initializing', async () => {
   const testModules = async (metadata: ModuleMetadata) => {
     const moduleRef = await Test.createTestingModule(metadata).compile();
     const contract: Lido = moduleRef.get(LIDO_CONTRACT_TOKEN);
 
     expect(contract.name).toBeDefined();
-    expect(contract.address).toBeDefined();
-    expect(contract.address).toBe(address);
+    expect(contract.getAddress).toBeDefined();
+    expect(await contract.getAddress()).toBe(address);
   };
 
   test('forRootAsync, Test module, Provider', async () => {

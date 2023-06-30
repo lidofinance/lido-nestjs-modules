@@ -1,11 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { ModuleMetadata } from '@nestjs/common';
-import { Signer } from 'ethers';
-import { Provider } from '@ethersproject/providers';
+import { Signer as SignerType, Provider as ProviderType } from 'ethers';
 
 export interface ContractFactoryOptions {
   address?: string;
-  provider?: Signer | Provider;
+  provider?: SignerType | ProviderType;
 }
 
 export interface ContractModuleSyncOptions extends ContractFactoryOptions {}

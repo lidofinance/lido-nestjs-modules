@@ -1,6 +1,7 @@
 import { DynamicModule } from '@nestjs/common';
-import { Signer } from 'ethers';
-import { Provider } from '@ethersproject/providers';
+import { Provider as ProviderType, Signer as SignerType } from 'ethers';
+import { AbstractProvider as Provider } from 'ethers/src.ts/providers/abstract-provider';
+import { AbstractSigner as Signer } from 'ethers/src.ts/providers/abstract-signer';
 import {
   ContractFactoryOptions,
   ContractModuleAsyncOptions,
@@ -69,7 +70,9 @@ export class ContractModule {
     moduleRef: ModuleRef,
     options?: ContractFactoryOptions,
   ) {
-    const getFromScope = () => moduleRef.get(Provider, { strict: false });
+    const getFromScope = (): ProviderType =>
+      moduleRef.get(Provider, { strict: false });
+
     const getFromOptions = () => options?.provider;
     const provider = getFromOptions() || getFromScope();
 
@@ -83,16 +86,23 @@ export class ContractModule {
   }
 
   protected static async detectChainId(
-    providerOrSigner: Signer | Provider,
+    providerOrSigner: SignerType | ProviderType,
   ): Promise<number> {
-    if (Provider.isProvider(providerOrSigner)) {
-      const network = await providerOrSigner.getNetwork();
-      return network.chainId;
+    if (providerOrSigner instanceof Provider) {
+      const provider: Provider = providerOrSigner;
+      const network = await provider.getNetwork();
+      return Number(network.chainId);
     }
 
-    if (Signer.isSigner(providerOrSigner) && providerOrSigner.provider) {
-      const network = await providerOrSigner.provider.getNetwork();
-      return network.chainId;
+    if (providerOrSigner instanceof Signer) {
+      const signer: Signer = providerOrSigner;
+
+      if (!signer.provider) {
+        throw new Error('Signer does not have provider supplied');
+      }
+
+      const network = await signer.provider.getNetwork();
+      return Number(network.chainId);
     }
 
     throw new Error('Provider or signer is not supported');
@@ -100,7 +110,7 @@ export class ContractModule {
 
   protected static async extractAddress(
     address: string | undefined,
-    providerOrSigner: Signer | Provider,
+    providerOrSigner: SignerType | ProviderType,
     addressMap: Record<number, string>,
   ): Promise<string> {
     if (address) return address;

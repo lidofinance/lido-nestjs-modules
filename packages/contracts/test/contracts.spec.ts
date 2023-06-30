@@ -1,4 +1,4 @@
-import { JsonRpcProvider } from '@ethersproject/providers';
+import { JsonRpcProvider } from 'ethers';
 import { CHAINS } from '@lido-nestjs/constants';
 import { Test } from '@nestjs/testing';
 import {
@@ -49,6 +49,7 @@ import {
   WSTETH_CONTRACT_TOKEN,
 } from '../src';
 import { ContractModule } from '../src/contract.module';
+import { Network } from 'ethers';
 
 describe('Chains', () => {
   const getContract = async (
@@ -58,9 +59,9 @@ describe('Chains', () => {
   ) => {
     const provider = new JsonRpcProvider('http://localhost');
 
-    jest.spyOn(provider, 'detectNetwork').mockImplementation(async () => {
-      return { chainId: Number(chainId), name: 'empty' };
-    });
+    jest
+      .spyOn(provider, '_detectNetwork')
+      .mockImplementation(async () => new Network('empty', Number(chainId)));
 
     const moduleRef = await Test.createTestingModule({
       imports: [Module.forRoot({ provider })],

@@ -13,7 +13,7 @@
     "test:package": "./test.package.sh",
     "test:watch": "jest --watch --coverage --verbose",
     "lint": "eslint --ext ts .",
-    "typechain": "typechain --target=ethers-v5 --out-dir ./packages/contracts/src/generated ./packages/contracts/abi/*.json",
+    "typechain": "typechain --target=ethers-v6 --out-dir ./packages/contracts/src/generated ./packages/contracts/abi/*.json",
     "postinstall": "husky install"
   },
   "devDependencies": {
@@ -21,7 +21,7 @@
     "@commitlint/config-conventional": "^16.0.0",
     "@lidofinance/yarn-workspaces-list": "0.1.1",
     "@rollup/plugin-node-resolve": "^13.3.0",
-    "@typechain/ethers-v5": "^9.0.0",
+    "@typechain/ethers-v6": "^0.4.0",
     "@types/eslint-plugin-prettier": "^3.1.0",
     "@types/jest": "^27.4.0",
     "@typescript-eslint/eslint-plugin": "^5.10.0",
@@ -38,9 +38,9 @@
     "rollup": "^2.75.6",
     "rollup-plugin-delete": "^2.0.0",
     "rollup-plugin-typescript2": "^0.31.1",
-    "ts-jest": "^27.1.4",
+    "ts-jest": "^29.1.1",
     "tslib": "^2.4.1",
-    "typechain": "^7.0.0",
+    "typechain": "^8.2.0",
     "typescript": "^4.5.5"
   },
   "lint-staged": {

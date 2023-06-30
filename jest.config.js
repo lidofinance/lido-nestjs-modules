@@ -9,12 +9,18 @@ module.exports = {
       statements: 100,
     },
   },
+  extensionsToTreatAsEsm: ['.ts'],
   moduleFileExtensions: ['js', 'json', 'ts'],
   testRegex: '.*\\.spec\\.ts$',
   collectCoverageFrom: ['packages/**/src/**/*.ts'],
   coveragePathIgnorePatterns: ['generated', 'migrations'],
   transform: {
-    '^.+\\.ts?$': 'ts-jest',
+    '^.+\\.ts?$': [
+      'ts-jest',
+      {
+        useESM: true,
+      },
+    ]
   },
   testEnvironment: 'node',
   setupFiles: ['dotenv/config'],

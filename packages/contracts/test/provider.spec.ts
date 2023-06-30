@@ -1,19 +1,19 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { getDefaultProvider } from '@ethersproject/providers';
-import { getNetwork } from '@ethersproject/networks';
 import { ModuleMetadata } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
-import { Wallet } from 'ethers';
+import { Wallet, getDefaultProvider, Network } from 'ethers';
 import { Lido, LidoContractModule, LIDO_CONTRACT_TOKEN } from '../src';
 
 const privateKey = '0x12';
 
 describe('Providers', () => {
-  const provider = getDefaultProvider(process.env.EL_RPC_URL);
+  const provider = getDefaultProvider(
+    process.env.EL_RPC_URL ?? 'http://localhost:8545',
+  );
 
   jest
-    .spyOn(provider, 'detectNetwork')
-    .mockImplementation(async () => getNetwork('mainnet'));
+    .spyOn(provider, '_detectNetwork')
+    .mockImplementation(async () => new Network('mainnet', 1));
 
   const signer = new Wallet(privateKey, provider);
 
