@@ -1,24 +1,66 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { deepCopy, Deferrable } from '@ethersproject/properties';
-import {
-  ConnectionInfo,
-  fetchJson,
-  FetchJsonResponse,
-} from '@ethersproject/web';
-import { Formatter, JsonRpcProvider } from '@ethersproject/providers';
-import { Network, Networkish } from '@ethersproject/networks';
-import { defineReadOnly } from '@ethersproject/properties';
+import { deepCopy } from '../common/deep-copy';
+// import {
+//   fetchJson,
+// } from '@ethersproject/web';
+import { JsonRpcProvider } from 'ethers';
+import { Network } from 'ethers';
 import { Queue } from '../common/queue';
 import { FetchError } from '../error/fetch.error';
 import { Injectable } from '@nestjs/common';
 import pLimit, { LimitFunction } from '../common/promise-limit';
 import { FormatterWithEIP1898 } from '../ethers/formatter-with-eip1898';
-import { BigNumber, BigNumberish } from '@ethersproject/bignumber';
 import { BlockTag } from '../ethers/block-tag';
-import { TransactionRequest } from '@ethersproject/abstract-provider/src.ts/index';
+import { TransactionRequest } from 'ethers';
 import { MiddlewareCallback, MiddlewareService } from '@lido-nestjs/middleware';
 import { FeeHistory, getFeeHistory } from '../ethers/fee-history';
 import { ErrorCode } from '../error/codes/error-codes';
+import {
+  FetchRequest,
+  Networkish,
+  JsonRpcApiProviderOptions,
+  Formatter,
+  fetchJson,
+} from 'ethers';
+import { AddressLike } from 'ethers/lib.esm/address';
+
+export type FetchJsonResponse = {
+  statusCode: number;
+  headers: { [header: string]: string };
+};
+
+export type Deferrable<T> = {
+  [K in keyof T]: T[K] | Promise<T[K]>;
+};
+
+export type ConnectionInfo = {
+  url: string;
+  headers?: { [key: string]: string | number };
+
+  user?: string;
+  password?: string;
+
+  allowInsecureAuthentication?: boolean;
+  allowGzip?: boolean;
+
+  throttleLimit?: number;
+  throttleSlotInterval?: number;
+  throttleCallback?: (attempt: number, url: string) => Promise<boolean>;
+
+  timeout?: number;
+};
+
+export function defineReadOnly<T, K extends keyof T>(
+  object: T,
+  name: K,
+  value: T[K],
+): void {
+  Object.defineProperty(object, name, {
+    enumerable: true,
+    value: value,
+    writable: false,
+  });
+}
 
 export interface RequestPolicy {
   jsonRpcMaxBatchSize: number;
@@ -68,29 +110,20 @@ export type PartialRequestIntent =
  * EIP-1898 support
  * https://eips.ethereum.org/EIPS/eip-1898
  */
-declare module '@ethersproject/providers' {
+declare module 'ethers' {
   export interface JsonRpcProvider {
-    getBalance(
-      addressOrName: string | Promise<string>,
-      blockTag?: BlockTag | Promise<BlockTag>,
-    ): Promise<BigNumber>;
+    getBalance(address: AddressLike, blockTag?: BlockTag): Promise<bigint>;
     getTransactionCount(
-      addressOrName: string | Promise<string>,
-      blockTag?: BlockTag | Promise<BlockTag>,
+      address: AddressLike,
+      blockTag?: BlockTag,
     ): Promise<number>;
-    getCode(
-      addressOrName: string | Promise<string>,
-      blockTag?: BlockTag | Promise<BlockTag>,
-    ): Promise<string>;
+    getCode(address: AddressLike, blockTag?: BlockTag): Promise<string>;
     getStorageAt(
       addressOrName: string | Promise<string>,
-      position: BigNumberish | Promise<BigNumberish>,
+      position: bigint | Promise<bigint>,
       blockTag?: BlockTag | Promise<BlockTag>,
     ): Promise<string>;
-    call(
-      transaction: Deferrable<TransactionRequest>,
-      blockTag?: BlockTag | Promise<BlockTag>,
-    ): Promise<string>;
+    call(_tx: TransactionRequest): Promise<string>;
   }
 }
 
@@ -104,12 +137,13 @@ export class ExtendedJsonRpcBatchProvider extends JsonRpcProvider {
   protected _fetchMiddlewareService: MiddlewareService<Promise<any>>;
 
   public constructor(
-    url: ConnectionInfo | string,
+    url: string | FetchRequest,
     network?: Networkish,
     requestPolicy?: RequestPolicy,
     fetchMiddlewares: MiddlewareCallback<Promise<any>>[] = [],
+    options?: JsonRpcApiProviderOptions,
   ) {
-    super(url, network);
+    super(url, network, options);
     this._requestPolicy = requestPolicy ?? {
       jsonRpcMaxBatchSize: 200,
       maxConcurrentRequests: 5,
@@ -312,17 +346,17 @@ export class ExtendedJsonRpcBatchProvider extends JsonRpcProvider {
   }
 
   public async detectNetwork(): Promise<Network> {
-    let network = this.network;
+    let network = this._network;
 
     if (network == null) {
-      network = await super.detectNetwork();
+      network = await super._detectNetwork();
 
       // If still not set, set it
       if (this._network == null) {
         // A static network does not support "any"
         defineReadOnly(this, '_network', network);
 
-        this.emit('network', network, null);
+        await this.emit('network', network, null);
       }
     }
 

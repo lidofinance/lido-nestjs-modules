@@ -51,8 +51,14 @@ export class WithdrawalCredentialsFetcher
 
   @MemoizeInFlightPromise()
   public async getChainId(): Promise<CHAINS> {
-    const network = await this.lidoContract.provider.getNetwork();
+    const network = await this.lidoContract.runner?.provider?.getNetwork();
 
-    return network.chainId;
+    if (!network) {
+      throw new Error(
+        `Can't get network, contractRunner or provider is not defined`,
+      );
+    }
+
+    return Number(network.chainId);
   }
 }
