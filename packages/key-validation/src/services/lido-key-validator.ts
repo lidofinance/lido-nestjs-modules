@@ -82,7 +82,7 @@ export class LidoKeyValidator implements LidoKeyValidatorInterface {
       })),
     );
 
-    const usedKeysResults: typeof unUsedKeysResults = [];
+    let usedKeysResults: typeof unUsedKeysResults = [];
 
     let remainingKeys = usedKeys;
     let notValidKeys: typeof usedKeysResults = [];
@@ -104,12 +104,12 @@ export class LidoKeyValidator implements LidoKeyValidatorInterface {
       notValidKeys = resultsForWC.filter((res) => !res[1]);
       remainingKeys = notValidKeys.map((res) => res[0]);
 
-      usedKeysResults.push(...validKeys);
+      usedKeysResults = usedKeysResults.concat(validKeys);
     }
 
-    usedKeysResults.push(...notValidKeys);
+    usedKeysResults = usedKeysResults.concat(notValidKeys);
 
-    return [...usedKeysResults, ...unUsedKeysResults];
+    return usedKeysResults.concat(unUsedKeysResults);
   }
 
   protected lidoKeyToBasicKey(
