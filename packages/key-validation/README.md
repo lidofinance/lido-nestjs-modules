@@ -16,10 +16,10 @@ yarn add @lido-nestjs/key-validation
 ```ts
 import { Module } from '@nestjs/common';
 import {
-    KeyValidatorModule,
-    Key,
-    KeyValidatorInterface,
-    GENESIS_FORK_VERSION,
+  KeyValidatorModule,
+  Key,
+  KeyValidatorInterface,
+  GENESIS_FORK_VERSION,
 } from '@lido-nestjs/key-validation';
 import { CHAINS } from '@lido-nestjs/constants';
 
@@ -31,26 +31,26 @@ import { CHAINS } from '@lido-nestjs/constants';
 export class ExampleModule {}
 
 export class Example {
-    public constructor(
-        // note that `KeyValidatorInterface` is a Symbol-like interface tag
-        // which point to specific implementation
-        private readonly keyValidator: KeyValidatorInterface) {
-    }
+  public constructor(
+    // note that `KeyValidatorInterface` is a Symbol-like interface tag
+    // which point to specific implementation
+    private readonly keyValidator: KeyValidatorInterface,
+  ) {}
 
-    public async basicValidation() {
-        const key: Key = {
-            key: '0x00...1',
-            depositSignature: '0x00...1',
-            withdrawalCredentials: Buffer.alloc(32),
-            genesisForkVersion:
-                GENESIS_FORK_VERSION[CHAINS.Mainnet] ?? Buffer.alloc(32),
-        };
+  public async basicValidation() {
+    const key: Key = {
+      key: '0x00...1',
+      depositSignature: '0x00...1',
+      withdrawalCredentials: Buffer.alloc(32),
+      genesisForkVersion:
+        GENESIS_FORK_VERSION[CHAINS.Mainnet] ?? Buffer.alloc(32),
+    };
 
-        const resultSingleKey: boolean = await this.keyValidator.validateKey(key);
+    const resultSingleKey: boolean = await this.keyValidator.validateKey(key);
 
-        const resultMultipleKeys: [Key, boolean][] =
-            await this.keyValidator.validateKeys([key]);
-    }
+    const resultMultipleKeys: [Key, boolean][] =
+      await this.keyValidator.validateKeys([key]);
+  }
 }
 ```
 
@@ -65,6 +65,10 @@ import {
   LidoKeyValidatorModule,
 } from '@lido-nestjs/key-validation';
 import { LidoContractModule } from '@lido-nestjs/contracts';
+import {
+  SimpleFallbackJsonRpcBatchProvider,
+  FallbackProviderModule,
+} from '@lido-nestjs/execution';
 
 export class Example {
   public constructor(
@@ -98,7 +102,17 @@ export class Example {
 
 @Module({
   imports: [
-    LidoContractModule.forRoot(), // needed for getting WithdrawalCredentials and Network chain id
+    FallbackProviderModule.forRoot({
+      urls: ['http://localhost:8545'],
+      network: 1,
+    }),
+    LidoContractModule.forRootAsync({
+      // needed for getting WithdrawalCredentials and Network chain id
+      async useFactory(provider: SimpleFallbackJsonRpcBatchProvider) {
+        return { provider: provider };
+      },
+      inject: [SimpleFallbackJsonRpcBatchProvider],
+    }),
     LidoKeyValidatorModule.forFeature({ multithreaded: true }), // can be multithreaded or single-threaded
   ],
   providers: [Example],
