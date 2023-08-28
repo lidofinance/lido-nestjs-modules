@@ -20,9 +20,9 @@ export class LidoKeyValidator implements LidoKeyValidatorInterface {
     protected readonly genesisForkVersionService: GenesisForkVersionServiceInterface,
   ) {}
 
-  public async validateKey(
-    lidoKey: LidoKey,
-  ): Promise<[Key & LidoKey, boolean]> {
+  public async validateKey<T>(
+    lidoKey: LidoKey & T,
+  ): Promise<[Key & LidoKey & T, boolean]> {
     const possibleWC =
       await this.wcExtractor.getPossibleWithdrawalCredentials();
 
@@ -31,9 +31,9 @@ export class LidoKeyValidator implements LidoKeyValidatorInterface {
     )[0];
   }
 
-  public async validateKeys(
-    lidoKeys: LidoKey[],
-  ): Promise<[Key & LidoKey, boolean][]> {
+  public async validateKeys<T>(
+    lidoKeys: (LidoKey & T)[],
+  ): Promise<[Key & LidoKey & T, boolean][]> {
     if (lidoKeys.length === 0) {
       return [];
     }
@@ -46,10 +46,10 @@ export class LidoKeyValidator implements LidoKeyValidatorInterface {
     );
   }
 
-  protected async validateLidoKeysForDifferentPossibleWC(
-    lidoKeys: LidoKey[],
+  protected async validateLidoKeysForDifferentPossibleWC<T>(
+    lidoKeys: (LidoKey & T)[],
     possibleWC: PossibleWC,
-  ): Promise<[Key & LidoKey, boolean][]> {
+  ): Promise<[Key & LidoKey & T, boolean][]> {
     const chainId = await this.wcExtractor.getChainId();
     const genesisForkVersion =
       await this.genesisForkVersionService.getGenesisForkVersion(chainId);
@@ -57,7 +57,7 @@ export class LidoKeyValidator implements LidoKeyValidatorInterface {
     const unUsedKeys = lidoKeys
       .filter((lidoKey) => !lidoKey.used)
       .map((lidoKey) =>
-        this.lidoKeyToBasicKey(
+        this.lidoKeyToBasicKey<T>(
           lidoKey,
           possibleWC.currentWC[1],
           genesisForkVersion,
@@ -67,7 +67,7 @@ export class LidoKeyValidator implements LidoKeyValidatorInterface {
     const usedKeys = lidoKeys
       .filter((lidoKey) => lidoKey.used)
       .map((lidoKey) =>
-        this.lidoKeyToBasicKey(
+        this.lidoKeyToBasicKey<T>(
           lidoKey,
           possibleWC.currentWC[1],
           genesisForkVersion,
@@ -75,7 +75,7 @@ export class LidoKeyValidator implements LidoKeyValidatorInterface {
       );
 
     // 1. first step of validation - unused keys with ONLY current WC
-    const unUsedKeysResults = await this.keyValidator.validateKeys<LidoKey>(
+    const unUsedKeysResults = await this.keyValidator.validateKeys<LidoKey & T>(
       unUsedKeys.map((key) => ({
         ...key,
         withdrawalCredentials: possibleWC.currentWC[1],
@@ -112,11 +112,11 @@ export class LidoKeyValidator implements LidoKeyValidatorInterface {
     return usedKeysResults.concat(unUsedKeysResults);
   }
 
-  protected lidoKeyToBasicKey(
-    lidoKey: LidoKey,
+  protected lidoKeyToBasicKey<T>(
+    lidoKey: LidoKey & T,
     withdrawalCredentials: WithdrawalCredentialsBuffer,
     genesisForkVersion: Buffer,
-  ): Key & LidoKey {
+  ): Key & LidoKey & T {
     return {
       ...lidoKey,
       withdrawalCredentials: withdrawalCredentials,

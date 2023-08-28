@@ -227,6 +227,44 @@ describe('LidoKeyValidator', () => {
     expect(time).toBeLessThan(2); // 2 seconds
   });
 
+  test('[single-thread] should work with valid keys with custom properties', async () => {
+    const usedValidKeysWithCustomProps = usedValidKeys.map((key, i) => ({
+      ...key,
+      custom: i * 2,
+    }));
+
+    const keyValidator = await getLidoKeyValidator(false);
+    const [results, time] = await withTimer(() =>
+      keyValidator.validateKeys(usedValidKeysWithCustomProps),
+    );
+
+    expect(results.length).toBe(100);
+
+    // all keys are valid
+    expect(results.every((x) => x[1])).toBe(true);
+    expect(results.every((x, i) => x[0].custom === i * 2)).toBe(true);
+    expect(time).toBeLessThan(2); // 2 seconds
+  });
+
+  test('[multi-thread] should work with valid keys with custom properties', async () => {
+    const usedValidKeysWithCustomProps = usedValidKeys.map((key, i) => ({
+      ...key,
+      custom: i * 2,
+    }));
+
+    const keyValidator = await getLidoKeyValidator(true);
+    const [results, time] = await withTimer(() =>
+      keyValidator.validateKeys(usedValidKeysWithCustomProps),
+    );
+
+    expect(results.length).toBe(100);
+
+    // all keys are valid
+    expect(results.every((x) => x[1])).toBe(true);
+    expect(results.every((x, i) => x[0].custom === i * 2)).toBe(true);
+    expect(time).toBeLessThan(2); // 2 seconds
+  });
+
   test('should return false on invalid key', async () => {
     const keyValidator = await getLidoKeyValidator(false);
     const [results, time] = await withTimer(() =>

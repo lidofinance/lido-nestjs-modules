@@ -5,6 +5,8 @@ export const LidoKeyValidatorInterface =
   createInterface<LidoKeyValidatorInterface>('LidoKeyValidatorInterface');
 
 export interface LidoKeyValidatorInterface {
-  validateKey(key: LidoKey): Promise<[Key & LidoKey, boolean]>;
-  validateKeys(keys: LidoKey[]): Promise<[Key & LidoKey, boolean][]>;
+  validateKey<T>(key: LidoKey & T): Promise<[Key & LidoKey & T, boolean]>;
+  validateKeys<T>(
+    keys: (LidoKey & T)[],
+  ): Promise<[Key & LidoKey & T, boolean][]>;
 }
