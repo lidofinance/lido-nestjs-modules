@@ -6,6 +6,7 @@ export enum CHAINS {
   Kovan = 42,
   Moonriver = 1285,
   Moonbase = 1287,
+  Holesky = 17000,
   Kintsugi = 1337702,
   Kiln = 1337802,
   Zhejiang = 1337803,
