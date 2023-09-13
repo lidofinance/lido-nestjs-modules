@@ -123,18 +123,21 @@ export class ExampleModule {}
 
 ### Troubleshooting
 
-When you try to install the key-validation module, you may encounter an unexpected 
-problem related to the inability to install @chainsafe/blst dependencies under darwin arm64. 
+When you try to install the key-validation module, you may encounter an unexpected
+problem related to the inability to install @chainsafe/blst dependencies under darwin arm64.
 
 #### Why does it happen?!
+
 It happens because https://www.npmjs.com/package/@chainsafe/blst doesn't provide native C binding to https://github.com/supranational/blst under darwin arm64.
 Such as there no native binding, a user has to compile C binding to blst lab manually for darwin arm64.
 @chainsafe/blst has compile option but inside itself for downloading dependencies this lib uses Python language.
 Historically MacOs uses alias python3 for python. So then @chainsafe/blst fails with an error that it could not install all dependencies.
 To fix it on MacOs just create alias python for python3.
+
 ```bash
 ln -s /opt/homebrew/bin/python3 /usr/local/bin/python
 ```
-Also, we published same things here - https://github.com/ChainSafe/lodestar/issues/4767#issuecomment-1640631566
+
+More info here - https://github.com/ChainSafe/lodestar/issues/4767#issuecomment-1640631566
 
 See more examples in the `./examples/` folder.
