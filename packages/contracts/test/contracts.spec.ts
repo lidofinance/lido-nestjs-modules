@@ -17,6 +17,7 @@ import {
   StakingRouterContractModule,
   WithdrawalQueueContractModule,
   WstethContractModule,
+  OracleReportSanityCheckerModule,
   ALLOWED_LIST_CONTRACT_ADDRESSES,
   ALLOWED_LIST_CONTRACT_TOKEN,
   ARAGON_TOKEN_MANAGER_CONTRACT_ADDRESSES,
@@ -47,6 +48,11 @@ import {
   WITHDRAWAL_QUEUE_CONTRACT_TOKEN,
   WSTETH_CONTRACT_ADDRESSES,
   WSTETH_CONTRACT_TOKEN,
+  ORACLE_REPORT_SANITY_CHECKER_ADDRESSES,
+  ORACLE_REPORT_SANITY_CHECKER_TOKEN,
+  HashConsensusModule,
+  HASH_CONSENSUS_TOKEN,
+  HASH_CONSENSUS_ADDRESSES,
 } from '../src';
 import { ContractModule } from '../src/contract.module';
 
@@ -205,6 +211,22 @@ describe('Chains', () => {
       WstethContractModule,
       WSTETH_CONTRACT_TOKEN,
       WSTETH_CONTRACT_ADDRESSES,
+    );
+  });
+
+  test('oracle report sanity checker', async () => {
+    await testAddress(
+      OracleReportSanityCheckerModule,
+      ORACLE_REPORT_SANITY_CHECKER_TOKEN,
+      ORACLE_REPORT_SANITY_CHECKER_ADDRESSES,
+    );
+  });
+
+  test('hash consensus', async () => {
+    await testAddress(
+      HashConsensusModule,
+      HASH_CONSENSUS_TOKEN,
+      HASH_CONSENSUS_ADDRESSES,
     );
   });
 });
