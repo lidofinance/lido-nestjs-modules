@@ -51,5 +51,8 @@ export * from './wsteth/wsteth.module';
 export * from './oracle-report-sanity-checker/oracle-report-sanity-checker.constants';
 export * from './oracle-report-sanity-checker/oracle-report-sanity-checker.module';
 
-export * from './hash-consensus/hash-consensus.constants';
-export * from './hash-consensus/hash-consensus.module';
+export * from './accounting-oracle-hash-consensus/accounting-oracle-hash-consensus.constants';
+export * from './accounting-oracle-hash-consensus/accounting-oracle-hash-consensus.module';
+
+export * from './validators-exit-bus-oracle-hash-consensus/validators-exit-bus-oracle-hash-consensus.constants';
+export * from './validators-exit-bus-oracle-hash-consensus/validators-exit-bus-oracle-hash-consensus.module';

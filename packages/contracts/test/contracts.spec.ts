@@ -2,6 +2,7 @@ import { JsonRpcProvider } from '@ethersproject/providers';
 import { CHAINS } from '@lido-nestjs/constants';
 import { Test } from '@nestjs/testing';
 import {
+  AccountingOracleHashConsensusModule,
   AllowedListContractModule,
   AragonTokenManagerContractModule,
   AragonVotingManagerContractModule,
@@ -15,10 +16,12 @@ import {
   RegistryContractModule,
   SecurityContractModule,
   StakingRouterContractModule,
+  ValidatorsExitBusOracleHashConsensusModule,
   WithdrawalQueueContractModule,
   WstethContractModule,
   OracleReportSanityCheckerModule,
-  HashConsensusModule,
+  ACCOUNTING_ORACLE_HASH_CONSENSUS_TOKEN,
+  ACCOUNTING_ORACLE_HASH_CONSENSUS_ADDRESSES,
   ALLOWED_LIST_CONTRACT_ADDRESSES,
   ALLOWED_LIST_CONTRACT_TOKEN,
   ARAGON_TOKEN_MANAGER_CONTRACT_ADDRESSES,
@@ -45,14 +48,14 @@ import {
   SECURITY_CONTRACT_TOKEN,
   STAKING_ROUTER_CONTRACT_ADDRESSES,
   STAKING_ROUTER_CONTRACT_TOKEN,
+  VALIDATORS_EXIT_BUS_ORACLE_HASH_CONSENSUS_ADDRESSES,
+  VALIDATORS_EXIT_BUS_ORACLE_HASH_CONSENSUS_TOKEN,
   WITHDRAWAL_QUEUE_CONTRACT_ADDRESSES,
   WITHDRAWAL_QUEUE_CONTRACT_TOKEN,
   WSTETH_CONTRACT_ADDRESSES,
   WSTETH_CONTRACT_TOKEN,
   ORACLE_REPORT_SANITY_CHECKER_ADDRESSES,
   ORACLE_REPORT_SANITY_CHECKER_TOKEN,
-  HASH_CONSENSUS_TOKEN,
-  HASH_CONSENSUS_ADDRESSES,
 } from '../src';
 import { ContractModule } from '../src/contract.module';
 
@@ -222,11 +225,19 @@ describe('Chains', () => {
     );
   });
 
-  test('hash consensus', async () => {
+  test('accounting oracle hash consensus', async () => {
     await testAddress(
-      HashConsensusModule,
-      HASH_CONSENSUS_TOKEN,
-      HASH_CONSENSUS_ADDRESSES,
+      AccountingOracleHashConsensusModule,
+      ACCOUNTING_ORACLE_HASH_CONSENSUS_TOKEN,
+      ACCOUNTING_ORACLE_HASH_CONSENSUS_ADDRESSES,
+    );
+  });
+
+  test('validators exit bus oracle hash consensus', async () => {
+    await testAddress(
+      ValidatorsExitBusOracleHashConsensusModule,
+      VALIDATORS_EXIT_BUS_ORACLE_HASH_CONSENSUS_TOKEN,
+      VALIDATORS_EXIT_BUS_ORACLE_HASH_CONSENSUS_ADDRESSES,
     );
   });
 });
