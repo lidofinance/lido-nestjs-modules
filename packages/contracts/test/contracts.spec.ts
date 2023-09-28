@@ -18,6 +18,7 @@ import {
   WithdrawalQueueContractModule,
   WstethContractModule,
   OracleReportSanityCheckerModule,
+  HashConsensusModule,
   ALLOWED_LIST_CONTRACT_ADDRESSES,
   ALLOWED_LIST_CONTRACT_TOKEN,
   ARAGON_TOKEN_MANAGER_CONTRACT_ADDRESSES,
@@ -50,7 +51,6 @@ import {
   WSTETH_CONTRACT_TOKEN,
   ORACLE_REPORT_SANITY_CHECKER_ADDRESSES,
   ORACLE_REPORT_SANITY_CHECKER_TOKEN,
-  HashConsensusModule,
   HASH_CONSENSUS_TOKEN,
   HASH_CONSENSUS_ADDRESSES,
 } from '../src';
