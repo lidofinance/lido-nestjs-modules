@@ -6,6 +6,7 @@ import {
 } from '../types';
 import { ConsensusValidatorEntity } from './consensus-validator.entity';
 import { FindOptions, FilterQuery } from './interfaces';
+import { EntityManager } from '@mikro-orm/knex';
 
 export const StorageServiceInterface = createInterface<StorageServiceInterface>(
   'StorageServiceInterface',
@@ -17,6 +18,27 @@ export interface StorageServiceInterface {
    */
   getConsensusMeta(): Promise<ConsensusMeta | null>;
 
+  /**
+   * Return EntityManager instance
+   */
+  getEntityManager(): EntityManager;
+
+  /**
+   * delete all validators
+   */
+  deleteValidators(): Promise<void>;
+
+  /**
+   *
+   * Update consensus validators
+   */
+  updateValidators(validators: Validator[]): Promise<void>;
+
+  /**
+   *
+   * Update meta
+   */
+  updateMeta(meta: ConsensusMeta): Promise<void>;
   /**
    * Update all consensus validators and meta in storage in one transaction
    * (update existing validators in storage and insert not existing in storage)

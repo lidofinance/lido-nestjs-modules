@@ -26,9 +26,44 @@ export class StorageService
     await this.orm.close();
   }
 
-  public get entityManager(): EntityManager {
+  protected get entityManager(): EntityManager {
     // It will automatically pick the request specific context under the hood, or use global entity manager
     return <EntityManager>this.orm.em;
+  }
+
+  public getEntityManager(): EntityManager {
+    return this.entityManager;
+  }
+
+  public async deleteValidators() {
+    await this.orm.em.getRepository(ConsensusValidatorEntity).nativeDelete({});
+  }
+
+  public async updateValidators(validators: Validator[]): Promise<void> {
+    const validatorsChecked = parseAsTypeOrFail(
+      Validators,
+      validators,
+      (error) => {
+        throw new ConsensusDataInvalidError(
+          'Got invalid Validators when writing to storage',
+          error,
+        );
+      },
+    );
+
+    const validatorsPartitions = chunk(
+      validatorsChecked,
+      NUM_VALIDATORS_MAX_CHUNK,
+    );
+
+    const promises = validatorsPartitions.map((x) =>
+      this.orm.em
+        .getRepository(ConsensusValidatorEntity)
+        .createQueryBuilder()
+        .insert(x)
+        .execute(),
+    );
+    await Promise.all(promises);
   }
 
   /**
@@ -71,6 +106,7 @@ export class StorageService
   ): Promise<void> {
     return this.entityManager.transactional(
       async () => {
+        await this.deleteValidators();
         await this.updateMeta(meta);
         await this.updateValidators(validators);
       },
@@ -78,41 +114,10 @@ export class StorageService
     );
   }
 
-  protected async updateValidators(validators: Validator[]): Promise<void> {
-    const validatorsChecked = parseAsTypeOrFail(
-      Validators,
-      validators,
-      (error) => {
-        throw new ConsensusDataInvalidError(
-          'Got invalid Validators when writing to storage',
-          error,
-        );
-      },
-    );
-
-    const validatorsPartitions = chunk(
-      validatorsChecked,
-      NUM_VALIDATORS_MAX_CHUNK,
-    );
-
-    // remove all previous validators
-    await this.orm.em.getRepository(ConsensusValidatorEntity).nativeDelete({});
-
-    const promises = validatorsPartitions.map((x) =>
-      this.orm.em
-        .getRepository(ConsensusValidatorEntity)
-        .createQueryBuilder()
-        .insert(x)
-        .execute(),
-    );
-
-    await Promise.all(promises);
-  }
-
   /**
    * @inheritDoc
    */
-  protected async updateMeta(meta: ConsensusMeta): Promise<void> {
+  public async updateMeta(meta: ConsensusMeta): Promise<void> {
     const metaChecked = parseAsTypeOrFail(ConsensusMeta, meta, (error) => {
       throw new ConsensusDataInvalidError(
         'Got invalid ConsensusMeta when writing to storage',

@@ -27,6 +27,7 @@ import {
   stateValidatorsB,
 } from './fixtures/consensus';
 import { noop } from './helpers/noop';
+import { Readable } from 'stream';
 
 describe('StorageModule', () => {
   let moduleRef: TestingModule | null = null;
@@ -311,5 +312,117 @@ describe('StorageModule', () => {
     await expect(validatorsRegistry.update('finalized')).rejects.toBeInstanceOf(
       ConsensusDataInvalidError,
     );
+  });
+});
+
+describe('updateStream', () => {
+  let moduleRef: TestingModule | null = null;
+  let validatorsRegistry: ValidatorsRegistryInterface;
+
+  const consensusServiceMock = {
+    getBlockV2: (args: { blockId: string | number }) => {
+      return blocks[args.blockId];
+    },
+    getBlockHeader: (args: { blockId: string | number }) => {
+      return headers[args.blockId];
+    },
+    getStateValidatorsStream: (args: { stateId: string }) => {
+      return Readable.from(JSON.stringify(stateValidators[args.stateId]));
+    },
+  };
+
+  beforeEach(async () => {
+    const imports = [
+      ConsensusModule.forRoot({
+        imports: [FetchModule],
+      }),
+      MikroOrmModule.forRoot({
+        dbName: ':memory:',
+        type: 'sqlite',
+        allowGlobalContext: true,
+        entities: [...StorageModule.entities],
+        migrations: {
+          migrationsList: migrations,
+        },
+        logger: noop,
+      }),
+      ValidatorsRegistryModule.forFeature(),
+    ];
+
+    moduleRef = await Test.createTestingModule({ imports })
+      .overrideProvider(ConsensusService)
+      .useValue(consensusServiceMock)
+      .compile();
+
+    await moduleRef.init();
+    validatorsRegistry = moduleRef.get<ValidatorsRegistryInterface>(
+      ValidatorsRegistryInterface,
+    );
+
+    // migrating when starting ORM
+    await moduleRef.get(MikroORM).getMigrator().up();
+  });
+
+  afterEach(async () => {
+    // this will call all destroy hooks for all modules
+    await moduleRef?.close();
+
+    jest.clearAllMocks();
+  });
+
+  afterAll(async () => {
+    // this will call all destroy hooks for all modules
+    await moduleRef?.close();
+  });
+
+  test('getMeta - null when empty', async () => {
+    const meta = await validatorsRegistry.getMeta();
+
+    expect(meta).toBe(null);
+  });
+
+  test('getValidators - null when empty', async () => {
+    const metaAndValidators = await validatorsRegistry.getValidators();
+
+    expect(metaAndValidators).toStrictEqual({
+      validators: [],
+      meta: null,
+    });
+  });
+
+  test('updateStream, empty state', async () => {
+    await validatorsRegistry.updateStream(slotA);
+
+    const meta = await validatorsRegistry.getMeta();
+    const metaAndValidators = await validatorsRegistry.getValidators();
+
+    const expectedValidators: Validator[] = [
+      {
+        index: Number(stateValidatorsA.data[0].index),
+        pubkey: stateValidatorsA.data[0].validator.pubkey,
+        status: ValidatorStatusType.parse(stateValidatorsA.data[0].status),
+      },
+      {
+        index: Number(stateValidatorsA.data[1].index),
+        pubkey: stateValidatorsA.data[1].validator.pubkey,
+        status: ValidatorStatusType.parse(stateValidatorsA.data[1].status),
+      },
+    ];
+
+    expect(meta).toStrictEqual(consensusMetaA);
+
+    expect(metaAndValidators).toEqual({
+      validators: expectedValidators,
+      meta: consensusMetaA,
+    });
+  });
+
+  test('updateStream, meta was not changed', async () => {
+    const mockBlockV2 = jest.spyOn(consensusServiceMock, 'getBlockV2');
+    await validatorsRegistry.updateStream(slotA);
+    expect(mockBlockV2).toBeCalledTimes(1);
+    mockBlockV2.mockClear();
+    await validatorsRegistry.updateStream(slotA);
+    expect(mockBlockV2).toBeCalledTimes(0);
   });
 });

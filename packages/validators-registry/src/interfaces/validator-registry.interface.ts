@@ -19,6 +19,26 @@ export interface ValidatorsRegistryInterface {
   update(blockId: BlockId): Promise<ConsensusMeta>;
 
   /**
+   * Update internal state of validators in the registry to the Consensus Layer (CL) state
+   * according to `blockId`. Reading validators in stream.
+   *
+   * @param {BlockId} blockId - Values: 'head', 'genesis', 'finalized', <slot>, <hex encoded blockRoot with 0x prefix>
+   *
+   * If the registry internal state is newer or the same to the CL state - does nothing.
+   */
+  updateStream(blockId: BlockId): Promise<ConsensusMeta>;
+
+  /**
+   * Update internal state of validators in the registry to the Consensus Layer (CL) state
+   * according to `blockId`. Validators read in stream from Consensus Layer.
+   *
+   * @param {BlockId} blockId - Values: 'head', 'genesis', 'finalized', <slot>, <hex encoded blockRoot with 0x prefix>
+   *
+   * If the registry internal state is newer or the same to the CL state - does nothing.
+   */
+  // updateStream(blockId: BlockId): Promise<ConsensusMeta>;
+
+  /**
    * Get Metadata from registry internal state
    */
   getMeta(): Promise<ConsensusMeta | null>;
