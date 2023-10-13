@@ -2,36 +2,11 @@ import { streamArray } from 'stream-json/streamers/StreamArray';
 import { chain } from 'stream-chain';
 import { parser } from 'stream-json';
 import { pick } from 'stream-json/filters/Pick';
-// import { Readable } from 'stream';
+
 import { Validator } from '../types';
 import { parseAsTypeOrFail } from './parse';
 import { ConsensusDataInvalidError } from '../errors';
 import { batch } from 'stream-json/utils/Batch';
-
-// export async function validateStreamStructure(
-//   validatorsReadStream: Readable,
-// ): Promise<boolean> {
-//   let hasValidStructure = false;
-
-//   const checkPipeline = chain([
-//     validatorsReadStream,
-//     parser(),
-//     pick({ filter: 'data' }),
-//     streamArray(),
-//     (data) => {
-//       if (Array.isArray(data.value)) {
-//         hasValidStructure = true;
-//       }
-//     },
-//   ]);
-
-//   await new Promise((resolve, reject) => {
-//     checkPipeline.on('error', reject);
-//     checkPipeline.on('end', resolve);
-//   }).finally(() => checkPipeline.destroy());
-
-//   return hasValidStructure;
-// }
 
 function unblock() {
   // Unblock event loop in long loops
@@ -41,20 +16,21 @@ function unblock() {
   });
 }
 
+const BATCH_SIZE = 100;
 export type ValidatorCallback = (validators: Validator[]) => Promise<void>;
 
 export async function processValidatorsStream(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   validatorsReadStream: any,
   callback: ValidatorCallback,
+  batchSize = BATCH_SIZE,
 ) {
-  const chunk: Validator[] = [];
   const pipeline = chain([
     validatorsReadStream,
     parser(),
     pick({ filter: 'data' }),
     streamArray(),
-    batch({ batchSize: 100 }),
+    batch({ batchSize }),
     async (batch) => {
       await unblock();
       const chunk: Validator[] = [];
@@ -89,9 +65,6 @@ export async function processValidatorsStream(
     });
 
     pipeline.on('end', async () => {
-      if (chunk.length > 0) {
-        callback([...chunk]);
-      }
       resolve(true);
     });
   }).finally(() => pipeline.destroy());

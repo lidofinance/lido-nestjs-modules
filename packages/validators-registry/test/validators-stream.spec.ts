@@ -1,13 +1,13 @@
 import { processValidatorsStream } from '../src/utils/validators.stream'; // Replace with the actual module path
 import { Readable } from 'stream';
-import { stateValidatorsA, stateValidatorsD } from './fixtures/consensus';
+import { stateValidatorsA } from './fixtures/consensus';
 import { ConsensusDataInvalidError } from '../src';
 
 // Define a mock callback function for testing
-const mockCallback = jest.fn();
 
 describe('processValidatorsStream', () => {
   it('should process validators stream and call the callback with parsed data', async () => {
+    const mockCallback = jest.fn();
     const validatorsReadStream = Readable.from(
       JSON.stringify(stateValidatorsA),
     );
@@ -32,6 +32,7 @@ describe('processValidatorsStream', () => {
   });
 
   it('invalid validator data', async () => {
+    const mockCallback = jest.fn();
     const validatorsReadStream = Readable.from(
       JSON.stringify({
         execution_optimistic: false,
@@ -65,5 +66,39 @@ describe('processValidatorsStream', () => {
       // You can also assert the error message or other properties of the error if needed
       expect(error.message).toEqual('Got invalid validators');
     }
+
+    expect(mockCallback).not.toHaveBeenCalled();
+  });
+
+  it('should process whole list of validators', async () => {
+    const mockCallback = jest.fn();
+    const validatorsReadStream = Readable.from(
+      JSON.stringify(stateValidatorsA),
+    );
+
+    await processValidatorsStream(validatorsReadStream, mockCallback, 1);
+
+    // Assert that the callback was called twice, once for each set of data
+    expect(mockCallback).toHaveBeenCalledTimes(2);
+
+    // Assert the first call with the first set of data
+    expect(mockCallback).toHaveBeenCalledWith([
+      {
+        pubkey:
+          '0xaffc434cf8138634a4cd0ef6cb815febd3db25760b1b6c522f9b4aa78e599b60336d7dd2e953192e45d4ac91f66f0723',
+        index: 1,
+        status: 'active_ongoing',
+      },
+    ]);
+
+    // Assert the second call with the second set of data
+    expect(mockCallback).toHaveBeenCalledWith([
+      {
+        pubkey:
+          '0xad9a0951d00c0988d3b8e719b9e65d6bc3501c9c35392fb6f050fcbbcdd316836a887acee989730bdf093629448bb731',
+        index: 2,
+        status: 'pending_queued',
+      },
+    ]);
   });
 });
