@@ -12,6 +12,9 @@ import { FindOptions, FilterQuery, StorageServiceInterface } from './storage';
 import { parseAsTypeOrFail, calcEpochBySlot } from './utils';
 import { ConsensusDataInvalidError } from './errors';
 import { ConsensusValidatorEntity } from './storage/consensus-validator.entity';
+import { EntityManager } from '@mikro-orm/knex';
+import { processValidatorsStream } from './utils/validators.stream';
+import { IsolationLevel } from '@mikro-orm/core';
 
 @Injectable()
 export class ValidatorsRegistry implements ValidatorsRegistryInterface {
@@ -70,6 +73,55 @@ export class ValidatorsRegistry implements ValidatorsRegistryInterface {
     );
 
     return consensusMeta;
+  }
+
+  public async updateStream(blockId: BlockId): Promise<ConsensusMeta> {
+    const previousMeta = await this.storageService.getConsensusMeta();
+    const blockHeader = await this.getSlotHeaderFromConsensus(blockId);
+
+    if (previousMeta && !this.isNewDataInConsensus(previousMeta, blockHeader)) {
+      return previousMeta;
+    }
+
+    const consensusMeta = await this.getConsensusMetaFromConsensus(
+      blockHeader.root,
+    );
+
+    const em: EntityManager = this.storageService.getEntityManager();
+
+    console.time('execution-time');
+
+    await em.transactional(
+      async () => {
+        const validators = await this.getValidatorsFromConsensusStream(
+          consensusMeta.slotStateRoot,
+        );
+
+        await this.storageService.deleteValidators();
+        await this.storageService.updateMeta(consensusMeta);
+
+        const callback = (validatorsChunk: Validator[]) =>
+          this.storageService.updateValidators(validatorsChunk);
+
+        await processValidatorsStream(validators, callback);
+      },
+      { isolationLevel: IsolationLevel.READ_COMMITTED },
+    );
+
+    console.timeEnd('execution-time');
+
+    return consensusMeta;
+  }
+
+  protected async getValidatorsFromConsensusStream(
+    slotRoot: string,
+  ): Promise<NodeJS.ReadableStream> {
+    const validatorsData: NodeJS.ReadableStream =
+      await this.consensusService.getStateValidatorsStream({
+        stateId: slotRoot,
+      });
+
+    return validatorsData;
   }
 
   protected async getValidatorsFromConsensus(

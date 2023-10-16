@@ -2792,8 +2792,11 @@ __metadata:
     "@nestjs/common": ^8.2.5
     "@nestjs/core": ^8.2.5
     "@nestjs/testing": ^8.2.5
+    "@types/stream-json": ^1.7.4
     reflect-metadata: ^0.1.13
     rxjs: ^7.5.2
+    stream-chain: ^2.2.5
+    stream-json: ^1.8.0
     zod: ^3.20.2
   peerDependencies:
     "@mikro-orm/core": ^5.2.0
@@ -4321,6 +4324,16 @@ __metadata:
     "@types/node": "*"
     "@types/stream-chain": "*"
   checksum: cafa47c27bbd0cf446d1c90442cf53240a8a8a3828e73ba456720d6612b03d32d04067c9c0e54105b94584f37c7ed2f1a941b0600fbc6c095c25c1b401d184bb
+  languageName: node
+  linkType: hard
+
+"@types/stream-json@npm:^1.7.4":
+  version: 1.7.4
+  resolution: "@types/stream-json@npm:1.7.4"
+  dependencies:
+    "@types/node": "*"
+    "@types/stream-chain": "*"
+  checksum: deb351b9d42d0280a57103f2064440247a5e332d337f75f90bbde33fdca1fb83b20e717fbc6bb1825a727b7ecffb7393a34cc63ad300a7834960ea077bdf8ac8
   languageName: node
   linkType: hard
 
@@ -15649,6 +15662,15 @@ __metadata:
   dependencies:
     stream-chain: ^2.2.5
   checksum: d6229cd0342cbfb2f0d4be2b289cd2fe283aaa808329ec5c925b9840fc694fa91400f10bbf3275ac39c039f314fe6ab844d380341e738654ce224482f266ad2b
+  languageName: node
+  linkType: hard
+
+"stream-json@npm:^1.8.0":
+  version: 1.8.0
+  resolution: "stream-json@npm:1.8.0"
+  dependencies:
+    stream-chain: ^2.2.5
+  checksum: c17ac72228815850fc5226d8c0a80afd6c2ffbfa71c572ad99ad2eac145dc836a3fc6f62a298b3df716f1726cc1ed8a448892ed9fb6123f46abf2f89c908749f
   languageName: node
   linkType: hard
 
