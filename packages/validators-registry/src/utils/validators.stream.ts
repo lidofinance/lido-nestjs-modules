@@ -35,6 +35,7 @@ export async function processValidatorsStream(
       await unblock();
       const chunk: Validator[] = [];
       for (const validator of batch) {
+        /* istanbul ignore next */
         const parsedValidator = parseAsTypeOrFail(
           Validator,
           {
@@ -55,9 +56,8 @@ export async function processValidatorsStream(
     },
   ]);
 
-  pipeline.on('data', (data) => {
-    data;
-  });
+  // eslint-disable-next-line @typescript-eslint/no-empty-function
+  pipeline.on('data', /* istanbul ignore next */ () => {});
 
   await new Promise((resolve, reject) => {
     pipeline.on('error', (error) => {

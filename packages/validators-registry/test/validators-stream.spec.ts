@@ -3,9 +3,28 @@ import { Readable } from 'stream';
 import { stateValidatorsA } from './fixtures/consensus';
 import { ConsensusDataInvalidError } from '../src';
 
-// Define a mock callback function for testing
-
 describe('processValidatorsStream', () => {
+  // it('test on pipeline data', async () => {
+  //   const mockDataHandler = jest.fn();
+  //   // Mock the pipeline object
+  //   const pipelineMock = {
+  //     on: jest.fn((event, handler) => {
+  //       if (event === 'data') {
+  //         // Call the mock data handler when 'data' event is triggered
+  //         handler(mockDataHandler);
+  //       }
+  //     }),
+  //     // Mock other methods and properties of the pipeline object as needed
+  //     // For example, you can add a destroy method if necessary.
+  //     destroy: jest.fn(),
+  //   };
+  //   const mockCallback = jest.fn();
+
+  //   await processValidatorsStream(pipelineMock, mockCallback);
+
+  //   expect(mockDataHandler).toHaveBeenCalled();
+  // });
+
   it('should process validators stream and call the callback with parsed data', async () => {
     const mockCallback = jest.fn();
     const validatorsReadStream = Readable.from(
