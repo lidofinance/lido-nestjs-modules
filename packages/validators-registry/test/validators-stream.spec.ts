@@ -79,11 +79,13 @@ describe('processValidatorsStream', () => {
 
     try {
       await processValidatorsStream(validatorsReadStream, mockCallback);
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Assert that the error is of type ConsensusDataInvalidError
       expect(error).toBeInstanceOf(ConsensusDataInvalidError);
       // You can also assert the error message or other properties of the error if needed
-      expect(error.message).toEqual('Got invalid validators');
+      expect((error as ConsensusDataInvalidError).message).toEqual(
+        'Got invalid validators',
+      );
     }
 
     expect(mockCallback).not.toHaveBeenCalled();
