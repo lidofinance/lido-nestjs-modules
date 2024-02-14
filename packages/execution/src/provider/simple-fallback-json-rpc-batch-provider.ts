@@ -25,6 +25,8 @@ import {
 } from '../common/errors';
 import { AllProvidersFailedError } from '../error/all-providers-failed.error';
 import { FeeHistory, getFeeHistory } from '../ethers/fee-history';
+import { TraceConfig, TraceResult } from '../interfaces/debug-traces';
+import { getDebugTraceBlockByHash } from '../ethers/debug-trace-block-by-hash';
 
 /**
  * EIP-1898 support
@@ -163,6 +165,13 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
     rewardPercentiles?: number[],
   ): Promise<FeeHistory> {
     return getFeeHistory.call(this, blockCount, newestBlock, rewardPercentiles);
+  }
+
+  public async getDebugTraceBlockByHash(
+    blockHash: string,
+    traceConfig: Partial<TraceConfig>,
+  ): Promise<TraceResult[]> {
+    return getDebugTraceBlockByHash.call(this, blockHash, traceConfig);
   }
 
   protected get provider(): FallbackProvider {

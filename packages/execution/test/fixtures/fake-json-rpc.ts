@@ -194,6 +194,59 @@ export const fakeJsonRpc =
                 }
               : feeHistory,
         };
+      case 'debug_traceBlockByHash':
+        return {
+          jsonrpc: '2.0',
+          id: request.id,
+          result: [
+            {
+              result: {
+                from: '0x1110f5b97703d14ac3de91bdcd12cd4566ae48d5',
+                gas: '0x51638',
+                gasUsed: '0x1a949',
+                to: '0x000000d40b595b94918a28b27d1e2c66f43a51d3',
+                input:
+                  '0x153224a791e2880efc6f0f47ece0f957f83a936b2199f9209e1c9d',
+                calls: [
+                  {
+                    from: '0x000000d40b595b94918a28b27d1e2c66f43a51d3',
+                    gas: '0x4b49b',
+                    gasUsed: '0x6158',
+                    to: '0xa791e2880efc6f0f47ece0f957f83a936b2199f9',
+                    input: '0x022c0d',
+                    calls: [
+                      {
+                        from: '0xa791e2880efc6f0f47ece0f957f83a936b2199f9',
+                        gas: '0x48f0a',
+                        gasUsed: '0x229e',
+                        to: '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2',
+                        input: '0xa9059cbb',
+                        output: '0x0000',
+                        value: '0x0',
+                        type: 'CALL',
+                      },
+                    ],
+                    value: '0x0',
+                    type: 'CALL',
+                  },
+                ],
+                value: '0xaf69258a00',
+                type: 'CALL',
+              },
+            },
+            {
+              result: {
+                from: '0xe667c544b38ca7305d95c985ff7a4571aca88d0c',
+                gas: '0x0',
+                gasUsed: '0x5208',
+                to: '0xe10d810190ae3654cefb0061fed0f91e36fdde86',
+                input: '0x',
+                value: '0x2f2e16f29e0000',
+                type: 'CALL',
+              },
+            },
+          ],
+        };
       default:
         return { jsonrpc: '2.0', id: request.id, result: {} };
     }
