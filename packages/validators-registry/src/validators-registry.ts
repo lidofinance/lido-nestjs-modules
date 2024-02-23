@@ -89,8 +89,6 @@ export class ValidatorsRegistry implements ValidatorsRegistryInterface {
 
     const em: EntityManager = this.storageService.getEntityManager();
 
-    console.time('execution-time');
-
     await em.transactional(
       async () => {
         const validators = await this.getValidatorsFromConsensusStream(
@@ -107,8 +105,6 @@ export class ValidatorsRegistry implements ValidatorsRegistryInterface {
       },
       { isolationLevel: IsolationLevel.READ_COMMITTED },
     );
-
-    console.timeEnd('execution-time');
 
     return consensusMeta;
   }
