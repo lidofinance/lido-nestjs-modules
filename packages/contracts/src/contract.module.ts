@@ -107,7 +107,8 @@ export class ContractModule {
 
     const chainId = await this.detectChainId(providerOrSigner);
     if (addressMap[chainId]) return addressMap[chainId];
+    const wrongChainIdErrorMessage = 'ChainId is not supported';
 
-    throw new Error('ChainId is not supported');
+    throw new Error(wrongChainIdErrorMessage);
   }
 }
