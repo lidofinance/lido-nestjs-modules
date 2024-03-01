@@ -94,7 +94,7 @@ describe('Chains', () => {
   test('unexpected chain', async () => {
     await expect(() =>
       getContract(LidoContractModule, LIDO_CONTRACT_TOKEN, CHAINS.Kovan),
-    ).rejects.toThrow();
+    ).rejects.toThrowError('ChainId is not supported');
   });
 
   test('allowed list', async () => {
