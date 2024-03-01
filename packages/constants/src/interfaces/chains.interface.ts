@@ -11,5 +11,4 @@ export enum CHAINS {
   Kiln = 1337802, // decommissioned
   Zhejiang = 1337803, // decommissioned
   Holesky = 17000,
-  Sepolia = 11155111,
 }
