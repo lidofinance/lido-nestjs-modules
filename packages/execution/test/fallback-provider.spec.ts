@@ -569,6 +569,25 @@ describe('Execution module. ', () => {
       );
     });
 
+    test('should return traceCalls', async () => {
+      await createMocks(2);
+
+      const traceCalls = await mockedProvider.getDebugTraceBlockByHash(
+        '0xbe61c939c5c04c94779678275d8ce96ae0e4d996fd322319a0e0c17771d5848f',
+        {
+          tracer: 'callTracer',
+          disableStorage: true,
+          disableStack: true,
+          enableMemory: false,
+          enableReturnData: false,
+        },
+      );
+
+      expect(traceCalls.length).toEqual(2);
+      expect(traceCalls[0]).toHaveProperty('result');
+      expect(traceCalls[1]).toHaveProperty('result');
+    });
+
     test('should return fee history if exists', async () => {
       await createMocks(2);
 

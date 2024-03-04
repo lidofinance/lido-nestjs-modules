@@ -19,6 +19,8 @@ import { TransactionRequest } from '@ethersproject/abstract-provider/src.ts/inde
 import { MiddlewareCallback, MiddlewareService } from '@lido-nestjs/middleware';
 import { FeeHistory, getFeeHistory } from '../ethers/fee-history';
 import { ErrorCode } from '../error/codes/error-codes';
+import { TraceConfig, TraceResult } from '../interfaces/debug-traces';
+import { getDebugTraceBlockByHash } from '../ethers/debug-trace-block-by-hash';
 
 export interface RequestPolicy {
   jsonRpcMaxBatchSize: number;
@@ -269,12 +271,24 @@ export class ExtendedJsonRpcBatchProvider extends JsonRpcProvider {
     return getFeeHistory.call(this, blockCount, newestBlock, rewardPercentiles);
   }
 
+  public async getDebugTraceBlockByHash(
+    blockHash: string,
+    traceConfig: TraceConfig,
+  ): Promise<TraceResult[]> {
+    return getDebugTraceBlockByHash.call(this, blockHash, traceConfig);
+  }
+
   public prepareRequest(method: string, params: any): [string, Array<any>] {
     switch (method) {
       case 'getFeeHistory':
         return [
           'eth_feeHistory',
           [params.blockCount, params.newestBlock, params.rewardPercentiles],
+        ];
+      case 'getDebugTraceBlockByHash':
+        return [
+          'debug_traceBlockByHash',
+          [params.blockHash, params.traceConfig],
         ];
       default:
         return super.prepareRequest(method, params);
