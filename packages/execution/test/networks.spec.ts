@@ -1,6 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Network } from '@ethersproject/networks';
-import { networksEqual, getNetworkChain } from '../src/common/networks';
+import {
+  networksEqual,
+  getNetworkChain,
+  getConnectionFQDN,
+} from '../src/common/networks';
 import { Networkish } from '../src/interfaces/networkish';
 
 describe('Networks. ', () => {
@@ -114,5 +118,67 @@ describe('Networks. ', () => {
 
     expect(getNetworkChain(network)).toBe(1);
     expect(getNetworkChain(1)).toBe(1);
+  });
+
+  test('should correctly get network FQDN from url', () => {
+    const checks = [
+      {
+        value: 'https://test.com/test?param1=foo&param2=bar',
+        expected: 'test.com',
+      },
+      {
+        value: { url: 'https://test.com/test?param1=foo&param2=bar' },
+        expected: 'test.com',
+      },
+      {
+        value: 'http://subdomain.test.com/test?param1=foo&param2=bar',
+        expected: 'subdomain.test.com',
+      },
+      {
+        value:
+          'http://subdomain2.subdomain.test.com/test?param1=foo&param2=bar',
+        expected: 'subdomain2.subdomain.test.com',
+      },
+      {
+        value: 'http://www.test.com/test?param1=foo&param2=bar',
+        expected: 'www.test.com',
+      },
+      {
+        value: 'http://www.test.com:80/test?param1=foo&param2=bar',
+        expected: 'www.test.com',
+      },
+      {
+        value: 'http://192.168.234.2/test?param1=foo&param2=bar',
+        expected: '192.168.234.2',
+      },
+      {
+        value: 'http://192.168.234.2:80/test?param1=foo&param2=bar',
+        expected: '192.168.234.2',
+      },
+      {
+        value: 'http://test?param1=foo&param2=bar',
+        expected: '',
+      },
+      {
+        value: 'http://?param1=foo&param2=bar',
+        expected: '',
+      },
+      {
+        value: '',
+        expected: '',
+      },
+      {
+        value: '192.168.4.3',
+        expected: '192.168.4.3',
+      },
+      {
+        value: '192.168.4.3:256',
+        expected: '192.168.4.3',
+      },
+    ];
+
+    checks.forEach((check) => {
+      expect(getConnectionFQDN(check.value)).toBe(check.expected);
+    });
   });
 });

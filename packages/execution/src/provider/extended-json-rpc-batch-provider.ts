@@ -21,6 +21,25 @@ import { FeeHistory, getFeeHistory } from '../ethers/fee-history';
 import { ErrorCode } from '../error/codes/error-codes';
 import { TraceConfig, TraceResult } from '../interfaces/debug-traces';
 import { getDebugTraceBlockByHash } from '../ethers/debug-trace-block-by-hash';
+import { getConnectionFQDN } from '../common/networks';
+import { EventEmitter } from 'events';
+import {
+  ProviderEvents,
+  ProviderRequestBatchedEvent,
+  ProviderResponseBatchedErrorEvent,
+  ProviderResponseBatchedEvent,
+} from '../events';
+
+// this will help with autocomplete
+export interface ExtendedJsonRpcBatchProviderEventEmitter
+  extends NodeJS.EventEmitter {
+  on(eventName: 'rpc', listener: (event: ProviderEvents) => void): this;
+  once(eventName: 'rpc', listener: (event: ProviderEvents) => void): this;
+  addListener(
+    eventName: 'rpc',
+    listener: (event: ProviderEvents) => void,
+  ): this;
+}
 
 export interface RequestPolicy {
   jsonRpcMaxBatchSize: number;
@@ -104,6 +123,8 @@ export class ExtendedJsonRpcBatchProvider extends JsonRpcProvider {
   protected _concurrencyLimiter: LimitFunction;
   protected _tickCounter = 0;
   protected _fetchMiddlewareService: MiddlewareService<Promise<any>>;
+  protected _domain: string;
+  protected _eventEmitter: ExtendedJsonRpcBatchProviderEventEmitter;
 
   public constructor(
     url: ConnectionInfo | string,
@@ -112,6 +133,8 @@ export class ExtendedJsonRpcBatchProvider extends JsonRpcProvider {
     fetchMiddlewares: MiddlewareCallback<Promise<any>>[] = [],
   ) {
     super(url, network);
+    this._eventEmitter = new EventEmitter();
+    this._domain = getConnectionFQDN(url);
     this._requestPolicy = requestPolicy ?? {
       jsonRpcMaxBatchSize: 200,
       maxConcurrentRequests: 5,
@@ -152,28 +175,33 @@ export class ExtendedJsonRpcBatchProvider extends JsonRpcProvider {
 
       const batchRequest = batch.map((intent) => intent.request);
 
-      this.emit('debug', {
-        action: 'requestBatch',
+      const event: ProviderRequestBatchedEvent = {
+        action: 'provider:request-batched',
         request: deepCopy(batchRequest),
         provider: this,
-      });
+        domain: this._domain,
+      };
+      this._eventEmitter.emit('rpc', event);
 
       this._concurrencyLimiter(() => {
         return this._fetchMiddlewareService.go(
           () => this.fetchJson(this.connection, JSON.stringify(batchRequest)),
           {
             provider: this,
+            domain: this._domain,
           },
         );
       })
         .then(
           (batchResult: JsonRpcResponse[] | JsonRpcResponse) => {
-            this.emit('debug', {
-              action: 'response',
+            const event: ProviderResponseBatchedEvent = {
+              action: 'provider:response-batched',
               request: deepCopy(batchRequest),
               response: deepCopy(batchResult),
               provider: this,
-            });
+              domain: this._domain,
+            };
+            this._eventEmitter.emit('rpc', event);
 
             if (!Array.isArray(batchResult)) {
               const errMessage = 'Unexpected batch result.';
@@ -216,12 +244,14 @@ export class ExtendedJsonRpcBatchProvider extends JsonRpcProvider {
             });
           },
           (error: Error) => {
-            this.emit('debug', {
-              action: 'response',
+            const event: ProviderResponseBatchedErrorEvent = {
+              action: 'provider:response-batched:error',
               error: error,
               request: deepCopy(batchRequest),
               provider: this,
-            });
+              domain: this._domain,
+            };
+            this._eventEmitter.emit('rpc', event);
 
             batch.forEach((inflightRequest) => {
               inflightRequest.reject(error);
@@ -230,12 +260,14 @@ export class ExtendedJsonRpcBatchProvider extends JsonRpcProvider {
         )
         .catch((error: Error) => {
           // catch errors happening in the 'then' callback
-          this.emit('debug', {
-            action: 'response',
+          const event: ProviderResponseBatchedErrorEvent = {
+            action: 'provider:response-batched:error',
             error: error,
             request: deepCopy(batchRequest),
             provider: this,
-          });
+            domain: this._domain,
+          };
+          this._eventEmitter.emit('rpc', event);
 
           batch.forEach((inflightRequest) => {
             inflightRequest.reject(error);
@@ -297,6 +329,14 @@ export class ExtendedJsonRpcBatchProvider extends JsonRpcProvider {
 
   public use(callback: MiddlewareCallback<Promise<any>>) {
     this._fetchMiddlewareService.use(callback);
+  }
+
+  public get domain(): string {
+    return this._domain;
+  }
+
+  public get eventEmitter() {
+    return this._eventEmitter;
   }
 
   public send(method: string, params: Array<unknown>): Promise<unknown> {
