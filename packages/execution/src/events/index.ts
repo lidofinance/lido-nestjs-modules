@@ -12,6 +12,12 @@ export type FallbackProviderRequestFailedAllEvent = {
   error: AllProvidersFailedError;
 };
 
+export type FallbackProviderRequestNonRetryableErrorEvent = {
+  action: 'fallback-provider:request:non-retryable-error';
+  provider: SimpleFallbackJsonRpcBatchProvider;
+  error: Error | unknown;
+};
+
 export type FallbackProviderRequestEvent = {
   action: 'fallback-provider:request';
   provider: SimpleFallbackJsonRpcBatchProvider;
@@ -52,4 +58,5 @@ export type ProviderEvents =
 export type FallbackProviderEvents =
   | ProviderEvents
   | FallbackProviderRequestEvent
+  | FallbackProviderRequestNonRetryableErrorEvent
   | FallbackProviderRequestFailedAllEvent;

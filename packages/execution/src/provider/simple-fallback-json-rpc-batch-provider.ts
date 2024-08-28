@@ -32,6 +32,7 @@ import {
   FallbackProviderEvents,
   FallbackProviderRequestEvent,
   FallbackProviderRequestFailedAllEvent,
+  FallbackProviderRequestNonRetryableErrorEvent,
 } from '../events';
 
 /**
@@ -298,6 +299,12 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
 
         // checking that error should not be retried on another provider
         if (this.isNonRetryableError(e)) {
+          const event: FallbackProviderRequestNonRetryableErrorEvent = {
+            action: 'fallback-provider:request:non-retryable-error',
+            provider: this,
+            error: e,
+          };
+          this._eventEmitter.emit('rpc', event);
           throw e;
         }
 
