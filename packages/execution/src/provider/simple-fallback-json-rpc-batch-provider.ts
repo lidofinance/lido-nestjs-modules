@@ -27,6 +27,13 @@ import { AllProvidersFailedError } from '../error/all-providers-failed.error';
 import { FeeHistory, getFeeHistory } from '../ethers/fee-history';
 import { TraceConfig, TraceResult } from '../interfaces/debug-traces';
 import { getDebugTraceBlockByHash } from '../ethers/debug-trace-block-by-hash';
+import { EventEmitter } from 'events';
+import {
+  FallbackProviderEvents,
+  FallbackProviderRequestEvent,
+  FallbackProviderRequestFailedAllEvent,
+  FallbackProviderRequestNonRetryableErrorEvent,
+} from '../events';
 
 /**
  * EIP-1898 support
@@ -62,6 +69,20 @@ declare module '@ethersproject/providers' {
   }
 }
 
+// this will help with autocomplete
+export interface SimpleFallbackJsonRpcBatchProviderEventEmitter
+  extends NodeJS.EventEmitter {
+  on(eventName: 'rpc', listener: (event: FallbackProviderEvents) => void): this;
+  once(
+    eventName: 'rpc',
+    listener: (event: FallbackProviderEvents) => void,
+  ): this;
+  addListener(
+    eventName: 'rpc',
+    listener: (event: FallbackProviderEvents) => void,
+  ): this;
+}
+
 @Injectable()
 export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
   protected config: SimpleFallbackProviderConfig;
@@ -73,12 +94,14 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
   // it is crucial not to mix these two errors
   protected lastPerformError: Error | null | unknown = null; // last error for 'perform' operations, is batch-oriented
   protected lastError: Error | null | unknown = null; // last error for whole provider
+  protected _eventEmitter: SimpleFallbackJsonRpcBatchProviderEventEmitter;
 
   public constructor(
     config: SimpleFallbackProviderConfig,
     logger: LoggerService,
   ) {
     super(config.network);
+    this._eventEmitter = new EventEmitter();
     this.config = {
       maxRetries: 3,
       minBackoffMs: 500,
@@ -113,6 +136,12 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
         config.requestPolicy,
         config.fetchMiddlewares ?? [],
       );
+
+      // re-emitting events from fallback-providers
+      provider.eventEmitter.on('rpc', (event) => {
+        this._eventEmitter.emit('rpc', event);
+      });
+
       return {
         network: null,
         provider,
@@ -245,16 +274,37 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
     // maximum number of switching is limited to total fallback provider count
     while (attempt < this.fallbackProviders.length) {
       try {
+        let performRetryAttempt = 0;
         attempt++;
         // awaiting is extremely important here
         // without it, the error will not be caught in current try-catch scope
-        return await retry(() =>
-          this.provider.provider.perform(method, params),
-        );
+        return await retry(() => {
+          const provider = this.provider;
+
+          const event: FallbackProviderRequestEvent = {
+            action: 'fallback-provider:request',
+            provider: this,
+            activeFallbackProviderIndex: this.activeFallbackProviderIndex,
+            fallbackProvidersCount: this.fallbackProviders.length,
+            domain: provider.provider.domain,
+            retryAttempt: performRetryAttempt,
+          };
+          this._eventEmitter.emit('rpc', event);
+
+          performRetryAttempt++;
+          return provider.provider.perform(method, params);
+        });
       } catch (e) {
         this.lastError = e;
+
         // checking that error should not be retried on another provider
         if (this.isNonRetryableError(e)) {
+          const event: FallbackProviderRequestNonRetryableErrorEvent = {
+            action: 'fallback-provider:request:non-retryable-error',
+            provider: this,
+            error: e,
+          };
+          this._eventEmitter.emit('rpc', event);
           throw e;
         }
 
@@ -279,6 +329,14 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
       'All attempts to do ETH1 RPC request failed',
     );
     allProvidersFailedError.cause = this.lastError;
+
+    const event: FallbackProviderRequestFailedAllEvent = {
+      action: 'fallback-provider:request:failed:all',
+      provider: this,
+      error: allProvidersFailedError,
+    };
+    this._eventEmitter.emit('rpc', event);
+
     throw allProvidersFailedError;
   }
 
@@ -381,5 +439,9 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
 
   public get activeProviderIndex() {
     return this.activeFallbackProviderIndex;
+  }
+
+  public get eventEmitter() {
+    return this._eventEmitter;
   }
 }

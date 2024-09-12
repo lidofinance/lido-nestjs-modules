@@ -63,7 +63,7 @@ describe('Registry', () => {
   });
 
   test('Update', async () => {
-    await registryService.update(6912872);
+    await registryService.update(120092);
 
     await compareTestMetaData(registryService, { meta: meta });
 
@@ -72,6 +72,6 @@ describe('Registry', () => {
     });
 
     const keys = await registryService.getOperatorsKeysFromStorage();
-    expect(keys).toHaveLength(250);
+    expect(keys).toHaveLength(351);
   }, 200_000);
 });

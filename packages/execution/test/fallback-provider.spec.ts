@@ -25,7 +25,7 @@ import { MiddlewareCallback } from '@lido-nestjs/middleware';
 import { Network } from '@ethersproject/networks';
 import { nonRetryableErrors } from '../src/common/errors';
 import { ErrorCode, Logger } from '@ethersproject/logger';
-import { AllProvidersFailedError } from '../src';
+import { AllProvidersFailedError, FallbackProviderEvents } from '../src';
 
 export type MockedExtendedJsonRpcBatchProvider =
   ExtendedJsonRpcBatchProvider & {
@@ -796,6 +796,22 @@ describe('Execution module. ', () => {
 
       // second 'getBlock' fetch call to second provider that does not fail
       expect(mockedFallbackProviderFetch[1]).toBeCalledTimes(2);
+    });
+
+    test('should emit `fallback-provider:request` events', async () => {
+      await createMocks(2);
+
+      let retryAttempt = NaN;
+      mockedProvider.eventEmitter.on('rpc', (event: FallbackProviderEvents) => {
+        if (event.action === 'fallback-provider:request') {
+          retryAttempt = event.retryAttempt;
+        }
+      });
+
+      const block = await mockedProvider.getBlock(42);
+
+      expect(retryAttempt).toBe(0);
+      expect(block.hash).toBe(fixtures.eth_getBlockByNumber.default.hash);
     });
   });
 });
