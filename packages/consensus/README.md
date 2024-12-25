@@ -151,7 +151,6 @@ export class MyService {
 - [getBlockHeaders](https://ethereum.github.io/beacon-APIs/#/Beacon/getBlockHeaders)
 - [getBlockHeader](https://ethereum.github.io/beacon-APIs/#/Beacon/getBlockHeader)
 - [publishBlock](https://ethereum.github.io/beacon-APIs/#/Beacon/publishBlock)
-- [getBlock](https://ethereum.github.io/beacon-APIs/#/Beacon/getBlock)
 - [getBlockV2](https://ethereum.github.io/beacon-APIs/#/Beacon/getBlockV2)
 - [getBlockRoot](https://ethereum.github.io/beacon-APIs/#/Beacon/getBlockRoot)
 - [getBlockAttestations](https://ethereum.github.io/beacon-APIs/#/Beacon/getBlockAttestations)
@@ -173,9 +172,8 @@ export class MyService {
 
 ### Debug
 
-- [getState](https://ethereum.github.io/beacon-APIs/#/Debug/getState)
 - [getStateV2](https://ethereum.github.io/beacon-APIs/#/Debug/getStateV2)
-- [getDebugChainHeads](https://ethereum.github.io/beacon-APIs/#/Debug/getDebugChainHeads)
+- [getDebugChainHeadsV2](https://ethereum.github.io/beacon-APIs/#/Debug/getDebugChainHeadsV2)
 
 ### Events
 
@@ -196,8 +194,8 @@ export class MyService {
 - [getAttesterDuties](https://ethereum.github.io/beacon-APIs/#/Validator/getAttesterDuties)
 - [getProposerDuties](https://ethereum.github.io/beacon-APIs/#/Validator/getProposerDuties)
 - [getSyncCommitteeDuties](https://ethereum.github.io/beacon-APIs/#/Validator/getSyncCommitteeDuties)
-- [produceBlock](https://ethereum.github.io/beacon-APIs/#/Validator/produceBlock)
 - [produceBlockV2](https://ethereum.github.io/beacon-APIs/#/Validator/produceBlockV2)
+- [produceBlockV3](https://ethereum.github.io/beacon-APIs/#/Validator/produceBlockV3)
 - [produceAttestationData](https://ethereum.github.io/beacon-APIs/#/Validator/produceAttestationData)
 - [getAggregatedAttestation](https://ethereum.github.io/beacon-APIs/#/Validator/getAggregatedAttestation)
 - [publishAggregateAndProofs](https://ethereum.github.io/beacon-APIs/#/Validator/publishAggregateAndProofs)

@@ -22,7 +22,7 @@ describe('Fetch config', () => {
     const consensusService = moduleRef.get(ConsensusService);
     const fetchService = moduleRef.get(FetchService);
 
-    expect(consensusService.getBlock).toBeDefined();
+    expect(consensusService.getBlockV2).toBeDefined();
     expect(consensusService.fetch).toBeDefined();
 
     expect(fetchService.options).toBeDefined();

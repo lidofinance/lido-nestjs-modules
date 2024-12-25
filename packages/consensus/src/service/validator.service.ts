@@ -27,18 +27,6 @@ export class ConsensusValidatorService extends ConsensusBaseService {
   }
 
   /** Requests a beacon node to produce a valid block, which can then be signed by a validator. */
-  public async produceBlock(
-    args: ConsensusMethodArgs<'produceBlock'>,
-  ): ConsensusMethodResult<'produceBlock'> {
-    const { slot, randaoReveal, graffiti, options } = args;
-    const search = this.getSearchString({ randaoReveal, graffiti });
-    return await this.fetch(
-      `/eth/v1/validator/blocks/${slot}${search}`,
-      options,
-    );
-  }
-
-  /** Requests a beacon node to produce a valid block, which can then be signed by a validator. */
   public async produceBlockV2(
     args: ConsensusMethodArgs<'produceBlockV2'>,
   ): ConsensusMethodResult<'produceBlockV2'> {
@@ -46,6 +34,18 @@ export class ConsensusValidatorService extends ConsensusBaseService {
     const search = this.getSearchString({ randaoReveal, graffiti });
     return await this.fetch(
       `/eth/v2/validator/blocks/${slot}${search}`,
+      options,
+    );
+  }
+
+  /** Requests a beacon node to produce a valid block, which can then be signed by a validator. */
+  public async produceBlockV3(
+    args: ConsensusMethodArgs<'produceBlockV3'>,
+  ): ConsensusMethodResult<'produceBlockV3'> {
+    const { slot, randaoReveal, graffiti, options } = args;
+    const search = this.getSearchString({ randaoReveal, graffiti });
+    return await this.fetch(
+      `/eth/v3/validator/blocks/${slot}${search}`,
       options,
     );
   }

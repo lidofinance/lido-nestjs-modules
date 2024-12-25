@@ -23,16 +23,6 @@ describe('Debug endpoints', () => {
       .mockImplementation(async () => null);
   });
 
-  test('getState', async () => {
-    await consensusService.getState({ stateId: 'head' });
-
-    expect(mockFetch).toBeCalledTimes(1);
-    expect(mockFetch).toBeCalledWith(
-      '/eth/v1/debug/beacon/states/head',
-      undefined,
-    );
-  });
-
   test('getStateV2', async () => {
     await consensusService.getStateV2({ stateId: 'head' });
 
@@ -41,13 +31,6 @@ describe('Debug endpoints', () => {
       '/eth/v2/debug/beacon/states/head',
       undefined,
     );
-  });
-
-  test('getDebugChainHeads', async () => {
-    await consensusService.getDebugChainHeads();
-
-    expect(mockFetch).toBeCalledTimes(1);
-    expect(mockFetch).toBeCalledWith('/eth/v1/debug/beacon/heads', undefined);
   });
 
   test('getDebugChainHeadsV2', async () => {
