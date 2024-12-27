@@ -28,8 +28,8 @@
     "access": "public"
   },
   "dependencies": {
-    "@chainsafe/blst": "0.2.4",
-    "@chainsafe/ssz": "0.9.2",
+    "@chainsafe/blst": "^2.2.0",
+    "@chainsafe/ssz": "^0.18.0",
     "@lido-nestjs/constants": "workspace:*",
     "@lido-nestjs/contracts": "workspace:*",
     "@lido-nestjs/di": "workspace:*",

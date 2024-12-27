@@ -3,7 +3,7 @@ import { bufferFromHexString } from './buffer-hex';
 import { computeDomain } from './domain';
 import { computeSigningRoot } from './compute-signing-root';
 import { DepositMessage } from '../ssz';
-import { CoordType, PublicKey, Signature, verify } from '@chainsafe/blst';
+import { PublicKey, Signature, verify } from '@chainsafe/blst';
 import { Pubkey, WithdrawalCredentialsBuffer } from '../interfaces';
 import { getDepositMessage } from './deposit';
 
@@ -33,8 +33,8 @@ export const validateOneKey = (
   try {
     return verify(
       signingRoot,
-      PublicKey.fromBytes(pubkeyBuffer, CoordType.affine),
-      Signature.fromBytes(signatureBuffer, CoordType.affine),
+      PublicKey.fromBytes(pubkeyBuffer, true),
+      Signature.fromBytes(signatureBuffer, true),
     );
   } catch (e) {
     return false;
