@@ -34,7 +34,7 @@
     "@lido-nestjs/contracts": "workspace:*",
     "@lido-nestjs/di": "workspace:*",
     "@lido-nestjs/utils": "workspace:*",
-    "piscina": "3.2.0"
+    "piscina": "4.6.1"
   },
   "peerDependencies": {
     "@nestjs/common": "^8.2.5",

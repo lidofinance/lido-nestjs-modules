@@ -9,9 +9,7 @@ import { ImplementsAtRuntime } from '@lido-nestjs/di';
 @Injectable()
 @ImplementsAtRuntime(KeyValidatorInterface)
 export class KeyValidator implements KeyValidatorInterface {
-  public constructor(
-    private readonly executor: KeyValidatorExecutorInterface,
-  ) {}
+  public constructor(public readonly executor: KeyValidatorExecutorInterface) {}
 
   public async validateKey<T>(key: Key & T): Promise<boolean> {
     return this.executor.validateKey(key);
