@@ -1,5 +1,6 @@
 import { Key } from './common';
 import { createInterface } from '@lido-nestjs/di';
+import { KeyValidatorExecutorInterface } from './key-validator.executor.interface';
 
 export const KeyValidatorInterface = createInterface<KeyValidatorInterface>(
   'KeyValidatorInterface',
@@ -24,4 +25,11 @@ export interface KeyValidatorInterface {
    * the same data will be returned with the result
    */
   validateKeys<T>(keys: (Key & T)[]): Promise<[Key & T, boolean][]>;
+
+  /**
+   * Executor of the validation process.
+   *
+   * Can be single or multithreaded
+   */
+  readonly executor: KeyValidatorExecutorInterface;
 }
