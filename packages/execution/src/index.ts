@@ -8,5 +8,6 @@ export * from './interfaces/simple-fallback-provider-config';
 export * from './interfaces/module.options';
 export * from './interfaces/non-empty-array';
 export * from './ethers/fee-history';
+export * from './ethers/block-tag';
 export * from './error';
 export * from './events';
