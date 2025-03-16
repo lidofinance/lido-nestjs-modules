@@ -194,7 +194,7 @@ export class MyService {
 - [getAttesterDuties](https://ethereum.github.io/beacon-APIs/#/Validator/getAttesterDuties)
 - [getProposerDuties](https://ethereum.github.io/beacon-APIs/#/Validator/getProposerDuties)
 - [getSyncCommitteeDuties](https://ethereum.github.io/beacon-APIs/#/Validator/getSyncCommitteeDuties)
-- [produceBlockV2](https://ethereum.github.io/beacon-APIs/#/Validator/produceBlockV2)
+- [getAggregatedAttestationV2](https://ethereum.github.io/beacon-APIs/#/Validator/getAggregatedAttestationV2)
 - [produceBlockV3](https://ethereum.github.io/beacon-APIs/#/Validator/produceBlockV3)
 - [produceAttestationData](https://ethereum.github.io/beacon-APIs/#/Validator/produceAttestationData)
 - [getAggregatedAttestation](https://ethereum.github.io/beacon-APIs/#/Validator/getAggregatedAttestation)
