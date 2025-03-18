@@ -6,5 +6,5 @@ export interface ConsensusSubscribeCallback {
 
 export type ConsensusSubscribeError = unknown | null;
 export type ConsensusSubscribeBlock =
-  | Awaited<ConsensusMethodResult<'getBlock'>>['data']
+  | Awaited<ConsensusMethodResult<'getBlockV2'>>['data']
   | null;

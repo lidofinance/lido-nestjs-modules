@@ -109,7 +109,7 @@ describe('Subscription', () => {
   describe('Subscription', () => {
     const initSubscription = async (
       calls: number,
-      args?: ConsensusMethodArgs<'getBlock'>,
+      args?: ConsensusMethodArgs<'getBlockV2'>,
     ) => {
       await initModules([
         ConsensusModule.forFeature({
@@ -141,7 +141,7 @@ describe('Subscription', () => {
       const mockFetch = await initSubscription(1, { blockId: 'finalized' });
 
       expect(mockFetch).toBeCalledWith(
-        '/eth/v1/beacon/blocks/finalized',
+        '/eth/v2/beacon/blocks/finalized',
         expect.any(Object),
       );
     });
@@ -150,7 +150,7 @@ describe('Subscription', () => {
       const mockFetch = await initSubscription(1, { blockId: 'head' });
 
       expect(mockFetch).toBeCalledWith(
-        '/eth/v1/beacon/blocks/head',
+        '/eth/v2/beacon/blocks/head',
         expect.any(Object),
       );
     });
