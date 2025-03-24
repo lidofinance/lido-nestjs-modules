@@ -147,14 +147,6 @@ export class ConsensusBeaconService extends ConsensusBaseService {
     throw new Error('Method is not implemented');
   }
 
-  /** Returns the complete `SignedBeaconBlock` for a given block id. */
-  public async getBlock(
-    args: ConsensusMethodArgs<'getBlock'>,
-  ): ConsensusMethodResult<'getBlock'> {
-    const { blockId, options } = args;
-    return await this.fetch(`/eth/v1/beacon/blocks/${blockId}`, options);
-  }
-
   /** Retrieves block details for given block id. */
   public async getBlockV2(
     args: ConsensusMethodArgs<'getBlockV2'>,

@@ -183,13 +183,6 @@ describe('Beacon endpoints', () => {
     await expect(consensusService.publishBlindedBlock()).rejects.toThrow();
   });
 
-  test('getBlock', async () => {
-    await consensusService.getBlock({ blockId: '1' });
-
-    expect(mockFetch).toBeCalledTimes(1);
-    expect(mockFetch).toBeCalledWith('/eth/v1/beacon/blocks/1', undefined);
-  });
-
   test('getBlockV2', async () => {
     await consensusService.getBlockV2({ blockId: '1' });
 

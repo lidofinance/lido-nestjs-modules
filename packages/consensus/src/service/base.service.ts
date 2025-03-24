@@ -84,7 +84,7 @@ export class ConsensusBaseService {
   public subscribe(
     this: ConsensusService,
     callback: ConsensusSubscribeCallback,
-    args?: ConsensusMethodArgs<'getBlock'>,
+    args?: ConsensusMethodArgs<'getBlockV2'>,
   ): () => void {
     let timer: NodeJS.Timeout | null = null;
     let controller: AbortController | null = null;
@@ -102,7 +102,7 @@ export class ConsensusBaseService {
         controller = new AbortController();
         const { signal } = controller;
 
-        const { data } = await this.getBlock({
+        const { data } = await this.getBlockV2({
           blockId: 'head',
           ...args,
           options: { ...args?.options, signal },
