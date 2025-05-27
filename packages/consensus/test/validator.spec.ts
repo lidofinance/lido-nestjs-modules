@@ -41,22 +41,14 @@ describe('Validator endpoints', () => {
     await expect(consensusService.getSyncCommitteeDuties()).rejects.toThrow();
   });
 
-  test('produceBlock', async () => {
-    await consensusService.produceBlock({
-      slot: '1',
-      randaoReveal: '2',
-      graffiti: '3',
-    });
-
-    expect(mockFetch).toBeCalledTimes(1);
-    expect(mockFetch).toBeCalledWith(
-      '/eth/v1/validator/blocks/1?randao_reveal=2&graffiti=3',
-      undefined,
-    );
+  test('getAggregatedAttestationV2', async () => {
+    await expect(
+      consensusService.getAggregatedAttestationV2(),
+    ).rejects.toThrow();
   });
 
-  test('produceBlockV2', async () => {
-    await consensusService.produceBlockV2({
+  test('produceBlockV3', async () => {
+    await consensusService.produceBlockV3({
       slot: '1',
       randaoReveal: '2',
       graffiti: '3',
@@ -64,21 +56,7 @@ describe('Validator endpoints', () => {
 
     expect(mockFetch).toBeCalledTimes(1);
     expect(mockFetch).toBeCalledWith(
-      '/eth/v2/validator/blocks/1?randao_reveal=2&graffiti=3',
-      undefined,
-    );
-  });
-
-  test('produceBlindedBlock', async () => {
-    await consensusService.produceBlindedBlock({
-      slot: '1',
-      randaoReveal: '2',
-      graffiti: '3',
-    });
-
-    expect(mockFetch).toBeCalledTimes(1);
-    expect(mockFetch).toBeCalledWith(
-      '/eth/v1/validator/blinded_blocks/1?randao_reveal=2&graffiti=3',
+      '/eth/v3/validator/blocks/1?randao_reveal=2&graffiti=3',
       undefined,
     );
   });

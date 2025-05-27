@@ -11,7 +11,7 @@ describe('Sync module initializing', () => {
 
     const consensusService = moduleRef.get(ConsensusService);
 
-    expect(consensusService.getBlock).toBeDefined();
+    expect(consensusService.getBlockV2).toBeDefined();
     expect(consensusService.fetch).toBeDefined();
 
     return moduleRef;
