@@ -8,6 +8,7 @@ export const GENESIS_FORK_VERSION: { [index: number]: Buffer | undefined } = {
   [CHAINS.Mainnet]: Buffer.from('00000000', 'hex'),
   [CHAINS.Goerli]: Buffer.from('00001020', 'hex'),
   [CHAINS.Holesky]: Buffer.from('01017000', 'hex'),
+  [CHAINS.Hoodi]: Buffer.from('10000910', 'hex'),
 };
 
 export const WITHDRAWAL_CREDENTIALS: { [index: number]: string[] | undefined } =
@@ -19,4 +20,5 @@ export const WITHDRAWAL_CREDENTIALS: { [index: number]: string[] | undefined } =
       '0x00040517ce98f81070cea20e35610a3ae23a45f0883b0b035afc5717cc2e833e',
     ],
     [CHAINS.Holesky]: [],
+    [CHAINS.Hoodi]: [],
   };

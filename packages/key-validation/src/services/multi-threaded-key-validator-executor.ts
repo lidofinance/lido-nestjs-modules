@@ -8,6 +8,12 @@ import assert from 'assert';
 export class MultiThreadedKeyValidatorExecutor
   implements KeyValidatorExecutorInterface
 {
+  threadPool: Piscina<unknown, [index: number, valid: boolean][]> | null = null;
+
+  public constructor() {
+    this.enableGracefulShutdown();
+  }
+
   public async validateKey<T = never>(key: Key & T): Promise<boolean> {
     const serialized = serialize(key);
 
@@ -19,9 +25,12 @@ export class MultiThreadedKeyValidatorExecutor
   public async validateKeys<T = never>(
     keys: (Key & T)[],
   ): Promise<[Key & T, boolean][]> {
-    const threadPool = new Piscina({
-      filename: worker.filename,
-    });
+    const threadPool =
+      this.threadPool ??
+      (this.threadPool = new Piscina({
+        filename: worker.filename,
+        minThreads: 2,
+      }));
 
     type Runner = (
       task: Parameters<typeof worker>[0],
@@ -56,8 +65,25 @@ export class MultiThreadedKeyValidatorExecutor
       }),
     );
 
-    await threadPool.destroy();
-
     return results.flat();
+  }
+
+  protected enableGracefulShutdown() {
+    // handling process termination
+    /* istanbul ignore next */
+    process.on('SIGTERM', async () => {
+      await this.destroy();
+    });
+
+    // handling Ctrl+C
+    /* istanbul ignore next */
+    process.on('SIGINT', async () => {
+      await this.destroy();
+    });
+  }
+
+  public async destroy() {
+    await this.threadPool?.destroy();
+    this.threadPool = null;
   }
 }

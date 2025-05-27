@@ -11,6 +11,7 @@ import {
   KeyValidator,
   KeyValidatorInterface,
   KeyValidatorModule,
+  MultiThreadedKeyValidatorExecutor,
 } from '../src';
 import { Test } from '@nestjs/testing';
 import { ModuleMetadata } from '@nestjs/common';
@@ -157,6 +158,34 @@ describe('KeyValidator', () => {
     expect(time).toBeLessThan(0.01);
   });
 
+  test('[multi-thread] should correctly handle destroy after validation', async () => {
+    const keyValidator = await getKeyValidator(true);
+
+    expect(keyValidator.executor).toBeInstanceOf(
+      MultiThreadedKeyValidatorExecutor,
+    );
+    if (keyValidator.executor instanceof MultiThreadedKeyValidatorExecutor) {
+      expect(keyValidator.executor.threadPool).toBeNull();
+      const res = await keyValidator.validateKeys([validKey]);
+      expect(res.length).toBe(1);
+      expect(keyValidator.executor.threadPool).not.toBeNull();
+      await keyValidator.executor.destroy();
+      expect(keyValidator.executor.threadPool).toBeNull();
+    }
+  });
+
+  test('[multi-thread] should correctly handle destroy before validation', async () => {
+    const keyValidator = await getKeyValidator(true);
+
+    expect(keyValidator.executor).toBeInstanceOf(
+      MultiThreadedKeyValidatorExecutor,
+    );
+    if (keyValidator.executor instanceof MultiThreadedKeyValidatorExecutor) {
+      await keyValidator.executor.destroy();
+      expect(keyValidator.executor.threadPool).toBeNull();
+    }
+  });
+
   test('[single-thread] should successfully validate a valid key with custom properties', async () => {
     const keyValidator = await getKeyValidator(false);
 
@@ -235,5 +264,9 @@ describe('KeyValidator', () => {
 
     expect(res.length).toBe(1000);
     expect(time).toBeLessThan(15); // 30 seconds
+
+    if (keyValidator.executor instanceof MultiThreadedKeyValidatorExecutor) {
+      await keyValidator.executor.destroy();
+    }
   });
 });
