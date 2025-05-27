@@ -5,3 +5,4 @@ export * from './partition';
 export * from './memoize-in-flight-promise';
 export * from './sleep';
 export * from './chunk';
+export * from './transform';
