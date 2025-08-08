@@ -44,7 +44,7 @@
     "tslib": "^2.3.1"
   },
   "devDependencies": {
-    "@ethersproject/providers": "^5.5.3",
+    "@ethersproject/providers": "5.8.0",
     "@nestjs/common": "^8.2.5",
     "@nestjs/core": "^8.2.5",
     "@nestjs/testing": "^8.2.5",

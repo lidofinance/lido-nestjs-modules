@@ -6,7 +6,8 @@ import { Test } from '@nestjs/testing';
 import { Wallet } from 'ethers';
 import { Lido, LidoContractModule, LIDO_CONTRACT_TOKEN } from '../src';
 
-const privateKey = '0x12';
+const privateKey =
+  '0x18ffbd469f26623fddada3fa54aac07b0793053c82765b5c9ac7a1640555f60b';
 
 describe('Providers', () => {
   const provider = getDefaultProvider(process.env.EL_RPC_URL);
