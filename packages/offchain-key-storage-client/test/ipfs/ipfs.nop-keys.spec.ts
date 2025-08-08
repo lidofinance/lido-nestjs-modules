@@ -44,7 +44,7 @@ describe('Ipfs service', () => {
     test('absence of sign', async () => {
       const params: any = [{ key: 'key1', sign: 'sign1' }, { key: 'key1' }];
 
-      expect(ipfsService.addKeySign(params)).rejects.toThrowError(
+      await expect(ipfsService.addKeySign(params)).rejects.toThrowError(
         'Incorrect parameter, values should be KeySignPair[]',
       );
     });
@@ -55,7 +55,7 @@ describe('Ipfs service', () => {
         { key: 'key1', sign: 'sign1' },
       ];
 
-      expect(ipfsService.addKeySign(params)).rejects.toThrowError(
+      await expect(ipfsService.addKeySign(params)).rejects.toThrowError(
         'Incorrect parameter, values should be KeySignPair[]',
       );
     });
@@ -63,7 +63,7 @@ describe('Ipfs service', () => {
     test('parameter is not list', async () => {
       const params: any = { key: 'key1', sign: 'sign1' };
 
-      expect(ipfsService.addKeySign(params)).rejects.toThrowError(
+      await expect(ipfsService.addKeySign(params)).rejects.toThrowError(
         'Incorrect parameter, values should be KeySignPair[]',
       );
     });
@@ -82,7 +82,7 @@ describe('Ipfs service', () => {
         { key: 'key1', sign: 'sign1' },
       ];
 
-      expect(ipfsService.addKeySign(param)).rejects.toThrowError(error);
+      await expect(ipfsService.addKeySign(param)).rejects.toThrowError(error);
 
       expect(mockAdd).toBeCalledTimes(1);
       expect(mockAdd).toBeCalledWith(JSON.stringify(param));
@@ -120,11 +120,13 @@ describe('Ipfs service', () => {
       }));
 
       // Json.parse throw error
-      expect(
+      await expect(
         ipfsService.getKeySign(
           'QmSJiSS956mnxk2UhWo5T7CqCebeDAS4BrnjuBM6VAeheT',
         ),
-      ).rejects.toThrowError('Unexpected token k in JSON at position 0');
+      ).rejects.toThrowError(
+        'Unexpected token \'k\', "key:value" is not valid JSON',
+      );
 
       expect(mockGet).toBeCalledTimes(1);
       expect(mockGet).toBeCalledWith(
@@ -142,7 +144,7 @@ describe('Ipfs service', () => {
         cid: 'QmSJiSS956mnxk2UhWo5T7CqCebeDAS4BrnjuBM6VAeheT',
       }));
 
-      expect(
+      await expect(
         ipfsService.getKeySign(
           'QmSJiSS956mnxk2UhWo5T7CqCebeDAS4BrnjuBM6VAeheT',
         ),
@@ -189,7 +191,7 @@ describe('Ipfs service', () => {
         throw new Error(error);
       });
 
-      expect(
+      await expect(
         ipfsService.getKeySign(
           'QmSJiSS956mnxk2UhWo5T7CqCebeDAS4BrnjuBM6VAeheT',
         ),
