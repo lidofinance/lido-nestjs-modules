@@ -29,7 +29,7 @@
   },
   "dependencies": {
     "@lido-nestjs/ipfs-http-client": "workspace:*",
-    "ethers": "^5.5.4"
+    "ethers": "5.8.0"
   },
   "peerDependencies": {
     "@nestjs/common": "^8.2.5",
