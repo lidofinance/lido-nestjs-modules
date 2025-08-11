@@ -18,7 +18,8 @@
     "lido",
     "lido-nestjs",
     "lido-nestjs-modules",
-    "lidofinance"
+    "lidofinance",
+    "ethereum"
   ],
   "files": [
     "dist/*"

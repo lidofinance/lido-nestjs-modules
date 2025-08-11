@@ -21,7 +21,8 @@
     "lidofinance",
     "execution",
     "execution-layer",
-    "provider"
+    "provider",
+    "ethereum"
   ],
   "files": [
     "dist/*"
