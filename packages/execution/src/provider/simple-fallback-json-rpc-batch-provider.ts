@@ -1,4 +1,8 @@
-import { BaseProvider, Formatter } from '@ethersproject/providers';
+import {
+  BaseProvider,
+  Formatter,
+  TransactionRequest,
+} from '@ethersproject/providers';
 import { CallOverrides as CallOverridesSource } from '@ethersproject/contracts';
 import { SimpleFallbackProviderConfig } from '../interfaces/simple-fallback-provider-config';
 import { ExtendedJsonRpcBatchProvider } from './extended-json-rpc-batch-provider';
@@ -9,7 +13,6 @@ import { FallbackProvider } from '../interfaces/fallback-provider';
 import { BlockTag } from '../ethers/block-tag';
 import { BigNumber, BigNumberish } from '@ethersproject/bignumber';
 import { Deferrable } from '@ethersproject/properties';
-import { TransactionRequest } from '@ethersproject/abstract-provider/src.ts/index';
 import { FormatterWithEIP1898 } from '../ethers/formatter-with-eip1898';
 import {
   getNetworkChain,
