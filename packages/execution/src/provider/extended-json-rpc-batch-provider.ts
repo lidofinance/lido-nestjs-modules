@@ -5,7 +5,11 @@ import {
   fetchJson,
   FetchJsonResponse,
 } from '@ethersproject/web';
-import { Formatter, JsonRpcProvider } from '@ethersproject/providers';
+import {
+  Formatter,
+  JsonRpcProvider,
+  TransactionRequest,
+} from '@ethersproject/providers';
 import { Network, Networkish } from '@ethersproject/networks';
 import { defineReadOnly } from '@ethersproject/properties';
 import { Queue } from '../common/queue';
@@ -15,7 +19,6 @@ import pLimit, { LimitFunction } from '../common/promise-limit';
 import { FormatterWithEIP1898 } from '../ethers/formatter-with-eip1898';
 import { BigNumber, BigNumberish } from '@ethersproject/bignumber';
 import { BlockTag } from '../ethers/block-tag';
-import { TransactionRequest } from '@ethersproject/abstract-provider/src.ts/index';
 import { MiddlewareCallback, MiddlewareService } from '@lido-nestjs/middleware';
 import { FeeHistory, getFeeHistory } from '../ethers/fee-history';
 import { ErrorCode } from '../error/codes/error-codes';
@@ -29,7 +32,6 @@ import {
   ProviderResponseBatchedErrorEvent,
   ProviderResponseBatchedEvent,
 } from '../events';
-
 // this will help with autocomplete
 export interface ExtendedJsonRpcBatchProviderEventEmitter
   extends NodeJS.EventEmitter {
