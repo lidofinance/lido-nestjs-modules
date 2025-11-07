@@ -26,4 +26,8 @@ export interface SimpleFallbackProviderConfig {
   fetchMiddlewares?: MiddlewareCallback<Promise<any>>[]; // eslint-disable-line @typescript-eslint/no-explicit-any
 
   maxTimeWithoutNewBlocksMs?: number; // should be greater than polling interval, usually 2x polling interval
+
+  // timeout for a single request to a provider (in milliseconds)
+  // if exceeded, will trigger retry or provider switch
+  requestTimeoutMs?: number;
 }

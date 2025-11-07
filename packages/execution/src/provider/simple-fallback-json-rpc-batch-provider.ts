@@ -27,6 +27,7 @@ import {
   nonRetryableErrors,
 } from '../common/errors';
 import { AllProvidersFailedError } from '../error/all-providers-failed.error';
+import { RequestTimeoutError } from '../error/request-timeout.error';
 import { FeeHistory, getFeeHistory } from '../ethers/fee-history';
 import { TraceConfig, TraceResult } from '../interfaces/debug-traces';
 import { getDebugTraceBlockByHash } from '../ethers/debug-trace-block-by-hash';
@@ -257,6 +258,22 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
     );
   }
 
+  protected withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
+    return Promise.race([
+      promise,
+      new Promise<T>((_, reject) => {
+        setTimeout(() => {
+          reject(
+            new RequestTimeoutError(
+              `Request timeout after ${timeoutMs}ms`,
+              timeoutMs,
+            ),
+          );
+        }, timeoutMs);
+      }),
+    ]);
+  }
+
   public async perform(
     method: string,
     params: { [name: string]: unknown },
@@ -295,7 +312,17 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
           this._eventEmitter.emit('rpc', event);
 
           performRetryAttempt++;
-          return provider.provider.perform(method, params);
+          const performPromise = provider.provider.perform(method, params);
+
+          // Apply timeout if configured
+          if (this.config.requestTimeoutMs) {
+            return this.withTimeout(
+              performPromise,
+              this.config.requestTimeoutMs,
+            );
+          }
+
+          return performPromise;
         });
       } catch (e) {
         this.lastError = e;
