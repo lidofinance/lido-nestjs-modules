@@ -389,3 +389,17 @@ export const makeFetchImplWithSpecificNetwork = (chainId: number) => {
 export const makeFetchImplWithSpecificFeeHistory = (feeHistory: any) => {
   return fakeFetchImpl(undefined, undefined, undefined, undefined, feeHistory);
 };
+
+export const makeFakeFetchImplThatHangs = (hangTimeMs: number) => {
+  return async (
+    connection: string | ConnectionInfo,
+    json?: string,
+  ): Promise<unknown> => {
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        const requests = json ? JSON.parse(json) : {};
+        resolve(requests.map(fakeJsonRpc()));
+      }, hangTimeMs);
+    });
+  };
+};
