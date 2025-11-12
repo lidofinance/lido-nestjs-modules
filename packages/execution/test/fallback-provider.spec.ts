@@ -65,6 +65,7 @@ describe('Execution module. ', () => {
       fetchMiddlewares?: MiddlewareCallback<Promise<any>>[], // eslint-disable-line @typescript-eslint/no-explicit-any
       resetIntervalMs?: number,
       requestTimeoutMs?: number,
+      instanceLabel?: string,
     ) => {
       const module = {
         imports: [
@@ -88,6 +89,7 @@ describe('Execution module. ', () => {
             resetIntervalMs: resetIntervalMs,
             requestTimeoutMs: requestTimeoutMs,
             fetchMiddlewares,
+            instanceLabel,
           }),
         ],
       };
@@ -975,5 +977,84 @@ describe('Execution module. ', () => {
       expect(block.hash).toBe(fixtures.eth_getBlockByNumber.default.hash);
       expect(mockedFallbackProviderFetch[0]).toHaveBeenCalledTimes(2);
     }, 5000);
+
+    test('should log with instanceLabel when provided', async () => {
+      await createMocks(
+        2,
+        1,
+        1,
+        1,
+        false,
+        null,
+        undefined,
+        undefined,
+        undefined,
+        'TEST_INSTANCE', // instanceLabel
+      );
+
+      // Spy on logger methods (not mock implementation, just spy)
+      const logSpy = jest.spyOn(mockedProvider['logger'], 'log');
+      const errorSpy = jest.spyOn(mockedProvider['logger'], 'error');
+
+      // Test formatLog method directly to ensure it adds instanceLabel
+      const formatted = mockedProvider['formatLog']('test message', 0);
+      expect(formatted).toContain('[TEST_INSTANCE]');
+      expect(formatted).toContain('[provider:0]');
+      expect(formatted).toContain('test message');
+
+      // Test with successful request - should log with instance label
+      await mockedProvider.getBlock(42);
+
+      const logCalls = logSpy.mock.calls.map((call) => call[0]);
+      const logsWithLabel = logCalls.filter((msg) =>
+        msg.includes('[TEST_INSTANCE]'),
+      );
+      expect(logsWithLabel.length).toBeGreaterThan(0);
+
+      logSpy.mockClear();
+      errorSpy.mockClear();
+
+      // Test with failed request - should log errors with instance label
+      mockedFallbackProviderFetch[0].mockImplementation(
+        fakeFetchImplThatAlwaysFails,
+      );
+      mockedFallbackProviderFetch[1].mockImplementation(
+        fakeFetchImplThatAlwaysFails,
+      );
+
+      await expect(
+        async () => await mockedProvider.getBlock(1000),
+      ).rejects.toThrow('All attempts to do ETH1 RPC request failed');
+
+      const errorCalls = errorSpy.mock.calls.map((call) => call[0]);
+      const errorsWithLabel = errorCalls.filter(
+        (msg) => typeof msg === 'string' && msg.includes('[TEST_INSTANCE]'),
+      );
+      expect(errorsWithLabel.length).toBeGreaterThan(0);
+
+      logSpy.mockRestore();
+      errorSpy.mockRestore();
+    });
+
+    test('should format logs correctly without instanceLabel', async () => {
+      await createMocks(
+        2,
+        1,
+        1,
+        1,
+        false,
+        null,
+        undefined,
+        undefined,
+        undefined,
+        undefined, // no instanceLabel
+      );
+
+      // Test formatLog without instanceLabel
+      const formatted = mockedProvider['formatLog']('test message', 1);
+      expect(formatted).toContain('[provider:1]');
+      expect(formatted).toContain('test message');
+      expect(formatted).not.toContain('undefined');
+    });
   });
 });
