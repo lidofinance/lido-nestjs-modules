@@ -154,6 +154,29 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
       };
     });
     this.activeFallbackProviderIndex = 0;
+
+    // Log initialization info
+    const configInfo = {
+      providers: conns.length,
+      network: this.config.network,
+      requestPolicy: this.config.requestPolicy,
+      maxRetries: this.config.maxRetries,
+      minBackoffMs: this.config.minBackoffMs,
+      maxBackoffMs: this.config.maxBackoffMs,
+      logRetries: this.config.logRetries,
+      resetIntervalMs: this.config.resetIntervalMs,
+      fetchMiddlewares: this.config.fetchMiddlewares?.length || 0,
+      maxTimeWithoutNewBlocksMs: this.config.maxTimeWithoutNewBlocksMs,
+      requestTimeoutMs: this.config.requestTimeoutMs || 'disabled',
+      instanceLabel: this.config.instanceLabel || 'none',
+    };
+    this.logger.log(
+      this.formatLog(
+        `Initialized SimpleFallbackJsonRpcBatchProvider: ${JSON.stringify(
+          configInfo,
+        )}`,
+      ),
+    );
   }
 
   public static _formatter: Formatter | null = null;
@@ -163,6 +186,24 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
       this._formatter = new FormatterWithEIP1898();
     }
     return this._formatter;
+  }
+
+  protected formatLog(message: string, providerIndex?: number): string {
+    const parts: string[] = [];
+
+    if (this.config.instanceLabel) {
+      parts.push(`[${this.config.instanceLabel}]`);
+    }
+
+    if (providerIndex !== undefined) {
+      parts.push(`[provider:${providerIndex}]`);
+    }
+
+    if (parts.length > 0) {
+      return `${parts.join('')} ${message}`;
+    }
+
+    return message;
   }
 
   on(eventName: EventType, listener: Listener): this {
@@ -242,12 +283,20 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
   protected switchToNextProvider() {
     if (this.fallbackProviders.length === 1) {
       this.logger.warn(
-        'Will not switch to next provider. No valid backup provider provided.',
+        this.formatLog(
+          'Will not switch to next provider. No valid backup provider provided.',
+        ),
       );
       return;
     }
-    this.activeFallbackProviderIndex++;
-    this.logger.log(`Switched to next provider for execution layer`);
+    const oldIndex = this.activeFallbackProviderIndex;
+    this.activeFallbackProviderIndex =
+      (this.activeFallbackProviderIndex + 1) % this.fallbackProviders.length;
+    this.logger.log(
+      this.formatLog(
+        `Switched provider: [${oldIndex}] -> [${this.activeFallbackProviderIndex}] (total: ${this.fallbackProviders.length})`,
+      ),
+    );
   }
 
   protected isNonRetryableError(error: Error | unknown): boolean {
@@ -296,9 +345,18 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
       try {
         let performRetryAttempt = 0;
         attempt++;
+
+        // Log which provider we're attempting to use
+        this.logger.log(
+          this.formatLog(
+            `Attempting request (attempt ${attempt}/${this.fallbackProviders.length})`,
+            this.activeFallbackProviderIndex,
+          ),
+        );
+
         // awaiting is extremely important here
         // without it, the error will not be caught in current try-catch scope
-        return await retry(() => {
+        const result = await retry(() => {
           const provider = this.provider;
 
           const event: FallbackProviderRequestEvent = {
@@ -324,6 +382,16 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
 
           return performPromise;
         });
+
+        // Log successful request
+        this.logger.log(
+          this.formatLog(
+            `Request successful after ${performRetryAttempt} retry attempt(s)`,
+            this.activeFallbackProviderIndex,
+          ),
+        );
+
+        return result;
       } catch (e) {
         this.lastError = e;
 
@@ -335,13 +403,37 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
             error: e,
           };
           this._eventEmitter.emit('rpc', event);
+          // Log context (label + provider index) synchronously before error object
+          // to ensure proper ordering in async logging systems
+          this.logger.error(
+            this.formatLog(
+              `Non-retryable error occurred`,
+              this.activeFallbackProviderIndex,
+            ),
+          );
+          this.logger.error(e);
           throw e;
         }
 
-        this.logger.error(
-          'Error while doing ETH1 RPC request. Will try to switch to another provider',
-        );
-        this.logger.error(e);
+        // Log context (label + provider index) synchronously before error object
+        // to ensure proper ordering in async logging systems
+        if (e instanceof RequestTimeoutError) {
+          this.logger.error(
+            this.formatLog(
+              `Request timeout after ${e.timeoutMs}ms. Will switch to next provider.`,
+              this.activeFallbackProviderIndex,
+            ),
+          );
+          this.logger.error(e);
+        } else {
+          this.logger.error(
+            this.formatLog(
+              `Error occurred. Will switch to next provider.`,
+              this.activeFallbackProviderIndex,
+            ),
+          );
+          this.logger.error(e);
+        }
 
         // This check is needed to avoid multiple `switchToNextProvider` calls when doing one JSON-RPC batch.
         // This can happen when multiple N calls to `perform` are batched in one JSON-RPC request and
@@ -417,7 +509,9 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
             );
           }
           this.logger.warn(
-            `Fallback provider [${index}] network is different to other provider's networks`,
+            this.formatLog(
+              `Fallback provider [${index}] network is different to other provider's networks`,
+            ),
           );
         }
       } else {
@@ -454,7 +548,7 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
       clearTimeout(this.resetTimer);
     }
 
-    this.fallbackProviders.forEach((fallbackProvider, index) => {
+    this.fallbackProviders.forEach((_, index) => {
       if (!this.fallbackProviders[index].network?.chainId) {
         this.fallbackProviders[index].unreachable = false;
       }

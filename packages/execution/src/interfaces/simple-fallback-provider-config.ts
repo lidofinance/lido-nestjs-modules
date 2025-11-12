@@ -30,4 +30,8 @@ export interface SimpleFallbackProviderConfig {
   // timeout for a single request to a provider (in milliseconds)
   // if exceeded, will trigger retry or provider switch
   requestTimeoutMs?: number;
+
+  // optional label to identify this provider instance in logs
+  // useful when multiple instances are running
+  instanceLabel?: string;
 }
