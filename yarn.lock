@@ -2901,7 +2901,7 @@ __metadata:
     rxjs: ^7.5.2
     stream-chain: ^2.2.5
     stream-json: ^1.8.0
-    zod: ^3.20.2
+    zod: ^3.23.0
   peerDependencies:
     "@mikro-orm/core": ^5.7.13
     "@mikro-orm/knex": ^5.7.13
@@ -17707,9 +17707,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"zod@npm:^3.20.2":
-  version: 3.20.2
-  resolution: "zod@npm:3.20.2"
-  checksum: 04172f7e9350372684ccd298d4716908edc9113751295b6c4e1b3ea84e2af8997e504b33ba36f4741417bb2a5dc90bfd40501f6b0e7389df10e42a63d6d8366c
+"zod@npm:^3.23.0":
+  version: 3.25.76
+  resolution: "zod@npm:3.25.76"
+  checksum: c9a403a62b329188a5f6bd24d5d935d2bba345f7ab8151d1baa1505b5da9f227fb139354b043711490c798e91f3df75991395e40142e6510a4b16409f302b849
   languageName: node
   linkType: hard
