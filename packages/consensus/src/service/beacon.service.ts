@@ -55,6 +55,25 @@ export class ConsensusBeaconService extends ConsensusBaseService {
     );
   }
 
+  /**
+   * Returns filterable list of validators with their balance, status and index.
+   * POST variant allows passing large lists of IDs and statuses via request body.
+   */
+  public async postStateValidators(
+    args: ConsensusMethodArgs<'postStateValidators'>,
+  ): ConsensusMethodResult<'postStateValidators'> {
+    const { stateId, ids, statuses, options } = args;
+    return await this.fetch(`/eth/v1/beacon/states/${stateId}/validators`, {
+      ...options,
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...options?.headers,
+      },
+      body: JSON.stringify({ ids, statuses }),
+    });
+  }
+
   /** Returns filterable stream of validators with their balance, status and index. */
   public async getStateValidatorsStream(
     args: ConsensusMethodArgs<'getStateValidators'>,
