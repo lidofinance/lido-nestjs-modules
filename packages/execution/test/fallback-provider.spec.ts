@@ -1056,5 +1056,97 @@ describe('Execution module. ', () => {
       expect(formatted).toContain('test message');
       expect(formatted).not.toContain('undefined');
     });
+
+    describe('switchToNextProvider', () => {
+      test('should switch to next provider and return true', async () => {
+        await createMocks(3);
+
+        expect(mockedProvider.activeProviderIndex).toBe(0);
+
+        const result1 = mockedProvider.switchToNextProvider();
+        expect(result1).toBe(true);
+        expect(mockedProvider.activeProviderIndex).toBe(1);
+
+        const result2 = mockedProvider.switchToNextProvider();
+        expect(result2).toBe(true);
+        expect(mockedProvider.activeProviderIndex).toBe(2);
+      });
+
+      test('should wrap around to first provider after last', async () => {
+        await createMocks(2);
+
+        expect(mockedProvider.activeProviderIndex).toBe(0);
+
+        mockedProvider.switchToNextProvider();
+        expect(mockedProvider.activeProviderIndex).toBe(1);
+
+        mockedProvider.switchToNextProvider();
+        expect(mockedProvider.activeProviderIndex).toBe(0);
+      });
+
+      test('should return false and not switch when only one provider exists', async () => {
+        await createMocks(1);
+
+        expect(mockedProvider.activeProviderIndex).toBe(0);
+
+        const result = mockedProvider.switchToNextProvider();
+        expect(result).toBe(false);
+        expect(mockedProvider.activeProviderIndex).toBe(0);
+      });
+
+      test('should correctly cycle through all providers with multiple switches', async () => {
+        await createMocks(4);
+
+        expect(mockedProvider.activeProviderIndex).toBe(0);
+
+        mockedProvider.switchToNextProvider();
+        expect(mockedProvider.activeProviderIndex).toBe(1);
+
+        mockedProvider.switchToNextProvider();
+        expect(mockedProvider.activeProviderIndex).toBe(2);
+
+        mockedProvider.switchToNextProvider();
+        expect(mockedProvider.activeProviderIndex).toBe(3);
+
+        // Should wrap around to 0
+        mockedProvider.switchToNextProvider();
+        expect(mockedProvider.activeProviderIndex).toBe(0);
+
+        // Continue cycling
+        mockedProvider.switchToNextProvider();
+        expect(mockedProvider.activeProviderIndex).toBe(1);
+      });
+
+      test('should log provider switch with instanceLabel', async () => {
+        await createMocks(
+          2,
+          1,
+          1,
+          1,
+          false,
+          null,
+          undefined,
+          undefined,
+          undefined,
+          'MANUAL_SWITCH_TEST',
+        );
+
+        const logSpy = jest.spyOn(mockedProvider['logger'], 'log');
+
+        mockedProvider.switchToNextProvider();
+
+        const logCalls = logSpy.mock.calls.map((call) => call[0]);
+        const switchLog = logCalls.find(
+          (msg) =>
+            msg.includes('[MANUAL_SWITCH_TEST]') &&
+            msg.includes('Switched provider'),
+        );
+
+        expect(switchLog).toBeDefined();
+        expect(switchLog).toContain('[0] -> [1]');
+
+        logSpy.mockRestore();
+      });
+    });
   });
 });
