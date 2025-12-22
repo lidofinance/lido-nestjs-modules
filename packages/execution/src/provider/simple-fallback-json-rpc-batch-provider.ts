@@ -566,6 +566,19 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
     return this.activeFallbackProviderIndex;
   }
 
+  public get providersCount() {
+    return this.fallbackProviders.length;
+  }
+
+  public getProviderByIndex(
+    index: number,
+  ): ExtendedJsonRpcBatchProvider | null {
+    if (index < 0 || index >= this.fallbackProviders.length) {
+      return null;
+    }
+    return this.fallbackProviders[index].provider;
+  }
+
   public get eventEmitter() {
     return this._eventEmitter;
   }

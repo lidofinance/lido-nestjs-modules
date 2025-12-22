@@ -1057,6 +1057,37 @@ describe('Execution module. ', () => {
       expect(formatted).not.toContain('undefined');
     });
 
+    describe('getProviderByIndex', () => {
+      test('should return provider by valid index', async () => {
+        await createMocks(3);
+
+        const provider0 = mockedProvider.getProviderByIndex(0);
+        const provider1 = mockedProvider.getProviderByIndex(1);
+        const provider2 = mockedProvider.getProviderByIndex(2);
+
+        expect(provider0).not.toBeNull();
+        expect(provider1).not.toBeNull();
+        expect(provider2).not.toBeNull();
+
+        // Each provider should be different instance
+        expect(provider0).not.toBe(provider1);
+        expect(provider1).not.toBe(provider2);
+      });
+
+      test('should return null for invalid index', async () => {
+        await createMocks(2);
+
+        expect(mockedProvider.getProviderByIndex(-1)).toBeNull();
+        expect(mockedProvider.getProviderByIndex(2)).toBeNull();
+        expect(mockedProvider.getProviderByIndex(100)).toBeNull();
+      });
+
+      test('should return correct providersCount', async () => {
+        await createMocks(3);
+        expect(mockedProvider.providersCount).toBe(3);
+      });
+    });
+
     describe('switchToNextProvider', () => {
       test('should switch to next provider and return true', async () => {
         await createMocks(3);
