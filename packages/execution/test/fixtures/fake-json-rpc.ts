@@ -194,6 +194,28 @@ export const fakeJsonRpc =
                 }
               : feeHistory,
         };
+      case 'eth_getTransactionReceipt':
+        // Return a valid receipt with confirmations
+        return {
+          jsonrpc: '2.0',
+          id: request.id,
+          result: {
+            transactionHash: request.params?.[0] ?? txHash,
+            transactionIndex: '0x1',
+            blockNumber: '0x2710',
+            blockHash:
+              '0xdc2d938e4cd0a149681e9e04352953ef5ab399d59bcd5b0357f6c0797470a524',
+            from: '0x4329419C7aF27A622C7004b9d3C8B90d3be8c54f',
+            to: '0xbf71642d7cbae8faf1cfdc6c1c48fcb45b15ed22',
+            cumulativeGasUsed: '0x5208',
+            gasUsed: '0x5208',
+            contractAddress: null,
+            logs: [],
+            logsBloom:
+              '0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000',
+            status: '0x1',
+          },
+        };
       case 'debug_traceBlockByHash':
         return {
           jsonrpc: '2.0',
@@ -401,5 +423,83 @@ export const makeFakeFetchImplThatHangs = (hangTimeMs: number) => {
         resolve(requests.map(fakeJsonRpc()));
       }, hangTimeMs);
     });
+  };
+};
+
+/**
+ * Creates a fake fetch impl that returns null for eth_getTransactionReceipt
+ * for the first N calls, then returns a valid receipt.
+ * This simulates a transaction that is pending for some time before being mined.
+ */
+export const makeFakeFetchImplWithPendingReceipt = (
+  pendingCount: number,
+  chainId?: number,
+) => {
+  let count = 0;
+  const logsBloom =
+    '0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000';
+
+  return async (
+    _connection: string | ConnectionInfo,
+    json?: string,
+  ): Promise<unknown> => {
+    const requests = json ? JSON.parse(json) : {};
+
+    return requests.map((request: JsonRpcRequest) => {
+      if (request.method === 'eth_getTransactionReceipt') {
+        count++;
+        if (count <= pendingCount) {
+          return { jsonrpc: '2.0', id: request.id, result: null };
+        }
+        return {
+          jsonrpc: '2.0',
+          id: request.id,
+          result: {
+            transactionHash: request.params?.[0],
+            transactionIndex: '0x1',
+            blockNumber: '0x2710',
+            blockHash:
+              '0xdc2d938e4cd0a149681e9e04352953ef5ab399d59bcd5b0357f6c0797470a524',
+            from: '0x4329419C7aF27A622C7004b9d3C8B90d3be8c54f',
+            to: '0xbf71642d7cbae8faf1cfdc6c1c48fcb45b15ed22',
+            cumulativeGasUsed: '0x5208',
+            gasUsed: '0x5208',
+            contractAddress: null,
+            logs: [],
+            logsBloom,
+            status: '0x1',
+          },
+        };
+      }
+      return fakeJsonRpc(
+        chainId ? BigNumber.from(chainId).toHexString() : undefined,
+      )(request);
+    });
+  };
+};
+
+/**
+ * Creates a fake fetch impl that fails for eth_getTransactionReceipt calls
+ * This simulates provider failures during transaction wait
+ */
+export const makeFakeFetchImplThatFailsOnReceipt = () => {
+  return async (
+    connection: string | ConnectionInfo,
+    json?: string,
+  ): Promise<unknown> => {
+    const requests = json ? JSON.parse(json) : {};
+
+    const results = requests.map((request: JsonRpcRequest) => {
+      if (request.method === 'eth_getTransactionReceipt') {
+        return null; // Will cause the batch to fail
+      }
+      return fakeJsonRpc()(request);
+    });
+
+    if (results.some((r: JsonRpcResponse | null) => r === null)) {
+      throw new Error('eth_getTransactionReceipt failed');
+    }
+
+    return results;
   };
 };

@@ -7,6 +7,7 @@ export * from './interfaces/fallback-provider';
 export * from './interfaces/simple-fallback-provider-config';
 export * from './interfaces/module.options';
 export * from './interfaces/non-empty-array';
+export * from './interfaces/wait-for-transaction';
 export * from './ethers/fee-history';
 export * from './ethers/block-tag';
 export * from './error';
