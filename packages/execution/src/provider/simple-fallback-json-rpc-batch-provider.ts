@@ -9,6 +9,7 @@ import { ExtendedJsonRpcBatchProvider } from './extended-json-rpc-batch-provider
 import { Network } from '@ethersproject/networks';
 import { Injectable, LoggerService } from '@nestjs/common';
 import { retrier } from '../common/retrier';
+import { sleep } from '../common/sleep';
 import { FallbackProvider } from '../interfaces/fallback-provider';
 import { BlockTag } from '../ethers/block-tag';
 import { BigNumber, BigNumberish } from '@ethersproject/bignumber';
@@ -28,7 +29,12 @@ import {
 } from '../common/errors';
 import { AllProvidersFailedError } from '../error/all-providers-failed.error';
 import { RequestTimeoutError } from '../error/request-timeout.error';
+import { TransactionWaitTimeoutError } from '../error/transaction-wait-timeout.error';
 import { FeeHistory, getFeeHistory } from '../ethers/fee-history';
+import {
+  WaitForTransactionOptions,
+  WaitForTransactionResult,
+} from '../interfaces/wait-for-transaction';
 import { TraceConfig, TraceResult } from '../interfaces/debug-traces';
 import { getDebugTraceBlockByHash } from '../ethers/debug-trace-block-by-hash';
 import { EventEmitter } from 'events';
@@ -567,5 +573,82 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
 
   public get eventEmitter() {
     return this._eventEmitter;
+  }
+
+  /**
+   * Waits for transaction confirmation with fallback provider support.
+   *
+   * Use instead of tx.wait() which hangs forever when providers fail:
+   * - node_modules/@ethersproject/providers/src.ts/base-provider.ts:1055 - polling calls getTransactionReceipt
+   * - node_modules/@ethersproject/providers/src.ts/base-provider.ts:1060 - .catch(e => emit("error", e)) swallows error
+   * - node_modules/@ethersproject/providers/src.ts/base-provider.ts:1313 - waits for event that never comes
+   * - node_modules/@ethersproject/providers/src.ts/base-provider.ts:1412 - timeout=0 by default, no reject
+   *
+   * This method polls via perform() with fallback and always returns/throws.
+   */
+  public async waitForTransactionWithFallback(
+    txHash: string,
+    options: WaitForTransactionOptions = {},
+  ): Promise<WaitForTransactionResult> {
+    const {
+      timeout = 60_000,
+      pollInterval = 3_000,
+      confirmations = 1,
+    } = options;
+
+    const startTime = Date.now();
+    let lastError: Error | null = null;
+    let pollCount = 0;
+
+    this.logger.log(
+      this.formatLog(
+        `Starting waitForTransactionWithFallback for ${txHash} (timeout: ${timeout}ms, pollInterval: ${pollInterval}ms, confirmations: ${confirmations})`,
+      ),
+    );
+
+    while (Date.now() - startTime < timeout) {
+      pollCount++;
+
+      try {
+        // Uses perform() which handles fallback switching automatically
+        const receipt = await this.getTransactionReceipt(txHash);
+
+        if (receipt && receipt.confirmations >= confirmations) {
+          const elapsedMs = Date.now() - startTime;
+          this.logger.log(
+            this.formatLog(
+              `Transaction ${txHash} confirmed after ${pollCount} polls (${elapsedMs}ms, ${receipt.confirmations} confirmations)`,
+            ),
+          );
+          return { receipt, pollCount, elapsedMs };
+        }
+
+        lastError = null;
+      } catch (error) {
+        // All providers failed - log and retry until timeout
+        lastError = error as Error;
+
+        this.logger.warn(
+          this.formatLog(
+            `waitForTransactionWithFallback poll #${pollCount} failed for ${txHash}: ${error}`,
+          ),
+        );
+      }
+
+      await sleep(pollInterval);
+    }
+
+    const elapsedMs = Date.now() - startTime;
+    const errorContext = lastError
+      ? `All providers failed on last poll: ${lastError.message}`
+      : 'Transaction not found in any block';
+
+    this.logger.error(
+      this.formatLog(
+        `waitForTransactionWithFallback timeout for ${txHash} after ${pollCount} polls (${elapsedMs}ms). ${errorContext}`,
+      ),
+    );
+
+    throw new TransactionWaitTimeoutError(txHash, timeout, lastError);
   }
 }
