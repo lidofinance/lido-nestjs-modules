@@ -153,6 +153,23 @@ describe('Execution module - waitForTransactionWithFallback', () => {
       expect(result.receipt).toBeDefined();
       expect(result.pollCount).toBe(1);
     });
+
+    test('should use default options when none provided', async () => {
+      await createMocks(2);
+
+      const txHash =
+        '0xbdbda178dac948c2ff214526717069e4f4aaf8a550bd0335bfa2235412403489';
+
+      await sleep(10);
+
+      // Call with empty options to cover default values branch
+      const result = await mockedProvider.waitForTransactionWithFallback(
+        txHash,
+      );
+
+      expect(result.receipt).toBeDefined();
+      expect(result.pollCount).toBe(1);
+    });
   });
 
   describe('timeout scenarios', () => {
