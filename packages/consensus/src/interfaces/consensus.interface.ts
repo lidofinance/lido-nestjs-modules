@@ -21,7 +21,14 @@ type ExtractPath<T> = T extends { parameters: { path: infer R } } ? R : unknown;
 type ExtractQuery<T> = T extends { parameters: { query: infer R } }
   ? R
   : unknown;
-type ExtractArgs<T> = KeysToCamelCase<ExtractPath<T> & ExtractQuery<T>>;
+type ExtractBody<T> = T extends {
+  requestBody: { content: { 'application/json': infer R } };
+}
+  ? R
+  : unknown;
+type ExtractArgs<T> = KeysToCamelCase<
+  ExtractPath<T> & ExtractQuery<T> & ExtractBody<T>
+>;
 
 type ExtractResult<T> = T extends {
   responses: { 200: { content: { 'application/json': infer R } } };

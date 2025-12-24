@@ -83,6 +83,46 @@ describe('Beacon endpoints', () => {
     );
   });
 
+  test('postStateValidators', async () => {
+    await consensusService.postStateValidators({
+      stateId: 'head',
+      ids: ['1', '2'],
+      statuses: ['active'],
+    });
+
+    expect(mockFetch).toBeCalledTimes(1);
+    expect(mockFetch).toBeCalledWith('/eth/v1/beacon/states/head/validators', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ ids: ['1', '2'], statuses: ['active'] }),
+    });
+  });
+
+  test('postStateValidators with custom headers', async () => {
+    await consensusService.postStateValidators({
+      stateId: 'head',
+      ids: ['1', '2'],
+      statuses: ['active'],
+      options: {
+        headers: {
+          'X-Custom-Header': 'test-value',
+        },
+      },
+    });
+
+    expect(mockFetch).toBeCalledTimes(1);
+    expect(mockFetch).toBeCalledWith('/eth/v1/beacon/states/head/validators', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Custom-Header': 'test-value',
+      },
+      body: JSON.stringify({ ids: ['1', '2'], statuses: ['active'] }),
+    });
+  });
+
   test('getStateValidatorsStream', async () => {
     await consensusService.getStateValidatorsStream({
       stateId: 'head',
