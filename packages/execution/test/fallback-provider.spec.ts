@@ -259,7 +259,7 @@ describe('Execution module. ', () => {
       // first provider should do network detection and then 'getBlock'
       await expect(
         async () => await mockedProvider.getBlock(10000),
-      ).rejects.toThrow('All attempts to do ETH1 RPC request failed');
+      ).rejects.toThrow(/All attempts to do ETH1 RPC request failed/);
 
       expect(mockedProviderDetectNetwork).toBeCalledTimes(1);
       expect(mockedFallbackProviderFetch[0]).toBeCalledTimes(2);
@@ -846,7 +846,7 @@ describe('Execution module. ', () => {
 
       await expect(
         async () => await mockedProvider.getBlock(42),
-      ).rejects.toThrow('All attempts to do ETH1 RPC request failed');
+      ).rejects.toThrow(/All attempts to do ETH1 RPC request failed/);
 
       const duration = Date.now() - startTime;
 
@@ -943,8 +943,8 @@ describe('Execution module. ', () => {
       }
 
       expect(caughtError).toBeInstanceOf(AllProvidersFailedError);
-      expect(caughtError?.message).toBe(
-        'All attempts to do ETH1 RPC request failed',
+      expect(caughtError?.message).toMatch(
+        /All attempts to do ETH1 RPC request failed/,
       );
       expect(caughtError?.cause).toBeInstanceOf(RequestTimeoutError);
 
@@ -1024,7 +1024,7 @@ describe('Execution module. ', () => {
 
       await expect(
         async () => await mockedProvider.getBlock(1000),
-      ).rejects.toThrow('All attempts to do ETH1 RPC request failed');
+      ).rejects.toThrow(/All attempts to do ETH1 RPC request failed/);
 
       const errorCalls = errorSpy.mock.calls.map((call) => call[0]);
       const errorsWithLabel = errorCalls.filter(
@@ -1036,6 +1036,103 @@ describe('Execution module. ', () => {
       errorSpy.mockRestore();
     });
 
+    test('should log RPC method in logs', async () => {
+      await createMocks(2);
+
+      const logSpy = jest.spyOn(mockedProvider['logger'], 'log');
+
+      // Use getTransactionReceipt which reliably triggers perform()
+      await mockedProvider.getTransactionReceipt(
+        '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef',
+      );
+
+      const logCalls = logSpy.mock.calls.map((call) => call[0]);
+      // Check that logs contain method name
+      const logsWithMethod = logCalls.filter(
+        (msg) =>
+          typeof msg === 'string' && msg.includes('getTransactionReceipt'),
+      );
+      expect(logsWithMethod.length).toBeGreaterThan(0);
+
+      logSpy.mockRestore();
+    });
+
+    test('should include method in error messages', async () => {
+      await createMocks(1, 1, 1, 1);
+
+      mockedFallbackProviderFetch[0].mockImplementation(
+        fakeFetchImplThatCanOnlyDoNetworkDetection,
+      );
+
+      let caughtError: AllProvidersFailedError | null = null;
+      try {
+        // Use getBlock like other tests - it triggers getBlockNumber internally
+        await mockedProvider.getBlock(10000);
+      } catch (e) {
+        caughtError = e as AllProvidersFailedError;
+      }
+
+      expect(caughtError).toBeInstanceOf(AllProvidersFailedError);
+      // Error message should include method name
+      expect(caughtError?.message).toMatch(/getBlock/);
+    });
+
+    test('should log method name correctly', async () => {
+      await createMocks(2);
+
+      const logSpy = jest.spyOn(mockedProvider['logger'], 'log');
+
+      // getTransactionReceipt triggers perform()
+      await mockedProvider.getTransactionReceipt(
+        '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef',
+      );
+
+      const logCalls = logSpy.mock.calls.map((call) => call[0]);
+      const logsWithGetTransactionReceipt = logCalls.filter(
+        (msg) =>
+          typeof msg === 'string' && msg.includes('getTransactionReceipt'),
+      );
+      expect(logsWithGetTransactionReceipt.length).toBeGreaterThan(0);
+
+      logSpy.mockRestore();
+    });
+
+    test('should log getLogs method', async () => {
+      await createMocks(2);
+
+      const logSpy = jest.spyOn(mockedProvider['logger'], 'log');
+
+      // getLogs triggers perform()
+      await mockedProvider.getLogs({
+        fromBlock: 0,
+        toBlock: 'latest',
+      });
+
+      const logCalls = logSpy.mock.calls.map((call) => call[0]);
+      const logsWithGetLogs = logCalls.filter(
+        (msg) => typeof msg === 'string' && msg.includes('getLogs'),
+      );
+      expect(logsWithGetLogs.length).toBeGreaterThan(0);
+
+      logSpy.mockRestore();
+    });
+
+    test('should work when logger.debug is undefined', async () => {
+      await createMocks(2);
+
+      // Remove debug method to test optional chaining branch
+      const originalDebug = mockedProvider['logger'].debug;
+      mockedProvider['logger'].debug = undefined;
+
+      // Should not throw when debug is undefined
+      await mockedProvider.getBlock(42);
+
+      // Restore
+      mockedProvider['logger'].debug = originalDebug;
+    });
+
+    // This test must be last - it creates provider without RPC calls,
+    // which can leave ethers internal timers in undefined state
     test('should format logs correctly without instanceLabel', async () => {
       await createMocks(
         2,

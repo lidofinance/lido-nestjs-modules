@@ -216,6 +216,12 @@ export const fakeJsonRpc =
             status: '0x1',
           },
         };
+      case 'eth_getLogs':
+        return {
+          jsonrpc: '2.0',
+          id: request.id,
+          result: [],
+        };
       case 'debug_traceBlockByHash':
         return {
           jsonrpc: '2.0',
@@ -501,5 +507,75 @@ export const makeFakeFetchImplThatFailsOnReceipt = () => {
     }
 
     return results;
+  };
+};
+
+/**
+ * Creates a fake fetch impl that returns receipt with low confirmations initially,
+ * then increases confirmations after N calls.
+ * This simulates waiting for more confirmations.
+ */
+export const makeFakeFetchImplWithLowConfirmations = (
+  lowConfirmationCalls: number,
+  chainId?: number,
+) => {
+  let blockNumberCallCount = 0;
+  const logsBloom =
+    '0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000';
+
+  // Transaction is at block 0x2710 (10000)
+  const txBlockNumber = 0x2710;
+
+  return async (
+    _connection: string | ConnectionInfo,
+    json?: string,
+  ): Promise<unknown> => {
+    const requests = json ? JSON.parse(json) : {};
+
+    return requests.map((request: JsonRpcRequest) => {
+      if (request.method === 'eth_getTransactionReceipt') {
+        return {
+          jsonrpc: '2.0',
+          id: request.id,
+          result: {
+            transactionHash: request.params?.[0],
+            transactionIndex: '0x1',
+            blockNumber: BigNumber.from(txBlockNumber).toHexString(),
+            blockHash:
+              '0xdc2d938e4cd0a149681e9e04352953ef5ab399d59bcd5b0357f6c0797470a524',
+            from: '0x4329419C7aF27A622C7004b9d3C8B90d3be8c54f',
+            to: '0xbf71642d7cbae8faf1cfdc6c1c48fcb45b15ed22',
+            cumulativeGasUsed: '0x5208',
+            gasUsed: '0x5208',
+            contractAddress: null,
+            logs: [],
+            logsBloom,
+            status: '0x1',
+          },
+        };
+      }
+
+      if (request.method === 'eth_blockNumber') {
+        blockNumberCallCount++;
+        // For first N calls, return same block (0 confirmations)
+        // After that, return higher block number for more confirmations
+        if (blockNumberCallCount <= lowConfirmationCalls) {
+          return {
+            jsonrpc: '2.0',
+            id: request.id,
+            result: BigNumber.from(txBlockNumber).toHexString(), // same block = 0 confirmations
+          };
+        }
+        return {
+          jsonrpc: '2.0',
+          id: request.id,
+          result: BigNumber.from(txBlockNumber + 5).toHexString(), // +5 blocks = 5 confirmations
+        };
+      }
+
+      return fakeJsonRpc(
+        chainId ? BigNumber.from(chainId).toHexString() : undefined,
+      )(request);
+    });
   };
 };
