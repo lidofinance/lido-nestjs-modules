@@ -1,6 +1,8 @@
 import path from 'path';
 import fs from 'fs';
-import tslib from 'tslib';
+import { fileURLToPath } from 'url';
+import { createRequire } from 'module';
+import * as tslib from 'tslib';
 import ts from 'typescript';
 import glob from 'glob';
 import {
@@ -10,6 +12,10 @@ import {
 import typescript from 'rollup-plugin-typescript2';
 import del from 'rollup-plugin-delete';
 import resolve from '@rollup/plugin-node-resolve';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const require = createRequire(import.meta.url);
 
 const excludedWorkspaces = ['.'];
 const extensions = ['.ts', '.d.ts'];
