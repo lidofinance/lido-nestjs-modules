@@ -344,6 +344,8 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
 
     let attempt = 0;
 
+    this.logger.debug?.(this.formatLog(`RPC call: ${method}`));
+
     // will perform maximum `this.config.maxRetries` retries for fetching data with single provider
     // after failure will switch to next provider
     // maximum number of switching is limited to total fallback provider count
@@ -355,7 +357,7 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
         // Log which provider we're attempting to use
         this.logger.log(
           this.formatLog(
-            `Attempting request (attempt ${attempt}/${this.fallbackProviders.length})`,
+            `Attempting ${method} (attempt ${attempt}/${this.fallbackProviders.length})`,
             this.activeFallbackProviderIndex,
           ),
         );
@@ -392,7 +394,7 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
         // Log successful request
         this.logger.log(
           this.formatLog(
-            `Request successful after ${performRetryAttempt} retry attempt(s)`,
+            `${method} successful after ${performRetryAttempt} retry attempt(s)`,
             this.activeFallbackProviderIndex,
           ),
         );
@@ -413,7 +415,7 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
           // to ensure proper ordering in async logging systems
           this.logger.error(
             this.formatLog(
-              `Non-retryable error occurred`,
+              `${method} non-retryable error occurred`,
               this.activeFallbackProviderIndex,
             ),
           );
@@ -426,7 +428,7 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
         if (e instanceof RequestTimeoutError) {
           this.logger.error(
             this.formatLog(
-              `Request timeout after ${e.timeoutMs}ms. Will switch to next provider.`,
+              `${method} timeout after ${e.timeoutMs}ms. Will switch to next provider.`,
               this.activeFallbackProviderIndex,
             ),
           );
@@ -434,7 +436,7 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
         } else {
           this.logger.error(
             this.formatLog(
-              `Error occurred. Will switch to next provider.`,
+              `${method} error occurred. Will switch to next provider.`,
               this.activeFallbackProviderIndex,
             ),
           );
@@ -454,7 +456,7 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
     }
 
     const allProvidersFailedError = new AllProvidersFailedError(
-      'All attempts to do ETH1 RPC request failed',
+      `All attempts to do ETH1 RPC request failed for ${method}`,
     );
     allProvidersFailedError.cause = this.lastError;
 
@@ -613,17 +615,28 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
         // Uses perform() which handles fallback switching automatically
         const receipt = await this.getTransactionReceipt(txHash);
 
-        if (receipt && receipt.confirmations >= confirmations) {
-          const elapsedMs = Date.now() - startTime;
-          this.logger.log(
-            this.formatLog(
-              `Transaction ${txHash} confirmed after ${pollCount} polls (${elapsedMs}ms, ${receipt.confirmations} confirmations)`,
-            ),
-          );
-          return { receipt, pollCount, elapsedMs };
+        if (!receipt) {
+          // Transaction pending in mempool, not yet included in a block
+          lastError = null;
+          await sleep(pollInterval);
+          continue;
         }
 
-        lastError = null;
+        if (receipt.confirmations < confirmations) {
+          // Transaction mined but waiting for more confirmations
+          lastError = null;
+          await sleep(pollInterval);
+          continue;
+        }
+
+        // Transaction confirmed with enough confirmations
+        const elapsedMs = Date.now() - startTime;
+        this.logger.log(
+          this.formatLog(
+            `Transaction ${txHash} confirmed after ${pollCount} polls (${elapsedMs}ms, ${receipt.confirmations} confirmations)`,
+          ),
+        );
+        return { receipt, pollCount, elapsedMs };
       } catch (error) {
         // All providers failed - log and retry until timeout
         lastError = error as Error;
@@ -633,9 +646,9 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
             `waitForTransactionWithFallback poll #${pollCount} failed for ${txHash}: ${error}`,
           ),
         );
-      }
 
-      await sleep(pollInterval);
+        await sleep(pollInterval);
+      }
     }
 
     const elapsedMs = Date.now() - startTime;

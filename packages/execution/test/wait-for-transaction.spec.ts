@@ -10,6 +10,7 @@ import {
   fakeFetchImpl,
   makeFakeFetchImplWithPendingReceipt,
   makeFakeFetchImplThatFailsOnReceipt,
+  makeFakeFetchImplWithLowConfirmations,
 } from './fixtures/fake-json-rpc';
 import { nullTransport, LoggerModule } from '@lido-nestjs/logger';
 import { ConnectionInfo } from '@ethersproject/web';
@@ -305,6 +306,35 @@ describe('Execution module - waitForTransactionWithFallback', () => {
 
       expect(result.receipt).toBeDefined();
       expect(result.receipt.confirmations).toBeGreaterThanOrEqual(1);
+    });
+
+    test('should wait for required confirmations when receipt has fewer', async () => {
+      await createMocks(2);
+
+      // First 1 blockNumber call returns same block as tx (0 confirmations),
+      // then returns higher block (5 confirmations)
+      mockedFallbackProviderFetch[0].mockImplementation(
+        makeFakeFetchImplWithLowConfirmations(1, 1),
+      );
+
+      const txHash =
+        '0xbdbda178dac948c2ff214526717069e4f4aaf8a550bd0335bfa2235412403489';
+
+      await sleep(10);
+
+      const result = await mockedProvider.waitForTransactionWithFallback(
+        txHash,
+        {
+          timeout: 15000,
+          pollInterval: 200,
+          confirmations: 2, // Need 2 confirmations
+        },
+      );
+
+      expect(result.receipt).toBeDefined();
+      // Should have polled multiple times waiting for confirmations
+      expect(result.pollCount).toBeGreaterThan(1);
+      expect(result.receipt.confirmations).toBeGreaterThanOrEqual(2);
     });
   });
 
