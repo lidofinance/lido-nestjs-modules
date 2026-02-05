@@ -17,6 +17,7 @@ import {
   makeFetchImplWithSpecificFeeHistory,
   makeFetchImplWithSpecificNetwork,
   makeFakeFetchImplThatHangs,
+  makeFakeFetchImplWithPartialBatchResponse,
 } from './fixtures/fake-json-rpc';
 import { nullTransport, LoggerModule } from '@lido-nestjs/logger';
 import { ConnectionInfo } from '@ethersproject/web';
@@ -113,6 +114,8 @@ describe('Execution module. ', () => {
     };
 
     afterEach(async () => {
+      // Wait for pending setTimeout from ethers.js constructor to complete
+      await new Promise((resolve) => setTimeout(resolve, 0));
       jest.resetAllMocks();
     });
 
@@ -821,6 +824,361 @@ describe('Execution module. ', () => {
 
       expect(retryAttempt).toBe(0);
       expect(block.hash).toBe(fixtures.eth_getBlockByNumber.default.hash);
+    });
+
+    test('should have no rpc listeners by default, but add them when subscribing via eventEmitter', async () => {
+      await createMocks(2);
+
+      // Check that child providers have no listeners by default
+      const childProviders = mockedProvider.fallbackProviders;
+      for (const { provider } of childProviders) {
+        expect(provider.eventEmitter.listenerCount('rpc')).toBe(0);
+      }
+
+      // Subscribe to parent eventEmitter - this should lazily attach child listeners
+      const listener = jest.fn();
+      mockedProvider.eventEmitter.on('rpc', listener);
+
+      // Now child providers should have listeners
+      for (const { provider } of childProviders) {
+        expect(provider.eventEmitter.listenerCount('rpc')).toBe(1);
+      }
+
+      // Parent should also have listener
+      expect(mockedProvider.eventEmitter.listenerCount('rpc')).toBe(1);
+    });
+
+    test('should only attach child listeners once even with multiple subscriptions', async () => {
+      await createMocks(2);
+
+      const childProviders = mockedProvider.fallbackProviders;
+
+      // Subscribe multiple times
+      const listener1 = jest.fn();
+      const listener2 = jest.fn();
+      const listener3 = jest.fn();
+
+      mockedProvider.eventEmitter.on('rpc', listener1);
+      mockedProvider.eventEmitter.on('rpc', listener2);
+      mockedProvider.eventEmitter.on('rpc', listener3);
+
+      // Child providers should still have only 1 listener each (not 3)
+      for (const { provider } of childProviders) {
+        expect(provider.eventEmitter.listenerCount('rpc')).toBe(1);
+      }
+
+      // Parent should have 3 listeners
+      expect(mockedProvider.eventEmitter.listenerCount('rpc')).toBe(3);
+    });
+
+    test('should not attach child listeners for non-rpc events', async () => {
+      await createMocks(2);
+
+      const childProviders = mockedProvider.fallbackProviders;
+
+      // Subscribe to a different event (not 'rpc')
+      mockedProvider.eventEmitter.on('someOtherEvent' as any, jest.fn());
+
+      // Child providers should still have no rpc listeners
+      for (const { provider } of childProviders) {
+        expect(provider.eventEmitter.listenerCount('rpc')).toBe(0);
+      }
+    });
+
+    test('should not call emit when no listeners attached (avoid creating event objects)', async () => {
+      await createMocks(1);
+
+      // Spy on emit to verify it's not called when no listeners
+      const emitSpy = jest.spyOn(mockedProvider.eventEmitter, 'emit');
+
+      // Make request without any listeners
+      await mockedProvider.getBlock(42);
+
+      // emit should NOT have been called with 'rpc' event
+      const rpcEmitCalls = emitSpy.mock.calls.filter(
+        (call) => call[0] === 'rpc',
+      );
+      expect(rpcEmitCalls.length).toBe(0);
+
+      emitSpy.mockRestore();
+    });
+
+    test('should call emit when listeners are attached', async () => {
+      await createMocks(1);
+
+      // Attach a listener first
+      const listener = jest.fn();
+      mockedProvider.eventEmitter.on('rpc', listener);
+
+      // Spy on emit
+      const emitSpy = jest.spyOn(mockedProvider.eventEmitter, 'emit');
+
+      // Make request with listener attached
+      await mockedProvider.getBlock(42);
+
+      // emit SHOULD have been called with 'rpc' event
+      const rpcEmitCalls = emitSpy.mock.calls.filter(
+        (call) => call[0] === 'rpc',
+      );
+      expect(rpcEmitCalls.length).toBeGreaterThan(0);
+
+      // Listener should have been called
+      expect(listener).toHaveBeenCalled();
+
+      emitSpy.mockRestore();
+    });
+
+    test('should not create event objects in child providers when no listeners', async () => {
+      await createMocks(1);
+
+      const childProvider = mockedProvider.fallbackProviders[0].provider;
+
+      // Spy on child provider emit
+      const childEmitSpy = jest.spyOn(childProvider.eventEmitter, 'emit');
+
+      // Make request without listeners
+      await mockedProvider.getBlock(42);
+
+      // Child provider emit should NOT have been called with 'rpc'
+      const rpcEmitCalls = childEmitSpy.mock.calls.filter(
+        (call) => call[0] === 'rpc',
+      );
+      expect(rpcEmitCalls.length).toBe(0);
+
+      childEmitSpy.mockRestore();
+    });
+
+    test('should create and propagate events from child providers when listeners attached', async () => {
+      await createMocks(1);
+
+      const childProvider = mockedProvider.fallbackProviders[0].provider;
+
+      // Attach listener to parent (triggers lazy subscription)
+      const events: FallbackProviderEvents[] = [];
+      mockedProvider.eventEmitter.on('rpc', (event) => events.push(event));
+
+      // Spy on child provider emit
+      const childEmitSpy = jest.spyOn(childProvider.eventEmitter, 'emit');
+
+      // Make request
+      await mockedProvider.getBlock(42);
+
+      // Child provider emit SHOULD have been called with 'rpc'
+      const rpcEmitCalls = childEmitSpy.mock.calls.filter(
+        (call) => call[0] === 'rpc',
+      );
+      expect(rpcEmitCalls.length).toBeGreaterThan(0);
+
+      // Events should have propagated to parent listener
+      const childEvents = events.filter(
+        (e) =>
+          e.action === 'provider:request-batched' ||
+          e.action === 'provider:response-batched',
+      );
+      expect(childEvents.length).toBeGreaterThan(0);
+
+      childEmitSpy.mockRestore();
+    });
+
+    test('should not emit rpc events when no listeners attached', async () => {
+      await createMocks(1);
+
+      const childProvider = mockedProvider.fallbackProviders[0].provider;
+
+      // Verify no listeners before request
+      expect(childProvider.eventEmitter.listenerCount('rpc')).toBe(0);
+
+      // Make a request without listeners - should work fine
+      const block = await mockedProvider.getBlock(42);
+      expect(block.hash).toBe(fixtures.eth_getBlockByNumber.default.hash);
+
+      // Still no listeners after request (lazy subscription not triggered)
+      expect(childProvider.eventEmitter.listenerCount('rpc')).toBe(0);
+    });
+
+    test('should emit rpc events when listeners are attached', async () => {
+      await createMocks(2);
+
+      const events: FallbackProviderEvents[] = [];
+      mockedProvider.eventEmitter.on('rpc', (event: FallbackProviderEvents) => {
+        events.push(event);
+      });
+
+      // Make a request - should emit events
+      const block = await mockedProvider.getBlock(42);
+      expect(block.hash).toBe(fixtures.eth_getBlockByNumber.default.hash);
+
+      // Should have received events
+      expect(events.length).toBeGreaterThan(0);
+
+      // Should have provider:request-batched and provider:response-batched events
+      const actions = events.map((e) => e.action);
+      expect(actions).toContain('provider:request-batched');
+      expect(actions).toContain('provider:response-batched');
+      expect(actions).toContain('fallback-provider:request');
+
+      // Verify event structure for fallback-provider:request
+      const fallbackRequestEvent = events.find(
+        (e) => e.action === 'fallback-provider:request',
+      );
+      expect(fallbackRequestEvent).toBeDefined();
+      if (fallbackRequestEvent?.action === 'fallback-provider:request') {
+        expect(fallbackRequestEvent.provider).toBe(mockedProvider);
+        expect(typeof fallbackRequestEvent.activeFallbackProviderIndex).toBe(
+          'number',
+        );
+        expect(typeof fallbackRequestEvent.fallbackProvidersCount).toBe(
+          'number',
+        );
+        expect(typeof fallbackRequestEvent.domain).toBe('string');
+        expect(typeof fallbackRequestEvent.retryAttempt).toBe('number');
+      }
+
+      // Verify event structure for provider:request-batched (from child)
+      const requestBatchedEvent = events.find(
+        (e) => e.action === 'provider:request-batched',
+      );
+      expect(requestBatchedEvent).toBeDefined();
+      if (requestBatchedEvent?.action === 'provider:request-batched') {
+        expect(requestBatchedEvent.provider).toBeDefined();
+        expect(Array.isArray(requestBatchedEvent.request)).toBe(true);
+        expect(typeof requestBatchedEvent.domain).toBe('string');
+      }
+
+      // Verify event structure for provider:response-batched (from child)
+      const responseBatchedEvent = events.find(
+        (e) => e.action === 'provider:response-batched',
+      );
+      expect(responseBatchedEvent).toBeDefined();
+      if (responseBatchedEvent?.action === 'provider:response-batched') {
+        expect(responseBatchedEvent.provider).toBeDefined();
+        expect(Array.isArray(responseBatchedEvent.request)).toBe(true);
+        expect(typeof responseBatchedEvent.domain).toBe('string');
+        // Verify response field is NOT present (was removed)
+        expect((responseBatchedEvent as any).response).toBeUndefined();
+      }
+    });
+
+    test('should emit fallback-provider:request:non-retryable-error when listener attached', async () => {
+      await createMocks(2);
+
+      // Trigger network detection first
+      await mockedProvider.getBlock(10000);
+
+      const events: FallbackProviderEvents[] = [];
+      mockedProvider.eventEmitter.on('rpc', (event) => events.push(event));
+
+      // Create a non-retryable error
+      const makeError = () => {
+        const err = new Error('Non-retryable error');
+        (err as Error & { code: string | number }).code = nonRetryableErrors[0];
+        return err;
+      };
+
+      mockedFallbackProviderFetch[0].mockImplementation(
+        makeFakeFetchImplThrowsError(makeError()),
+      );
+
+      await expect(
+        async () => await mockedProvider.getBlock(42),
+      ).rejects.toThrow('Non-retryable error');
+
+      // Should have emitted non-retryable error event
+      const nonRetryableEvent = events.find(
+        (e) => e.action === 'fallback-provider:request:non-retryable-error',
+      );
+      expect(nonRetryableEvent).toBeDefined();
+      if (
+        nonRetryableEvent?.action ===
+        'fallback-provider:request:non-retryable-error'
+      ) {
+        expect(nonRetryableEvent.provider).toBe(mockedProvider);
+        expect(nonRetryableEvent.error).toBeDefined();
+      }
+    });
+
+    test('should emit fallback-provider:request:failed:all when listener attached and all providers fail', async () => {
+      await createMocks(2);
+
+      const events: FallbackProviderEvents[] = [];
+      mockedProvider.eventEmitter.on('rpc', (event) => events.push(event));
+
+      // Both providers succeed for network detection but fail for actual requests
+      // This allows detectNetwork() to succeed, then perform() will fail on all providers
+      mockedFallbackProviderFetch[0].mockImplementation(
+        fakeFetchImplThatCanOnlyDoNetworkDetection,
+      );
+      mockedFallbackProviderFetch[1].mockImplementation(
+        fakeFetchImplThatCanOnlyDoNetworkDetection,
+      );
+
+      await expect(
+        async () => await mockedProvider.getBlock(1000),
+      ).rejects.toThrow(/All attempts to do ETH1 RPC request failed/);
+
+      // Should have emitted failed:all event
+      const failedAllEvent = events.find(
+        (e) => e.action === 'fallback-provider:request:failed:all',
+      );
+      expect(failedAllEvent).toBeDefined();
+      if (failedAllEvent?.action === 'fallback-provider:request:failed:all') {
+        expect(failedAllEvent.provider).toBe(mockedProvider);
+        expect(failedAllEvent.error).toBeInstanceOf(AllProvidersFailedError);
+      }
+    });
+
+    test('should emit provider:response-batched:error when listener attached and fetch fails', async () => {
+      // Use only 1 provider so there's no fallback to avoid the second provider succeeding
+      await createMocks(1);
+
+      // Trigger network detection first
+      await mockedProvider.getBlock(10000);
+
+      const events: FallbackProviderEvents[] = [];
+      mockedProvider.eventEmitter.on('rpc', (event) => events.push(event));
+
+      // Make fetch fail after network detection
+      mockedFallbackProviderFetch[0].mockImplementation(async () => {
+        throw new Error('Fetch failed');
+      });
+
+      await expect(
+        async () => await mockedProvider.getBlock(42),
+      ).rejects.toThrow();
+
+      // Should have emitted response-batched:error event from child provider
+      const errorEvent = events.find(
+        (e) => e.action === 'provider:response-batched:error',
+      );
+      expect(errorEvent).toBeDefined();
+      if (errorEvent?.action === 'provider:response-batched:error') {
+        expect(errorEvent.error).toBeDefined();
+        expect(Array.isArray(errorEvent.request)).toBe(true);
+        expect(typeof errorEvent.domain).toBe('string');
+      }
+    });
+
+    test('should handle partial batch response with PARTIAL_BATCH_RESULT error', async () => {
+      await createMocks(1);
+
+      mockedFallbackProviderFetch[0].mockImplementation(
+        makeFakeFetchImplWithPartialBatchResponse(),
+      );
+
+      // This should fail because the batch response is missing some IDs
+      let caughtError: AllProvidersFailedError | null = null;
+      try {
+        await mockedProvider.getBlock(42);
+      } catch (e) {
+        caughtError = e as AllProvidersFailedError;
+      }
+
+      expect(caughtError).toBeInstanceOf(AllProvidersFailedError);
+      // The cause should contain the partial batch error
+      expect(caughtError?.cause).toBeDefined();
+      expect((caughtError?.cause as Error)?.message).toMatch(
+        /Partial payload batch result/,
+      );
     });
 
     test('should timeout after requestTimeoutMs with single provider', async () => {

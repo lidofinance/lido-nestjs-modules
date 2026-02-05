@@ -25,7 +25,7 @@ import { ErrorCode } from '../error/codes/error-codes';
 import { TraceConfig, TraceResult } from '../interfaces/debug-traces';
 import { getDebugTraceBlockByHash } from '../ethers/debug-trace-block-by-hash';
 import { getConnectionFQDN } from '../common/networks';
-import { EventEmitter } from 'events';
+import { LazyEventEmitter } from '../common/lazy-event-emitter';
 import {
   ProviderEvents,
   ProviderRequestBatchedEvent,
@@ -34,7 +34,7 @@ import {
 } from '../events';
 // this will help with autocomplete
 export interface ExtendedJsonRpcBatchProviderEventEmitter
-  extends NodeJS.EventEmitter {
+  extends LazyEventEmitter {
   on(eventName: 'rpc', listener: (event: ProviderEvents) => void): this;
   once(eventName: 'rpc', listener: (event: ProviderEvents) => void): this;
   addListener(
@@ -135,7 +135,7 @@ export class ExtendedJsonRpcBatchProvider extends JsonRpcProvider {
     fetchMiddlewares: MiddlewareCallback<Promise<any>>[] = [],
   ) {
     super(url, network);
-    this._eventEmitter = new EventEmitter();
+    this._eventEmitter = new LazyEventEmitter();
     this._domain = getConnectionFQDN(url);
     this._requestPolicy = requestPolicy ?? {
       jsonRpcMaxBatchSize: 200,
@@ -177,13 +177,15 @@ export class ExtendedJsonRpcBatchProvider extends JsonRpcProvider {
 
       const batchRequest = batch.map((intent) => intent.request);
 
-      const event: ProviderRequestBatchedEvent = {
-        action: 'provider:request-batched',
-        request: deepCopy(batchRequest),
-        provider: this,
-        domain: this._domain,
-      };
-      this._eventEmitter.emit('rpc', event);
+      this._eventEmitter.emitLazy(
+        'rpc',
+        (): ProviderRequestBatchedEvent => ({
+          action: 'provider:request-batched',
+          request: deepCopy(batchRequest),
+          provider: this,
+          domain: this._domain,
+        }),
+      );
 
       this._concurrencyLimiter(() => {
         return this._fetchMiddlewareService.go(
@@ -196,14 +198,15 @@ export class ExtendedJsonRpcBatchProvider extends JsonRpcProvider {
       })
         .then(
           (batchResult: JsonRpcResponse[] | JsonRpcResponse) => {
-            const event: ProviderResponseBatchedEvent = {
-              action: 'provider:response-batched',
-              request: deepCopy(batchRequest),
-              response: deepCopy(batchResult),
-              provider: this,
-              domain: this._domain,
-            };
-            this._eventEmitter.emit('rpc', event);
+            this._eventEmitter.emitLazy(
+              'rpc',
+              (): ProviderResponseBatchedEvent => ({
+                action: 'provider:response-batched',
+                request: deepCopy(batchRequest),
+                provider: this,
+                domain: this._domain,
+              }),
+            );
 
             if (!Array.isArray(batchResult)) {
               const errMessage = 'Unexpected batch result.';
@@ -233,7 +236,11 @@ export class ExtendedJsonRpcBatchProvider extends JsonRpcProvider {
                   `Partial payload batch result. Response ${inflightRequest.request.id} not found`,
                 );
                 error.code = ErrorCode.PARTIAL_BATCH_RESULT;
-                error.data = batchResult;
+                error.data = {
+                  requestedId: inflightRequest.request.id,
+                  receivedIds: batchResult.map((r) => r.id),
+                  batchSize: batchResult.length,
+                };
                 inflightRequest.reject(error);
               } else if (payload.error) {
                 const error = new FetchError(payload.error.message);
@@ -246,14 +253,16 @@ export class ExtendedJsonRpcBatchProvider extends JsonRpcProvider {
             });
           },
           (error: Error) => {
-            const event: ProviderResponseBatchedErrorEvent = {
-              action: 'provider:response-batched:error',
-              error: error,
-              request: deepCopy(batchRequest),
-              provider: this,
-              domain: this._domain,
-            };
-            this._eventEmitter.emit('rpc', event);
+            this._eventEmitter.emitLazy(
+              'rpc',
+              (): ProviderResponseBatchedErrorEvent => ({
+                action: 'provider:response-batched:error',
+                error: error,
+                request: deepCopy(batchRequest),
+                provider: this,
+                domain: this._domain,
+              }),
+            );
 
             batch.forEach((inflightRequest) => {
               inflightRequest.reject(error);
@@ -262,14 +271,16 @@ export class ExtendedJsonRpcBatchProvider extends JsonRpcProvider {
         )
         .catch((error: Error) => {
           // catch errors happening in the 'then' callback
-          const event: ProviderResponseBatchedErrorEvent = {
-            action: 'provider:response-batched:error',
-            error: error,
-            request: deepCopy(batchRequest),
-            provider: this,
-            domain: this._domain,
-          };
-          this._eventEmitter.emit('rpc', event);
+          this._eventEmitter.emitLazy(
+            'rpc',
+            (): ProviderResponseBatchedErrorEvent => ({
+              action: 'provider:response-batched:error',
+              error: error,
+              request: deepCopy(batchRequest),
+              provider: this,
+              domain: this._domain,
+            }),
+          );
 
           batch.forEach((inflightRequest) => {
             inflightRequest.reject(error);
