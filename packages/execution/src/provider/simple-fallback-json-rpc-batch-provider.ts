@@ -105,6 +105,7 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
   protected lastPerformError: Error | null | unknown = null; // last error for 'perform' operations, is batch-oriented
   protected lastError: Error | null | unknown = null; // last error for whole provider
   protected _eventEmitter: SimpleFallbackJsonRpcBatchProviderEventEmitter;
+  protected _childRpcListenersAttached = false;
 
   public constructor(
     config: SimpleFallbackProviderConfig,
@@ -112,6 +113,7 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
   ) {
     super(config.network);
     this._eventEmitter = new EventEmitter();
+    this._setupLazyChildListeners();
     this.config = {
       maxRetries: 3,
       minBackoffMs: 500,
@@ -146,11 +148,6 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
         config.requestPolicy,
         config.fetchMiddlewares ?? [],
       );
-
-      // re-emitting events from fallback-providers
-      provider.eventEmitter.on('rpc', (event) => {
-        this._eventEmitter.emit('rpc', event);
-      });
 
       return {
         network: null,
@@ -367,15 +364,17 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
         const result = await retry(() => {
           const provider = this.provider;
 
-          const event: FallbackProviderRequestEvent = {
-            action: 'fallback-provider:request',
-            provider: this,
-            activeFallbackProviderIndex: this.activeFallbackProviderIndex,
-            fallbackProvidersCount: this.fallbackProviders.length,
-            domain: provider.provider.domain,
-            retryAttempt: performRetryAttempt,
-          };
-          this._eventEmitter.emit('rpc', event);
+          if (this._eventEmitter.listenerCount('rpc') > 0) {
+            const event: FallbackProviderRequestEvent = {
+              action: 'fallback-provider:request',
+              provider: this,
+              activeFallbackProviderIndex: this.activeFallbackProviderIndex,
+              fallbackProvidersCount: this.fallbackProviders.length,
+              domain: provider.provider.domain,
+              retryAttempt: performRetryAttempt,
+            };
+            this._eventEmitter.emit('rpc', event);
+          }
 
           performRetryAttempt++;
           const performPromise = provider.provider.perform(method, params);
@@ -405,12 +404,14 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
 
         // checking that error should not be retried on another provider
         if (this.isNonRetryableError(e)) {
-          const event: FallbackProviderRequestNonRetryableErrorEvent = {
-            action: 'fallback-provider:request:non-retryable-error',
-            provider: this,
-            error: e,
-          };
-          this._eventEmitter.emit('rpc', event);
+          if (this._eventEmitter.listenerCount('rpc') > 0) {
+            const event: FallbackProviderRequestNonRetryableErrorEvent = {
+              action: 'fallback-provider:request:non-retryable-error',
+              provider: this,
+              error: e,
+            };
+            this._eventEmitter.emit('rpc', event);
+          }
           // Log context (label + provider index) synchronously before error object
           // to ensure proper ordering in async logging systems
           this.logger.error(
@@ -460,12 +461,14 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
     );
     allProvidersFailedError.cause = this.lastError;
 
-    const event: FallbackProviderRequestFailedAllEvent = {
-      action: 'fallback-provider:request:failed:all',
-      provider: this,
-      error: allProvidersFailedError,
-    };
-    this._eventEmitter.emit('rpc', event);
+    if (this._eventEmitter.listenerCount('rpc') > 0) {
+      const event: FallbackProviderRequestFailedAllEvent = {
+        action: 'fallback-provider:request:failed:all',
+        provider: this,
+        error: allProvidersFailedError,
+      };
+      this._eventEmitter.emit('rpc', event);
+    }
 
     throw allProvidersFailedError;
   }
@@ -575,6 +578,34 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
 
   public get eventEmitter() {
     return this._eventEmitter;
+  }
+
+  /**
+   * Sets up lazy subscription to child provider events.
+   * Only attaches listeners to child providers when someone subscribes to the parent eventEmitter.
+   * This avoids unnecessary event processing when no one is listening.
+   */
+  protected _setupLazyChildListeners(): void {
+    (this._eventEmitter as EventEmitter).on(
+      'newListener',
+      (eventName: string) => {
+        if (eventName === 'rpc' && !this._childRpcListenersAttached) {
+          this._childRpcListenersAttached = true;
+          this._attachChildRpcListeners();
+        }
+      },
+    );
+  }
+
+  /**
+   * Attaches listeners to all child providers to re-emit their events on the parent eventEmitter.
+   */
+  protected _attachChildRpcListeners(): void {
+    for (const fallbackProvider of this.fallbackProviders) {
+      fallbackProvider.provider.eventEmitter.on('rpc', (event) => {
+        this._eventEmitter.emit('rpc', event);
+      });
+    }
   }
 
   /**
