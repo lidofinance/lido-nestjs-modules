@@ -3,7 +3,6 @@ import { AllProvidersFailedError } from '../error';
 import {
   ExtendedJsonRpcBatchProvider,
   JsonRpcRequest,
-  JsonRpcResponse,
 } from '../provider/extended-json-rpc-batch-provider';
 
 export type FallbackProviderRequestFailedAllEvent = {
@@ -38,7 +37,6 @@ export type ProviderResponseBatchedErrorEvent = {
 export type ProviderResponseBatchedEvent = {
   action: 'provider:response-batched';
   request: JsonRpcRequest[];
-  response: JsonRpcResponse[] | JsonRpcResponse;
   provider: ExtendedJsonRpcBatchProvider;
   domain: string;
 };

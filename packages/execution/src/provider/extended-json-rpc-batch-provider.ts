@@ -236,7 +236,11 @@ export class ExtendedJsonRpcBatchProvider extends JsonRpcProvider {
                   `Partial payload batch result. Response ${inflightRequest.request.id} not found`,
                 );
                 error.code = ErrorCode.PARTIAL_BATCH_RESULT;
-                error.data = batchResult;
+                error.data = {
+                  requestedId: inflightRequest.request.id,
+                  receivedIds: batchResult.map((r) => r.id),
+                  batchSize: batchResult.length,
+                };
                 inflightRequest.reject(error);
               } else if (payload.error) {
                 const error = new FetchError(payload.error.message);

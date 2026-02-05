@@ -1015,6 +1015,47 @@ describe('Execution module. ', () => {
       expect(actions).toContain('provider:request-batched');
       expect(actions).toContain('provider:response-batched');
       expect(actions).toContain('fallback-provider:request');
+
+      // Verify event structure for fallback-provider:request
+      const fallbackRequestEvent = events.find(
+        (e) => e.action === 'fallback-provider:request',
+      );
+      expect(fallbackRequestEvent).toBeDefined();
+      if (fallbackRequestEvent?.action === 'fallback-provider:request') {
+        expect(fallbackRequestEvent.provider).toBe(mockedProvider);
+        expect(typeof fallbackRequestEvent.activeFallbackProviderIndex).toBe(
+          'number',
+        );
+        expect(typeof fallbackRequestEvent.fallbackProvidersCount).toBe(
+          'number',
+        );
+        expect(typeof fallbackRequestEvent.domain).toBe('string');
+        expect(typeof fallbackRequestEvent.retryAttempt).toBe('number');
+      }
+
+      // Verify event structure for provider:request-batched (from child)
+      const requestBatchedEvent = events.find(
+        (e) => e.action === 'provider:request-batched',
+      );
+      expect(requestBatchedEvent).toBeDefined();
+      if (requestBatchedEvent?.action === 'provider:request-batched') {
+        expect(requestBatchedEvent.provider).toBeDefined();
+        expect(Array.isArray(requestBatchedEvent.request)).toBe(true);
+        expect(typeof requestBatchedEvent.domain).toBe('string');
+      }
+
+      // Verify event structure for provider:response-batched (from child)
+      const responseBatchedEvent = events.find(
+        (e) => e.action === 'provider:response-batched',
+      );
+      expect(responseBatchedEvent).toBeDefined();
+      if (responseBatchedEvent?.action === 'provider:response-batched') {
+        expect(responseBatchedEvent.provider).toBeDefined();
+        expect(Array.isArray(responseBatchedEvent.request)).toBe(true);
+        expect(typeof responseBatchedEvent.domain).toBe('string');
+        // Verify response field is NOT present (was removed)
+        expect((responseBatchedEvent as any).response).toBeUndefined();
+      }
     });
 
     test('should timeout after requestTimeoutMs with single provider', async () => {
