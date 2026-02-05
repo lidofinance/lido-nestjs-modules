@@ -81,7 +81,7 @@ declare module '@ethersproject/providers' {
 
 // this will help with autocomplete
 export interface SimpleFallbackJsonRpcBatchProviderEventEmitter
-  extends NodeJS.EventEmitter {
+  extends LazyEventEmitter {
   on(eventName: 'rpc', listener: (event: FallbackProviderEvents) => void): this;
   once(
     eventName: 'rpc',
@@ -91,7 +91,6 @@ export interface SimpleFallbackJsonRpcBatchProviderEventEmitter
     eventName: 'rpc',
     listener: (event: FallbackProviderEvents) => void,
   ): this;
-  emitLazy<T>(eventName: 'rpc', createEvent: () => T): boolean;
 }
 
 @Injectable()

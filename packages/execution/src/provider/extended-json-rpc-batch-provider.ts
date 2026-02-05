@@ -34,14 +34,13 @@ import {
 } from '../events';
 // this will help with autocomplete
 export interface ExtendedJsonRpcBatchProviderEventEmitter
-  extends NodeJS.EventEmitter {
+  extends LazyEventEmitter {
   on(eventName: 'rpc', listener: (event: ProviderEvents) => void): this;
   once(eventName: 'rpc', listener: (event: ProviderEvents) => void): this;
   addListener(
     eventName: 'rpc',
     listener: (event: ProviderEvents) => void,
   ): this;
-  emitLazy<T>(eventName: 'rpc', createEvent: () => T): boolean;
 }
 
 export interface RequestPolicy {
