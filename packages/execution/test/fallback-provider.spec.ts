@@ -1058,6 +1058,105 @@ describe('Execution module. ', () => {
       }
     });
 
+    test('should emit fallback-provider:request:non-retryable-error when listener attached', async () => {
+      await createMocks(2);
+
+      // Trigger network detection first
+      await mockedProvider.getBlock(10000);
+
+      const events: FallbackProviderEvents[] = [];
+      mockedProvider.eventEmitter.on('rpc', (event) => events.push(event));
+
+      // Create a non-retryable error
+      const makeError = () => {
+        const err = new Error('Non-retryable error');
+        (err as Error & { code: string | number }).code = nonRetryableErrors[0];
+        return err;
+      };
+
+      mockedFallbackProviderFetch[0].mockImplementation(
+        makeFakeFetchImplThrowsError(makeError()),
+      );
+
+      await expect(
+        async () => await mockedProvider.getBlock(42),
+      ).rejects.toThrow('Non-retryable error');
+
+      // Should have emitted non-retryable error event
+      const nonRetryableEvent = events.find(
+        (e) => e.action === 'fallback-provider:request:non-retryable-error',
+      );
+      expect(nonRetryableEvent).toBeDefined();
+      if (
+        nonRetryableEvent?.action ===
+        'fallback-provider:request:non-retryable-error'
+      ) {
+        expect(nonRetryableEvent.provider).toBe(mockedProvider);
+        expect(nonRetryableEvent.error).toBeDefined();
+      }
+    });
+
+    test('should emit fallback-provider:request:failed:all when listener attached and all providers fail', async () => {
+      await createMocks(2);
+
+      const events: FallbackProviderEvents[] = [];
+      mockedProvider.eventEmitter.on('rpc', (event) => events.push(event));
+
+      // Both providers succeed for network detection but fail for actual requests
+      // This allows detectNetwork() to succeed, then perform() will fail on all providers
+      mockedFallbackProviderFetch[0].mockImplementation(
+        fakeFetchImplThatCanOnlyDoNetworkDetection,
+      );
+      mockedFallbackProviderFetch[1].mockImplementation(
+        fakeFetchImplThatCanOnlyDoNetworkDetection,
+      );
+
+      await expect(
+        async () => await mockedProvider.getBlock(1000),
+      ).rejects.toThrow(/All attempts to do ETH1 RPC request failed/);
+
+      // Should have emitted failed:all event
+      const failedAllEvent = events.find(
+        (e) => e.action === 'fallback-provider:request:failed:all',
+      );
+      expect(failedAllEvent).toBeDefined();
+      if (failedAllEvent?.action === 'fallback-provider:request:failed:all') {
+        expect(failedAllEvent.provider).toBe(mockedProvider);
+        expect(failedAllEvent.error).toBeInstanceOf(AllProvidersFailedError);
+      }
+    });
+
+    test('should emit provider:response-batched:error when listener attached and fetch fails', async () => {
+      // Use only 1 provider so there's no fallback to avoid the second provider succeeding
+      await createMocks(1);
+
+      // Trigger network detection first
+      await mockedProvider.getBlock(10000);
+
+      const events: FallbackProviderEvents[] = [];
+      mockedProvider.eventEmitter.on('rpc', (event) => events.push(event));
+
+      // Make fetch fail after network detection
+      mockedFallbackProviderFetch[0].mockImplementation(async () => {
+        throw new Error('Fetch failed');
+      });
+
+      await expect(
+        async () => await mockedProvider.getBlock(42),
+      ).rejects.toThrow();
+
+      // Should have emitted response-batched:error event from child provider
+      const errorEvent = events.find(
+        (e) => e.action === 'provider:response-batched:error',
+      );
+      expect(errorEvent).toBeDefined();
+      if (errorEvent?.action === 'provider:response-batched:error') {
+        expect(errorEvent.error).toBeDefined();
+        expect(Array.isArray(errorEvent.request)).toBe(true);
+        expect(typeof errorEvent.domain).toBe('string');
+      }
+    });
+
     test('should timeout after requestTimeoutMs with single provider', async () => {
       // Provider hangs for 2 seconds, but timeout is 500ms
       await createMocks(
