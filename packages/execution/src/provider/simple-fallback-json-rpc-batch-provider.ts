@@ -37,7 +37,7 @@ import {
 } from '../interfaces/wait-for-transaction';
 import { TraceConfig, TraceResult } from '../interfaces/debug-traces';
 import { getDebugTraceBlockByHash } from '../ethers/debug-trace-block-by-hash';
-import { EventEmitter } from 'events';
+import { LazyEventEmitter } from '../common/lazy-event-emitter';
 import {
   FallbackProviderEvents,
   FallbackProviderRequestEvent,
@@ -91,6 +91,7 @@ export interface SimpleFallbackJsonRpcBatchProviderEventEmitter
     eventName: 'rpc',
     listener: (event: FallbackProviderEvents) => void,
   ): this;
+  emitLazy<T>(eventName: 'rpc', createEvent: () => T): boolean;
 }
 
 @Injectable()
@@ -112,7 +113,7 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
     logger: LoggerService,
   ) {
     super(config.network);
-    this._eventEmitter = new EventEmitter();
+    this._eventEmitter = new LazyEventEmitter();
     this._setupLazyChildListeners();
     this.config = {
       maxRetries: 3,
@@ -364,17 +365,17 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
         const result = await retry(() => {
           const provider = this.provider;
 
-          if (this._eventEmitter.listenerCount('rpc') > 0) {
-            const event: FallbackProviderRequestEvent = {
+          this._eventEmitter.emitLazy(
+            'rpc',
+            (): FallbackProviderRequestEvent => ({
               action: 'fallback-provider:request',
               provider: this,
               activeFallbackProviderIndex: this.activeFallbackProviderIndex,
               fallbackProvidersCount: this.fallbackProviders.length,
               domain: provider.provider.domain,
               retryAttempt: performRetryAttempt,
-            };
-            this._eventEmitter.emit('rpc', event);
-          }
+            }),
+          );
 
           performRetryAttempt++;
           const performPromise = provider.provider.perform(method, params);
@@ -404,14 +405,14 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
 
         // checking that error should not be retried on another provider
         if (this.isNonRetryableError(e)) {
-          if (this._eventEmitter.listenerCount('rpc') > 0) {
-            const event: FallbackProviderRequestNonRetryableErrorEvent = {
+          this._eventEmitter.emitLazy(
+            'rpc',
+            (): FallbackProviderRequestNonRetryableErrorEvent => ({
               action: 'fallback-provider:request:non-retryable-error',
               provider: this,
               error: e,
-            };
-            this._eventEmitter.emit('rpc', event);
-          }
+            }),
+          );
           // Log context (label + provider index) synchronously before error object
           // to ensure proper ordering in async logging systems
           this.logger.error(
@@ -461,14 +462,14 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
     );
     allProvidersFailedError.cause = this.lastError;
 
-    if (this._eventEmitter.listenerCount('rpc') > 0) {
-      const event: FallbackProviderRequestFailedAllEvent = {
+    this._eventEmitter.emitLazy(
+      'rpc',
+      (): FallbackProviderRequestFailedAllEvent => ({
         action: 'fallback-provider:request:failed:all',
         provider: this,
         error: allProvidersFailedError,
-      };
-      this._eventEmitter.emit('rpc', event);
-    }
+      }),
+    );
 
     throw allProvidersFailedError;
   }
@@ -586,7 +587,7 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
    * This avoids unnecessary event processing when no one is listening.
    */
   protected _setupLazyChildListeners(): void {
-    (this._eventEmitter as EventEmitter).on(
+    (this._eventEmitter as LazyEventEmitter).on(
       'newListener',
       (eventName: string) => {
         if (eventName === 'rpc' && !this._childRpcListenersAttached) {

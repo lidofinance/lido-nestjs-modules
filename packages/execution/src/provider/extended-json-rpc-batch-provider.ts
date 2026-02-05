@@ -25,7 +25,7 @@ import { ErrorCode } from '../error/codes/error-codes';
 import { TraceConfig, TraceResult } from '../interfaces/debug-traces';
 import { getDebugTraceBlockByHash } from '../ethers/debug-trace-block-by-hash';
 import { getConnectionFQDN } from '../common/networks';
-import { EventEmitter } from 'events';
+import { LazyEventEmitter } from '../common/lazy-event-emitter';
 import {
   ProviderEvents,
   ProviderRequestBatchedEvent,
@@ -41,6 +41,7 @@ export interface ExtendedJsonRpcBatchProviderEventEmitter
     eventName: 'rpc',
     listener: (event: ProviderEvents) => void,
   ): this;
+  emitLazy<T>(eventName: 'rpc', createEvent: () => T): boolean;
 }
 
 export interface RequestPolicy {
@@ -135,7 +136,7 @@ export class ExtendedJsonRpcBatchProvider extends JsonRpcProvider {
     fetchMiddlewares: MiddlewareCallback<Promise<any>>[] = [],
   ) {
     super(url, network);
-    this._eventEmitter = new EventEmitter();
+    this._eventEmitter = new LazyEventEmitter();
     this._domain = getConnectionFQDN(url);
     this._requestPolicy = requestPolicy ?? {
       jsonRpcMaxBatchSize: 200,
@@ -177,15 +178,15 @@ export class ExtendedJsonRpcBatchProvider extends JsonRpcProvider {
 
       const batchRequest = batch.map((intent) => intent.request);
 
-      if (this._eventEmitter.listenerCount('rpc') > 0) {
-        const event: ProviderRequestBatchedEvent = {
+      this._eventEmitter.emitLazy(
+        'rpc',
+        (): ProviderRequestBatchedEvent => ({
           action: 'provider:request-batched',
           request: deepCopy(batchRequest),
           provider: this,
           domain: this._domain,
-        };
-        this._eventEmitter.emit('rpc', event);
-      }
+        }),
+      );
 
       this._concurrencyLimiter(() => {
         return this._fetchMiddlewareService.go(
@@ -198,15 +199,15 @@ export class ExtendedJsonRpcBatchProvider extends JsonRpcProvider {
       })
         .then(
           (batchResult: JsonRpcResponse[] | JsonRpcResponse) => {
-            if (this._eventEmitter.listenerCount('rpc') > 0) {
-              const event: ProviderResponseBatchedEvent = {
+            this._eventEmitter.emitLazy(
+              'rpc',
+              (): ProviderResponseBatchedEvent => ({
                 action: 'provider:response-batched',
                 request: deepCopy(batchRequest),
                 provider: this,
                 domain: this._domain,
-              };
-              this._eventEmitter.emit('rpc', event);
-            }
+              }),
+            );
 
             if (!Array.isArray(batchResult)) {
               const errMessage = 'Unexpected batch result.';
@@ -253,16 +254,16 @@ export class ExtendedJsonRpcBatchProvider extends JsonRpcProvider {
             });
           },
           (error: Error) => {
-            if (this._eventEmitter.listenerCount('rpc') > 0) {
-              const event: ProviderResponseBatchedErrorEvent = {
+            this._eventEmitter.emitLazy(
+              'rpc',
+              (): ProviderResponseBatchedErrorEvent => ({
                 action: 'provider:response-batched:error',
                 error: error,
                 request: deepCopy(batchRequest),
                 provider: this,
                 domain: this._domain,
-              };
-              this._eventEmitter.emit('rpc', event);
-            }
+              }),
+            );
 
             batch.forEach((inflightRequest) => {
               inflightRequest.reject(error);
@@ -271,16 +272,16 @@ export class ExtendedJsonRpcBatchProvider extends JsonRpcProvider {
         )
         .catch((error: Error) => {
           // catch errors happening in the 'then' callback
-          if (this._eventEmitter.listenerCount('rpc') > 0) {
-            const event: ProviderResponseBatchedErrorEvent = {
+          this._eventEmitter.emitLazy(
+            'rpc',
+            (): ProviderResponseBatchedErrorEvent => ({
               action: 'provider:response-batched:error',
               error: error,
               request: deepCopy(batchRequest),
               provider: this,
               domain: this._domain,
-            };
-            this._eventEmitter.emit('rpc', event);
-          }
+            }),
+          );
 
           batch.forEach((inflightRequest) => {
             inflightRequest.reject(error);

@@ -515,6 +515,35 @@ export const makeFakeFetchImplThatFailsOnReceipt = () => {
  * then increases confirmations after N calls.
  * This simulates waiting for more confirmations.
  */
+/**
+ * Creates a fake fetch impl that returns partial batch results.
+ * It returns responses with wrong IDs, simulating a malformed RPC response.
+ */
+export const makeFakeFetchImplWithPartialBatchResponse = () => {
+  let callCount = 0;
+
+  return async (
+    _connection: string | ConnectionInfo,
+    json?: string,
+  ): Promise<unknown> => {
+    const requests = json ? JSON.parse(json) : {};
+    callCount++;
+
+    // First call is network detection - return all responses
+    if (callCount === 1) {
+      return requests.map(fakeJsonRpc());
+    }
+
+    // Second call onwards - return responses with wrong IDs
+    // This simulates partial batch where some request IDs are missing from response
+    return requests.map((request: JsonRpcRequest) => {
+      const response = fakeJsonRpc()(request);
+      // Change the ID to a wrong one so it won't match
+      return { ...response, id: response.id + 999999 };
+    });
+  };
+};
+
 export const makeFakeFetchImplWithLowConfirmations = (
   lowConfirmationCalls: number,
   chainId?: number,

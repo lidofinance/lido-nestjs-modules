@@ -17,6 +17,7 @@ import {
   makeFetchImplWithSpecificFeeHistory,
   makeFetchImplWithSpecificNetwork,
   makeFakeFetchImplThatHangs,
+  makeFakeFetchImplWithPartialBatchResponse,
 } from './fixtures/fake-json-rpc';
 import { nullTransport, LoggerModule } from '@lido-nestjs/logger';
 import { ConnectionInfo } from '@ethersproject/web';
@@ -1155,6 +1156,29 @@ describe('Execution module. ', () => {
         expect(Array.isArray(errorEvent.request)).toBe(true);
         expect(typeof errorEvent.domain).toBe('string');
       }
+    });
+
+    test('should handle partial batch response with PARTIAL_BATCH_RESULT error', async () => {
+      await createMocks(1);
+
+      mockedFallbackProviderFetch[0].mockImplementation(
+        makeFakeFetchImplWithPartialBatchResponse(),
+      );
+
+      // This should fail because the batch response is missing some IDs
+      let caughtError: AllProvidersFailedError | null = null;
+      try {
+        await mockedProvider.getBlock(42);
+      } catch (e) {
+        caughtError = e as AllProvidersFailedError;
+      }
+
+      expect(caughtError).toBeInstanceOf(AllProvidersFailedError);
+      // The cause should contain the partial batch error
+      expect(caughtError?.cause).toBeDefined();
+      expect((caughtError?.cause as Error)?.message).toMatch(
+        /Partial payload batch result/,
+      );
     });
 
     test('should timeout after requestTimeoutMs with single provider', async () => {
