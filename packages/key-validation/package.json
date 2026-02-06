@@ -39,7 +39,7 @@
   },
   "peerDependencies": {
     "@nestjs/common": "^8.2.5",
-    "@nestjs/core": "^8.2.5",
+    "@nestjs/core": "^9.0.5",
     "reflect-metadata": "^0.1.13",
     "rxjs": "^7.5.2",
     "tslib": "^2.3.1"
@@ -47,7 +47,7 @@
   "devDependencies": {
     "@ethersproject/providers": "5.8.0",
     "@nestjs/common": "^8.2.5",
-    "@nestjs/core": "^8.2.5",
+    "@nestjs/core": "^9.0.5",
     "@nestjs/testing": "^8.2.5",
     "reflect-metadata": "^0.1.13",
     "rxjs": "^7.5.2"
