@@ -283,14 +283,14 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
     return fallbackProvider;
   }
 
-  protected switchToNextProvider() {
+  public switchToNextProvider(): boolean {
     if (this.fallbackProviders.length === 1) {
       this.logger.warn(
         this.formatLog(
           'Will not switch to next provider. No valid backup provider provided.',
         ),
       );
-      return;
+      return false;
     }
     const oldIndex = this.activeFallbackProviderIndex;
     this.activeFallbackProviderIndex =
@@ -300,6 +300,7 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
         `Switched provider: [${oldIndex}] -> [${this.activeFallbackProviderIndex}] (total: ${this.fallbackProviders.length})`,
       ),
     );
+    return true;
   }
 
   protected isNonRetryableError(error: Error | unknown): boolean {
@@ -574,6 +575,19 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
 
   public get activeProviderIndex() {
     return this.activeFallbackProviderIndex;
+  }
+
+  public get providersCount() {
+    return this.fallbackProviders.length;
+  }
+
+  public getProviderByIndex(
+    index: number,
+  ): ExtendedJsonRpcBatchProvider | null {
+    if (index < 0 || index >= this.fallbackProviders.length) {
+      return null;
+    }
+    return this.fallbackProviders[index].provider;
   }
 
   public get eventEmitter() {
