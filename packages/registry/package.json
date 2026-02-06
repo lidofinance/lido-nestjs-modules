@@ -32,15 +32,15 @@
     "@lido-nestjs/decorators": "workspace:*",
     "@lido-nestjs/logger": "workspace:*",
     "@lido-nestjs/utils": "workspace:*",
-    "cron": "^2.0.0"
+    "cron": "^3.1.0"
   },
   "peerDependencies": {
     "@mikro-orm/core": "^5.2.0",
     "@mikro-orm/knex": "^5.2.0",
     "@mikro-orm/migrations": "^5.2.0",
     "@mikro-orm/nestjs": "^5.0.2",
-    "@nestjs/common": "^8.2.5",
-    "@nestjs/core": "^8.2.5",
+    "@nestjs/common": "^10.0.0",
+    "@nestjs/core": "^10.0.0",
     "reflect-metadata": "^0.1.13",
     "rxjs": "^7.5.2",
     "tslib": "^2.3.1"
@@ -52,10 +52,9 @@
     "@mikro-orm/migrations": "^5.2.0",
     "@mikro-orm/nestjs": "^5.0.2",
     "@mikro-orm/sqlite": "^5.2.0",
-    "@nestjs/common": "^8.2.5",
-    "@nestjs/core": "^8.2.5",
-    "@nestjs/testing": "^8.2.5",
-    "@types/cron": "^2",
+    "@nestjs/common": "^10.0.0",
+    "@nestjs/core": "^10.0.0",
+    "@nestjs/testing": "^10.0.0",
     "reflect-metadata": "^0.1.13",
     "rxjs": "^7.5.2"
   }
