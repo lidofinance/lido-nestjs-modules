@@ -1,5 +1,6 @@
 import { LoggerService } from '@nestjs/common/services/logger.service';
 import { sleep } from './sleep';
+import { sanitizeError } from './sanitize-error';
 
 export const retrier = (
   logger?: LoggerService | null,
@@ -31,7 +32,7 @@ export const retrier = (
 
       if (logger && logWarning) {
         logger.warn(
-          err,
+          sanitizeError(err),
           `Retrying after (${minBackoffMs}ms). Remaining retries [${maxRetryCount}]`,
         );
       }

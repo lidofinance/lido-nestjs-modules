@@ -29,6 +29,7 @@ import {
 } from '../common/errors';
 import { AllProvidersFailedError } from '../error/all-providers-failed.error';
 import { RequestTimeoutError } from '../error/request-timeout.error';
+import { sanitizeError, sanitizeErrorInPlace } from '../common/sanitize-error';
 import { TransactionWaitTimeoutError } from '../error/transaction-wait-timeout.error';
 import { FeeHistory, getFeeHistory } from '../ethers/fee-history';
 import {
@@ -420,7 +421,7 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
               this.activeFallbackProviderIndex,
             ),
           );
-          this.logger.error(e);
+          this.logger.error(sanitizeError(e));
           throw e;
         }
 
@@ -433,7 +434,7 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
               this.activeFallbackProviderIndex,
             ),
           );
-          this.logger.error(e);
+          this.logger.error(sanitizeError(e));
         } else {
           this.logger.error(
             this.formatLog(
@@ -441,7 +442,7 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
               this.activeFallbackProviderIndex,
             ),
           );
-          this.logger.error(e);
+          this.logger.error(sanitizeError(e));
         }
 
         // This check is needed to avoid multiple `switchToNextProvider` calls when doing one JSON-RPC batch.
@@ -459,6 +460,7 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
     const allProvidersFailedError = new AllProvidersFailedError(
       `All attempts to do ETH1 RPC request failed for ${method}`,
     );
+    sanitizeErrorInPlace(this.lastError);
     allProvidersFailedError.cause = this.lastError;
 
     this._eventEmitter.emitLazy(
@@ -674,8 +676,9 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
 
         this.logger.warn(
           this.formatLog(
-            `waitForTransactionWithFallback poll #${pollCount} failed for ${txHash}: ${error}`,
+            `waitForTransactionWithFallback poll #${pollCount} failed for ${txHash}`,
           ),
+          sanitizeError(error),
         );
 
         await sleep(pollInterval);
