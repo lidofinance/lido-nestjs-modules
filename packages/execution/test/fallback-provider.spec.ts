@@ -17,6 +17,7 @@ import {
   makeFetchImplWithSpecificFeeHistory,
   makeFetchImplWithSpecificNetwork,
   makeFakeFetchImplWithPartialBatchResponse,
+  makeFakeFetchImplThatHangs,
 } from './fixtures/fake-json-rpc';
 import { nullTransport, LoggerModule } from '@lido-nestjs/logger';
 import { ConnectionInfo } from '@ethersproject/web';
@@ -1207,6 +1208,50 @@ describe('Execution module. ', () => {
         /Partial payload batch result/,
       );
     });
+
+    test('should log timeout error and switch to next provider on RequestTimeoutError', async () => {
+      await createMocks(
+        2,
+        1,
+        1,
+        1, // maxRetries = 1 (no retry)
+        false,
+        null,
+        undefined,
+        undefined,
+        200, // requestTimeoutMs: 200ms
+      );
+
+      let callCount = 0;
+      // First provider: succeeds for network detection, then hangs
+      mockedFallbackProviderFetch[0].mockImplementation(
+        async (conn: string | ConnectionInfo, json?: string) => {
+          callCount++;
+          if (callCount === 1) {
+            return fakeFetchImpl()(conn, json);
+          }
+          return makeFakeFetchImplThatHangs(2000)(conn, json);
+        },
+      );
+
+      // Second provider works normally
+      mockedFallbackProviderFetch[1].mockImplementation(fakeFetchImpl());
+
+      const errorSpy = jest.spyOn(mockedProvider['logger'], 'error');
+
+      const block = await mockedProvider.getBlock(42);
+
+      // Should switch to second provider and succeed
+      expect(block.hash).toBe(fixtures.eth_getBlockByNumber.default.hash);
+
+      // Should have logged the timeout error with method name and timeout duration
+      const timeoutLogCall = errorSpy.mock.calls.find(
+        (call) =>
+          typeof call[0] === 'string' && call[0].includes('timeout after'),
+      );
+      expect(timeoutLogCall).toBeDefined();
+      expect(timeoutLogCall?.[0]).toContain('200ms');
+    }, 4000);
 
     test('should log with instanceLabel when provided', async () => {
       await createMocks(
