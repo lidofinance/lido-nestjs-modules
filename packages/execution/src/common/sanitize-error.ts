@@ -1,5 +1,22 @@
+import { inspect } from 'util';
+
 const DEFAULT_MAX_LENGTH = 1000;
 
+const INSPECT_OPTIONS = (maxLength: number) =>
+  ({
+    depth: 4,
+    maxStringLength: maxLength,
+    maxArrayLength: 20,
+    compact: true,
+    breakLength: Infinity,
+  } as const);
+
+/**
+ * Uses util.inspect to produce a bounded string representation.
+ * Never calls JSON.stringify (avoids V8 "RangeError: Invalid string length"
+ * on objects >512 MB). inspect() handles circular references, throwing
+ * getters, frozen objects, and huge data internally.
+ */
 function truncate(value: unknown, maxLength: number): unknown {
   if (value === null || value === undefined) return value;
   if (typeof value === 'string') {
@@ -11,10 +28,12 @@ function truncate(value: unknown, maxLength: number): unknown {
   if (typeof value !== 'object') return value;
 
   try {
-    const json = JSON.stringify(value);
-    if (json.length <= maxLength) return value;
+    const inspected = inspect(value, INSPECT_OPTIONS(maxLength));
+    if (inspected.length <= maxLength) return value;
+
     return (
-      json.slice(0, maxLength) + `...[truncated, total length: ${json.length}]`
+      inspected.slice(0, maxLength) +
+      `...[truncated, total length: ${inspected.length}]`
     );
   } catch {
     return '[unserializable]';
@@ -22,53 +41,25 @@ function truncate(value: unknown, maxLength: number): unknown {
 }
 
 /**
- * Extracts safe, bounded error information from an error object.
- * Prevents huge RPC response data, ethers requestBody/body, and
- * nested error chains from bloating logs and memory.
+ * Returns a safe, bounded string representation of an error for logging.
+ * inspect() handles everything internally: circular references, throwing
+ * getters, frozen objects, huge nested data. No manual field extraction needed.
  */
 export function sanitizeError(
   error: unknown,
   maxLength = DEFAULT_MAX_LENGTH,
-): Record<string, unknown> {
-  if (error === null || error === undefined) {
-    return { message: String(error) };
+): string {
+  try {
+    const result = inspect(error, INSPECT_OPTIONS(maxLength));
+    if (result.length <= maxLength) return result;
+
+    return (
+      result.slice(0, maxLength) +
+      `...[truncated, total length: ${result.length}]`
+    );
+  } catch {
+    return '[unserializable error]';
   }
-
-  if (typeof error !== 'object') {
-    return { message: truncate(String(error), maxLength) as string };
-  }
-
-  const err = error as Record<string, unknown>;
-  const sanitized: Record<string, unknown> = {};
-
-  if (err.name) sanitized.name = err.name;
-  if (err.message) sanitized.message = truncate(err.message, maxLength);
-  if (err.code !== undefined) sanitized.code = err.code;
-
-  // ethers-specific fields — extract only useful metadata
-  if (err.reason) sanitized.reason = truncate(err.reason, maxLength);
-  if (err.method) sanitized.method = err.method;
-
-  // truncate potentially huge fields
-  if (err.data !== undefined) sanitized.data = truncate(err.data, maxLength);
-  if (err.body !== undefined) sanitized.body = truncate(err.body, maxLength);
-  if (err.requestBody !== undefined)
-    sanitized.requestBody = truncate(err.requestBody, maxLength);
-  if (err.serverError !== undefined)
-    sanitized.serverError = truncate(err.serverError, maxLength);
-
-  // recursively sanitize nested error/cause, but only one level
-  if (err.error && typeof err.error === 'object') {
-    sanitized.error = sanitizeError(err.error, maxLength);
-  }
-  if (err.cause && typeof err.cause === 'object') {
-    sanitized.cause = sanitizeError(err.cause, maxLength);
-  }
-
-  // timeoutMs for RequestTimeoutError
-  if (err.timeoutMs !== undefined) sanitized.timeoutMs = err.timeoutMs;
-
-  return sanitized;
 }
 
 /**
@@ -93,24 +84,42 @@ const HEAVY_FIELDS = ['data', 'body', 'requestBody', 'serverError'] as const;
 export function sanitizeErrorInPlace(
   error: unknown,
   maxLength = DEFAULT_MAX_LENGTH,
+  /** @internal tracks visited objects to prevent circular-reference stack overflow */
+  _seen?: WeakSet<object>,
 ): void {
   if (error === null || error === undefined || typeof error !== 'object') {
     return;
   }
 
+  const seen = _seen ?? new WeakSet<object>();
+  if (seen.has(error)) return;
+  seen.add(error);
+
   const err = error as Record<string, unknown>;
 
   for (const field of HEAVY_FIELDS) {
-    if (err[field] !== undefined) {
-      err[field] = truncate(err[field], maxLength);
+    try {
+      if (err[field] !== undefined) {
+        err[field] = truncate(err[field], maxLength);
+      }
+    } catch {
+      // read-only property or throwing getter
     }
   }
 
-  // sanitize nested error/cause one level deep
-  if (err.error && typeof err.error === 'object') {
-    sanitizeErrorInPlace(err.error, maxLength);
+  try {
+    if (err.error && typeof err.error === 'object') {
+      sanitizeErrorInPlace(err.error, maxLength, seen);
+    }
+  } catch {
+    // throwing getter on .error
   }
-  if (err.cause && typeof err.cause === 'object') {
-    sanitizeErrorInPlace(err.cause, maxLength);
+
+  try {
+    if (err.cause && typeof err.cause === 'object') {
+      sanitizeErrorInPlace(err.cause, maxLength, seen);
+    }
+  } catch {
+    // throwing getter on .cause
   }
 }

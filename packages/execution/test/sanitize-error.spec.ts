@@ -1,3 +1,4 @@
+import { inspect } from 'util';
 import {
   sanitizeError,
   sanitizeErrorData,
@@ -28,17 +29,15 @@ import {
 } from './fixtures/error-mocks';
 
 // ============================================================
-// Helpers: inflate mock errors with realistic data sizes
+// Helpers
 // ============================================================
 
-/** Generate a string payload of a given byte size */
 function makePayload(bytes: number): string {
   return 'x'.repeat(bytes);
 }
 
-/** Generate a JSON object payload of approximately a given byte size */
 function makeJsonPayload(bytes: number): object {
-  const itemSize = 120; // approximate JSON size of each item
+  const itemSize = 120;
   const count = Math.max(1, Math.ceil(bytes / itemSize));
   return {
     results: Array.from({ length: count }, (_, i) => ({
@@ -48,7 +47,6 @@ function makeJsonPayload(bytes: number): object {
   };
 }
 
-/** Inflate heavy fields on an error to a given size */
 function inflateError(
   error: Error,
   fields: Array<'data' | 'body' | 'requestBody' | 'serverError'>,
@@ -57,7 +55,6 @@ function inflateError(
   const err = error as unknown as Record<string, unknown>;
   for (const field of fields) {
     if (field === 'serverError') {
-      // serverError is typically an object, not a string
       err[field] = makeJsonPayload(bytes);
     } else {
       err[field] = makePayload(bytes);
@@ -72,7 +69,6 @@ const SIZES = [
   ['1MB', 1_000_000],
 ] as const;
 
-/** Error factories mapped to their heavy fields that can carry large data */
 const INFLATABLE_ERRORS: Array<
   [string, () => Error, Array<'data' | 'body' | 'requestBody' | 'serverError'>]
 > = [
@@ -127,420 +123,313 @@ const INFLATABLE_ERRORS: Array<
 ];
 
 // ============================================================
-// INVARIANTS LIST
+// sanitizeError — returns a bounded string via util.inspect
 //
-// sanitizeError:
-//   INV-SE-1:  Always returns a plain object (Record<string, unknown>), never Error instance
-//   INV-SE-2:  Preserves name, message, code from any error
-//   INV-SE-3:  Preserves ethers-specific metadata: reason, method
-//   INV-SE-4:  Truncates heavy fields (data, body, requestBody, serverError) to maxLength
-//   INV-SE-5:  message is truncated if exceeds maxLength
-//   INV-SE-6:  Nested error/cause are recursively sanitized (returns plain objects)
-//   INV-SE-7:  Handles null/undefined input gracefully
-//   INV-SE-8:  Handles non-object input (string, number)
-//   INV-SE-9:  Preserves timeoutMs for RequestTimeoutError
-//   INV-SE-10: Output JSON.stringify size is bounded
-//   INV-SE-11: Does not include stack traces
-//   INV-SE-12: Custom maxLength is respected
-//
-// sanitizeErrorData:
-//   INV-SD-1:  Returns original value if within maxLength
-//   INV-SD-2:  Truncates strings exceeding maxLength
-//   INV-SD-3:  Truncates objects whose JSON exceeds maxLength
-//   INV-SD-4:  Handles null/undefined/primitives
-//   INV-SD-5:  Handles circular references (unserializable)
-//   INV-SD-6:  Truncated output contains "[truncated, total length: N]" marker
-//
-// sanitizeErrorInPlace:
-//   INV-SIP-1:  Mutates the error, does not return a new object
-//   INV-SIP-2:  Preserves instanceof (FetchError, RequestTimeoutError, etc.)
-//   INV-SIP-3:  Truncates heavy fields (data, body, requestBody, serverError)
-//   INV-SIP-4:  Recursively sanitizes nested error/cause objects
-//   INV-SIP-5:  Preserves non-heavy fields (name, message, code, reason, method, etc.)
-//   INV-SIP-6:  Handles null/undefined/non-object input without throwing
-//   INV-SIP-7:  After mutation, JSON.stringify of heavy fields is bounded
-//
+// INVARIANTS:
+//   INV-SE-1:  Always returns a string
+//   INV-SE-2:  Contains error name and message
+//   INV-SE-3:  Contains error code / ethers metadata
+//   INV-SE-4:  Output is bounded by maxLength
+//   INV-SE-5:  Handles null/undefined/non-object input
+//   INV-SE-6:  Handles circular references (via inspect [Circular])
+//   INV-SE-7:  Handles throwing getters without crashing
+//   INV-SE-8:  Never throws
 // ============================================================
 
 describe('sanitizeError', () => {
   // ----------------------------------------
-  // INV-SE-7: null / undefined
+  // INV-SE-1: always returns a string
   // ----------------------------------------
-  describe('null and undefined input', () => {
-    test('returns {message: "null"} for null', () => {
-      const result = sanitizeError(null);
-      expect(result).toEqual({ message: 'null' });
+  describe('always returns a string', () => {
+    test('Error object', () => {
+      expect(typeof sanitizeError(new Error('test'))).toBe('string');
     });
 
-    test('returns {message: "undefined"} for undefined', () => {
-      const result = sanitizeError(undefined);
-      expect(result).toEqual({ message: 'undefined' });
-    });
-  });
-
-  // ----------------------------------------
-  // INV-SE-8: non-object input
-  // ----------------------------------------
-  describe('non-object input', () => {
-    test('handles string error', () => {
-      const result = sanitizeError('something broke');
-      expect(result).toEqual({ message: 'something broke' });
-    });
-
-    test('handles number error', () => {
-      const result = sanitizeError(42);
-      expect(result).toEqual({ message: '42' });
-    });
-
-    test('truncates long string error', () => {
-      const longStr = 'x'.repeat(2000);
-      const result = sanitizeError(longStr, 100);
-      expect((result.message as string).length).toBeLessThan(200);
-      expect(result.message).toContain('...[truncated');
-    });
-  });
-
-  // ----------------------------------------
-  // INV-SE-1: returns plain object
-  // INV-SE-11: no stack traces
-  // ----------------------------------------
-  describe('always returns plain object without stack', () => {
-    test('FetchError UNEXPECTED_BATCH_RESULT', () => {
-      const error = createFetchErrorUnexpectedBatchResult();
-      const result = sanitizeError(error);
-
-      expect(result.constructor).toBe(Object);
-      expect(result).not.toBeInstanceOf(Error);
-      expect(result).not.toBeInstanceOf(FetchError);
-      expect(result).not.toHaveProperty('stack');
+    test('FetchError', () => {
+      expect(
+        typeof sanitizeError(createFetchErrorUnexpectedBatchResult()),
+      ).toBe('string');
     });
 
     test('Ethers SERVER_ERROR', () => {
-      const error = createEthersServerError();
-      const result = sanitizeError(error);
-
-      expect(result.constructor).toBe(Object);
-      expect(result).not.toBeInstanceOf(Error);
-      expect(result).not.toHaveProperty('stack');
-    });
-
-    test('Ethers nested SERVER_ERROR', () => {
-      const error = createEthersNestedServerError();
-      const result = sanitizeError(error);
-
-      expect(result.constructor).toBe(Object);
-      expect(result).not.toHaveProperty('stack');
-      // nested error should also be plain
-      expect((result.error as Record<string, unknown>).constructor).toBe(
-        Object,
-      );
+      expect(typeof sanitizeError(createEthersServerError())).toBe('string');
     });
   });
 
   // ----------------------------------------
-  // INV-SE-2: preserves name, message, code
+  // INV-SE-5: null / undefined / non-object
   // ----------------------------------------
-  describe('preserves identity fields', () => {
+  describe('null, undefined, and primitive input', () => {
+    test('null', () => {
+      const result = sanitizeError(null);
+      expect(typeof result).toBe('string');
+      expect(result).toContain('null');
+    });
+
+    test('undefined', () => {
+      const result = sanitizeError(undefined);
+      expect(typeof result).toBe('string');
+      expect(result).toContain('undefined');
+    });
+
+    test('string', () => {
+      const result = sanitizeError('something broke');
+      expect(result).toContain('something broke');
+    });
+
+    test('number', () => {
+      const result = sanitizeError(42);
+      expect(result).toContain('42');
+    });
+  });
+
+  // ----------------------------------------
+  // INV-SE-2: contains name and message
+  // ----------------------------------------
+  describe('contains error identity', () => {
     test('FetchError UNEXPECTED_BATCH_RESULT', () => {
       const error = createFetchErrorUnexpectedBatchResult();
       const result = sanitizeError(error);
 
-      expect(result.name).toBe('FetchError');
-      expect(result.message).toBe(
-        'Unexpected batch result. Possible reason: "rate limit exceeded".',
-      );
-      expect(result.code).toBe('UNEXPECTED_BATCH_RESULT');
+      expect(result).toContain('FetchError');
+      expect(result).toContain('Unexpected batch result');
     });
 
     test('FetchError PARTIAL_BATCH_RESULT', () => {
       const error = createFetchErrorPartialBatchResult();
       const result = sanitizeError(error);
 
-      expect(result.name).toBe('FetchError');
-      expect(result.message).toBe(
-        'Partial payload batch result. Response 7 not found',
-      );
-      expect(result.code).toBe('PARTIAL_BATCH_RESULT');
+      expect(result).toContain('FetchError');
+      expect(result).toContain('Partial payload batch result');
     });
 
     test('FetchError JSON-RPC error', () => {
       const error = createFetchErrorJsonRpcError();
       const result = sanitizeError(error);
 
-      expect(result.name).toBe('FetchError');
-      expect(result.message).toBe('execution reverted');
-      expect(result.code).toBe(-32000);
+      expect(result).toContain('execution reverted');
     });
 
     test('RequestTimeoutError', () => {
       const error = createRequestTimeoutError();
       const result = sanitizeError(error);
 
-      expect(result.name).toBe('RequestTimeoutError');
-      expect(result.message).toBe('Request timeout after 12000ms');
+      expect(result).toContain('RequestTimeoutError');
+      expect(result).toContain('Request timeout after 12000ms');
+      expect(result).toContain('12000');
     });
 
     test('Ethers SERVER_ERROR', () => {
       const error = createEthersServerError();
-      const result = sanitizeError(error);
+      const result = sanitizeError(error, 5000);
 
-      expect(result.name).toBe('Error');
-      expect(result.code).toBe('SERVER_ERROR');
+      expect(result).toContain('SERVER_ERROR');
     });
 
     test('Ethers CALL_EXCEPTION', () => {
       const error = createEthersCallException();
       const result = sanitizeError(error);
 
-      expect(result.name).toBe('Error');
-      expect(result.code).toBe('CALL_EXCEPTION');
+      expect(result).toContain('CALL_EXCEPTION');
+      expect(result).toContain('balanceOf(address)');
     });
 
     test('Ethers TIMEOUT', () => {
       const error = createEthersTimeoutError();
-      const result = sanitizeError(error);
+      const result = sanitizeError(error, 5000);
 
-      expect(result.code).toBe('TIMEOUT');
+      expect(result).toContain('TIMEOUT');
     });
 
     test('Ethers NETWORK_ERROR', () => {
       const error = createEthersNetworkError();
-      const result = sanitizeError(error);
+      const result = sanitizeError(error, 5000);
 
-      expect(result.code).toBe('NETWORK_ERROR');
+      expect(result).toContain('NETWORK_ERROR');
     });
 
     test('Native ENOTFOUND', () => {
       const error = createNativeNetworkError();
       const result = sanitizeError(error);
 
-      expect(result.name).toBe('Error');
-      expect(result.code).toBe('ENOTFOUND');
-      expect(result.message).toBe('getaddrinfo ENOTFOUND mainnet.infura.io');
+      expect(result).toContain('ENOTFOUND');
+      expect(result).toContain('mainnet.infura.io');
     });
 
     test('AllProvidersFailedError', () => {
       const error = createAllProvidersFailedError();
       const result = sanitizeError(error);
 
-      expect(result.name).toBe('AllProvidersFailedError');
-      expect(result.message).toBe(
-        'All attempts to do ETH1 RPC request failed for eth_getLogs',
-      );
-      expect(result.code).toBe(0);
+      expect(result).toContain('AllProvidersFailedError');
+      expect(result).toContain('eth_getLogs');
     });
   });
 
   // ----------------------------------------
-  // INV-SE-3: ethers-specific metadata
+  // INV-SE-3: contains ethers metadata
   // ----------------------------------------
-  describe('preserves ethers-specific metadata', () => {
+  describe('contains ethers-specific metadata', () => {
     test('reason from SERVER_ERROR', () => {
       const error = createEthersServerError();
       const result = sanitizeError(error);
 
-      expect(result.reason).toBe('missing response');
-    });
-
-    test('reason from CALL_EXCEPTION', () => {
-      const error = createEthersCallException();
-      const result = sanitizeError(error);
-
-      // reason is null in mock, so should not be present
-      expect(result).not.toHaveProperty('reason');
-    });
-
-    test('method from CALL_EXCEPTION', () => {
-      const error = createEthersCallException();
-      const result = sanitizeError(error);
-
-      expect(result.method).toBe('balanceOf(address)');
+      expect(result).toContain('missing response');
     });
 
     test('reason from rate-limited batch', () => {
       const error = createEthersServerErrorBatchRateLimited();
       const result = sanitizeError(error);
 
-      expect(result.reason).toBe('bad response');
+      expect(result).toContain('bad response');
+    });
+
+    test('method from CALL_EXCEPTION', () => {
+      const error = createEthersCallException();
+      const result = sanitizeError(error);
+
+      expect(result).toContain('balanceOf(address)');
     });
   });
 
   // ----------------------------------------
-  // INV-SE-9: preserves timeoutMs
+  // INV-SE-4: output is bounded
   // ----------------------------------------
-  describe('preserves timeoutMs for RequestTimeoutError', () => {
-    test('timeoutMs is preserved', () => {
-      const error = createRequestTimeoutError();
-      const result = sanitizeError(error);
+  describe('output is bounded', () => {
+    test('long string error is truncated', () => {
+      const longStr = 'x'.repeat(2000);
+      const result = sanitizeError(longStr, 100);
 
-      expect(result.timeoutMs).toBe(12000);
+      expect(result.length).toBeLessThan(200);
+      expect(result).toContain('...[truncated');
     });
 
-    test('timeoutMs absent on non-timeout errors', () => {
-      const error = createEthersServerError();
-      const result = sanitizeError(error);
+    test('error with 50 MB fields is bounded', () => {
+      const error = new Error('huge') as Error & Record<string, unknown>;
+      error.data = 'x'.repeat(50_000_000);
+      error.body = 'y'.repeat(50_000_000);
 
-      expect(result).not.toHaveProperty('timeoutMs');
-    });
-  });
+      const result = sanitizeError(error, 1000);
 
-  // ----------------------------------------
-  // INV-SE-4: truncation of heavy fields
-  // INV-SE-10: output size bounded
-  // ----------------------------------------
-  describe('truncates heavy fields', () => {
-    const MAX = 500;
-
-    test('small data object — preserved when under limit', () => {
-      const error = createFetchErrorUnexpectedBatchResult();
-      const result = sanitizeError(error, 500);
-
-      expect(result.data).toEqual({
-        code: -32005,
-        message: 'rate limit exceeded',
-      });
+      expect(result.length).toBeLessThan(1200);
+      expect(result).toContain('...[truncated');
     });
 
-    test('small hex data — preserved under default limit', () => {
-      const error = createFetchErrorJsonRpcError();
-      const result = sanitizeError(error);
-
-      expect(result.data).toBe((error as FetchError).data);
-    });
-
-    for (const [errorName, factory, fields] of INFLATABLE_ERRORS) {
-      for (const [sizeName, sizeBytes] of SIZES) {
-        test(`${errorName} inflated to ${sizeName} — heavy fields truncated and output bounded`, () => {
-          const error = factory();
-          inflateError(error, fields, sizeBytes);
-
-          const result = sanitizeError(error, MAX);
-
-          // each inflated heavy field must be truncated
-          for (const field of fields) {
-            const value = result[field];
-            if (value !== undefined) {
-              const serialized =
-                typeof value === 'string' ? value : JSON.stringify(value);
-              expect(serialized.length).toBeLessThanOrEqual(MAX + 100);
-              if (sizeBytes > MAX) {
-                expect(serialized).toContain('...[truncated');
-              }
-            }
-          }
-
-          // total output size must be bounded regardless of input size
-          const totalSize = JSON.stringify(result).length;
-          expect(totalSize).toBeLessThan(MAX * 10);
-        });
-      }
-    }
-  });
-
-  // ----------------------------------------
-  // INV-SE-5: message truncation
-  // ----------------------------------------
-  describe('truncates long messages', () => {
-    test('Ethers SERVER_ERROR with huge body has long message — truncated', () => {
-      const error = createEthersServerErrorWithHugeBody();
-      const originalMessage = error.message;
-      expect(originalMessage.length).toBeGreaterThan(100);
-
-      const result = sanitizeError(error, 200);
-
-      const message = result.message as string;
-      expect(message.length).toBeLessThanOrEqual(300); // 200 + marker
-    });
-
-    test('short message preserved exactly', () => {
-      const error = createFetchErrorJsonRpcError();
-      const result = sanitizeError(error);
-
-      expect(result.message).toBe('execution reverted');
-    });
-  });
-
-  // ----------------------------------------
-  // INV-SE-6: nested error/cause recursion
-  // ----------------------------------------
-  describe('recursively sanitizes nested errors', () => {
-    test('AllProvidersFailedError.cause is sanitized', () => {
-      const error = createAllProvidersFailedError();
-      const result = sanitizeError(error);
-
-      expect(result.cause).toBeDefined();
-      const cause = result.cause as Record<string, unknown>;
-      expect(cause.constructor).toBe(Object);
-      expect(cause.name).toBe('Error');
-      expect(cause.code).toBe('SERVER_ERROR');
-      expect(cause.reason).toBe('missing response');
-      expect(cause).not.toHaveProperty('stack');
-    });
-
-    test('nested error chain (3 levels) is sanitized', () => {
-      const error = createEthersNestedServerError();
-      const result = sanitizeError(error);
-
-      // outer
-      expect(result.code).toBe('SERVER_ERROR');
-      expect(result.reason).toBe('processing response error');
-
-      // middle (via .error)
-      const middle = result.error as Record<string, unknown>;
-      expect(middle).toBeDefined();
-      expect(middle.code).toBe('SERVER_ERROR');
-
-      // inner serverError in middle is truncated (not recursive sanitizeError on serverError)
-      expect(middle.serverError).toBeDefined();
-    });
-
-    test('AllProvidersFailedError with huge cause — cause data is truncated', () => {
-      const hugeError = createEthersServerErrorWithHugeBody();
-      const allFailed = new AllProvidersFailedError(
-        'All attempts to do ETH1 RPC request failed for eth_getLogs',
-      );
-      allFailed.cause = hugeError;
-
-      const result = sanitizeError(allFailed, 500);
-
-      const cause = result.cause as Record<string, unknown>;
-      const body = cause.body as string;
-      expect(body.length).toBeLessThan(1000);
-      expect(body).toContain('...[truncated');
-    });
-  });
-
-  // ----------------------------------------
-  // INV-SE-12: custom maxLength
-  // ----------------------------------------
-  describe('respects custom maxLength', () => {
-    test('maxLength=50 truncates everything aggressively', () => {
+    test('custom maxLength=50', () => {
       const error = createEthersServerErrorBatchChunk();
       const result = sanitizeError(error, 50);
 
-      const requestBody = result.requestBody as string;
-      expect(requestBody.length).toBeLessThan(150);
-      expect(requestBody).toContain('...[truncated');
-
-      const message = result.message as string;
-      expect(message.length).toBeLessThan(150);
+      expect(result.length).toBeLessThan(150);
     });
 
-    test('maxLength=10000 preserves small fields', () => {
-      const error = createEthersServerError();
+    test('custom maxLength=10000 preserves small errors fully', () => {
+      const error = createFetchErrorJsonRpcError();
       const result = sanitizeError(error, 10000);
 
-      // requestBody is ~175 chars — should be preserved
-      expect(result.requestBody).toBe(
-        (error as unknown as Record<string, unknown>).requestBody,
-      );
+      expect(result).toContain('execution reverted');
+      expect(result).not.toContain('...[truncated');
     });
   });
 
   // ----------------------------------------
-  // Coverage for every error mock
+  // INV-SE-6: circular references
   // ----------------------------------------
-  describe('works for every error mock type', () => {
+  describe('handles circular references', () => {
+    test('err.cause = err (self-referencing)', () => {
+      const err = new Error('Boom') as Error & Record<string, unknown>;
+      err.cause = err;
+
+      expect(() => sanitizeError(err)).not.toThrow();
+      const result = sanitizeError(err);
+      expect(result).toContain('Boom');
+      // inspect uses <ref *N> / [Circular *N] notation for circular references
+      expect(result).toMatch(/Circular|ref \*/);
+    });
+
+    test('err.error = err (self-referencing)', () => {
+      const err = new Error('Boom') as Error & Record<string, unknown>;
+      err.error = err;
+
+      expect(() => sanitizeError(err)).not.toThrow();
+      const result = sanitizeError(err);
+      // inspect uses <ref *N> / [Circular *N] notation for circular references
+      expect(result).toMatch(/Circular|ref \*/);
+    });
+
+    test('A.cause = B, B.cause = A (mutual cycle)', () => {
+      const a = new Error('A') as Error & Record<string, unknown>;
+      const b = new Error('B') as Error & Record<string, unknown>;
+      a.cause = b;
+      b.cause = a;
+
+      expect(() => sanitizeError(a)).not.toThrow();
+      const result = sanitizeError(a);
+      expect(result).toContain('Circular');
+    });
+
+    test('3-error chain with cycle back to root', () => {
+      const a = new Error('A') as Error & Record<string, unknown>;
+      const b = new Error('B') as Error & Record<string, unknown>;
+      const c = new Error('C') as Error & Record<string, unknown>;
+      a.cause = b;
+      b.cause = c;
+      c.cause = a;
+
+      expect(() => sanitizeError(a)).not.toThrow();
+    });
+  });
+
+  // ----------------------------------------
+  // INV-SE-7: throwing getters
+  // ----------------------------------------
+  describe('handles throwing getters', () => {
+    test('throwing getter on data — does not crash', () => {
+      const err = new Error('getter-boom');
+      Object.defineProperty(err, 'data', {
+        get() {
+          throw new Error('getter exploded');
+        },
+        enumerable: true,
+      });
+
+      expect(() => sanitizeError(err)).not.toThrow();
+      const result = sanitizeError(err);
+      expect(result).toContain('getter-boom');
+    });
+
+    test('throwing getter on cause — does not crash', () => {
+      const err = new Error('getter-cause');
+      Object.defineProperty(err, 'cause', {
+        get() {
+          throw new Error('cause getter exploded');
+        },
+        enumerable: true,
+      });
+
+      expect(() => sanitizeError(err)).not.toThrow();
+    });
+  });
+
+  // ----------------------------------------
+  // INV-SE-7b: object with throwing [util.inspect.custom]
+  // ----------------------------------------
+  describe('handles unserializable error (inspect itself throws)', () => {
+    test('returns fallback string', () => {
+      const err = {
+        message: 'boom',
+        [inspect.custom]() {
+          throw new Error('inspect exploded');
+        },
+      };
+
+      const result = sanitizeError(err);
+      expect(result).toBe('[unserializable error]');
+    });
+  });
+
+  // ----------------------------------------
+  // INV-SE-8: never throws — every error mock
+  // ----------------------------------------
+  describe('never throws for any error mock type', () => {
     const errorFactories = [
       [
         'FetchError UNEXPECTED_BATCH_RESULT',
@@ -578,26 +467,23 @@ describe('sanitizeError', () => {
     ] as const;
 
     test.each(errorFactories)(
-      '%s — does not throw and returns bounded output',
+      '%s — returns bounded string',
       (_name, factory) => {
         const error = factory();
         const result = sanitizeError(error, 500);
 
-        expect(result).toBeDefined();
-        expect(typeof result).toBe('object');
-        expect(result).not.toBeInstanceOf(Error);
-
-        const totalSize = JSON.stringify(result).length;
-        expect(totalSize).toBeLessThan(10000);
+        expect(typeof result).toBe('string');
+        expect(result.length).toBeLessThan(1000);
       },
     );
   });
 });
 
+// ============================================================
+// sanitizeErrorData
+// ============================================================
+
 describe('sanitizeErrorData', () => {
-  // ----------------------------------------
-  // INV-SD-1: small values preserved
-  // ----------------------------------------
   describe('preserves small values', () => {
     test('null', () => {
       expect(sanitizeErrorData(null)).toBeNull();
@@ -625,9 +511,6 @@ describe('sanitizeErrorData', () => {
     });
   });
 
-  // ----------------------------------------
-  // INV-SD-2: string truncation
-  // ----------------------------------------
   describe('truncates long strings', () => {
     test('string slightly over maxLength', () => {
       const str = 'x'.repeat(1100);
@@ -639,9 +522,7 @@ describe('sanitizeErrorData', () => {
 
     test('string exactly at maxLength is preserved', () => {
       const str = 'x'.repeat(1000);
-      const result = sanitizeErrorData(str);
-
-      expect(result).toBe(str);
+      expect(sanitizeErrorData(str)).toBe(str);
     });
 
     test('string one over maxLength is truncated', () => {
@@ -654,9 +535,7 @@ describe('sanitizeErrorData', () => {
     test('hex revert data (194 chars) preserved under default maxLength', () => {
       const hex =
         '0x08c379a00000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000001a4e6f7420656e6f75676820616c6c6f77616e636500000000000000000000000000';
-      const result = sanitizeErrorData(hex);
-
-      expect(result).toBe(hex);
+      expect(sanitizeErrorData(hex)).toBe(hex);
     });
 
     test('custom maxLength=50', () => {
@@ -668,9 +547,6 @@ describe('sanitizeErrorData', () => {
     });
   });
 
-  // ----------------------------------------
-  // INV-SD-3: object truncation
-  // ----------------------------------------
   describe('truncates large objects', () => {
     test('large object', () => {
       const obj = {
@@ -695,22 +571,26 @@ describe('sanitizeErrorData', () => {
     });
   });
 
-  // ----------------------------------------
-  // INV-SD-5: circular references
-  // ----------------------------------------
   describe('handles circular references', () => {
-    test('circular object returns [unserializable]', () => {
+    test('small circular object is returned as-is (util.inspect handles circulars)', () => {
       const obj: Record<string, unknown> = { a: 1 };
       obj.self = obj;
 
       const result = sanitizeErrorData(obj);
-      expect(result).toBe('[unserializable]');
+      expect(result).toBe(obj);
+    });
+
+    test('large circular object is truncated', () => {
+      const obj: Record<string, unknown> = { a: 1, data: 'x'.repeat(5000) };
+      obj.self = obj;
+
+      const result = sanitizeErrorData(obj, 100) as string;
+      expect(typeof result).toBe('string');
+      expect(result.length).toBeLessThan(200);
+      expect(result).toContain('...[truncated');
     });
   });
 
-  // ----------------------------------------
-  // INV-SD-6: truncation marker format
-  // ----------------------------------------
   describe('truncation marker', () => {
     test('marker contains total length for strings', () => {
       const str = 'z'.repeat(5000);
@@ -721,26 +601,20 @@ describe('sanitizeErrorData', () => {
 
     test('marker contains total length for objects', () => {
       const obj = { data: 'x'.repeat(5000) };
-      const jsonLen = JSON.stringify(obj).length;
       const result = sanitizeErrorData(obj, 100) as string;
 
-      expect(result).toContain(`...[truncated, total length: ${jsonLen}]`);
+      expect(result).toMatch(/\.\.\.\[truncated, total length: \d+\]/);
     });
   });
 
-  // ----------------------------------------
-  // Real error data scenarios
-  // ----------------------------------------
   describe('real error data scenarios', () => {
     test('batchResult.error (from UNEXPECTED_BATCH_RESULT)', () => {
       const data = { code: -32005, message: 'rate limit exceeded' };
-      const result = sanitizeErrorData(data);
-
-      expect(result).toEqual(data);
+      expect(sanitizeErrorData(data)).toEqual(data);
     });
 
     test('payload.error.data (huge revert data)', () => {
-      const data = '0x' + 'ff'.repeat(10000); // 20002 chars
+      const data = '0x' + 'ff'.repeat(10000);
       const result = sanitizeErrorData(data, 500) as string;
 
       expect(result.length).toBeLessThan(1000);
@@ -749,9 +623,7 @@ describe('sanitizeErrorData', () => {
 
     test('payload.error.data (small revert data)', () => {
       const data = '0x08c379a0';
-      const result = sanitizeErrorData(data);
-
-      expect(result).toBe(data);
+      expect(sanitizeErrorData(data)).toBe(data);
     });
 
     test('partial batch result data (structured)', () => {
@@ -760,17 +632,28 @@ describe('sanitizeErrorData', () => {
         receivedIds: [1, 2, 3, 4, 5, 6],
         batchSize: 6,
       };
-      const result = sanitizeErrorData(data);
+      expect(sanitizeErrorData(data)).toEqual(data);
+    });
+  });
 
-      expect(result).toEqual(data);
+  describe('handles unserializable object (inspect itself throws)', () => {
+    test('returns fallback string', () => {
+      const obj = {
+        [inspect.custom]() {
+          throw new Error('inspect exploded');
+        },
+      };
+
+      expect(sanitizeErrorData(obj)).toBe('[unserializable]');
     });
   });
 });
 
+// ============================================================
+// sanitizeErrorInPlace
+// ============================================================
+
 describe('sanitizeErrorInPlace', () => {
-  // ----------------------------------------
-  // INV-SIP-6: safe for null/undefined/non-object
-  // ----------------------------------------
   describe('handles null/undefined/non-object without throwing', () => {
     test('null', () => {
       expect(() => sanitizeErrorInPlace(null)).not.toThrow();
@@ -789,15 +672,10 @@ describe('sanitizeErrorInPlace', () => {
     });
   });
 
-  // ----------------------------------------
-  // INV-SIP-1: mutates in place
-  // ----------------------------------------
   describe('mutates error in place', () => {
     test('returns void', () => {
       const error = createEthersServerError();
-      const result = sanitizeErrorInPlace(error);
-
-      expect(result).toBeUndefined();
+      expect(sanitizeErrorInPlace(error)).toBeUndefined();
     });
 
     test('same reference after sanitization', () => {
@@ -809,9 +687,6 @@ describe('sanitizeErrorInPlace', () => {
     });
   });
 
-  // ----------------------------------------
-  // INV-SIP-2: preserves instanceof
-  // ----------------------------------------
   describe('preserves instanceof', () => {
     test('FetchError', () => {
       const error = createFetchErrorUnexpectedBatchResult();
@@ -857,9 +732,6 @@ describe('sanitizeErrorInPlace', () => {
     });
   });
 
-  // ----------------------------------------
-  // INV-SIP-3: truncates heavy fields
-  // ----------------------------------------
   describe('truncates heavy fields', () => {
     const MAX = 500;
 
@@ -885,7 +757,6 @@ describe('sanitizeErrorInPlace', () => {
             }
           }
 
-          // instanceof must be preserved after mutation
           expect(error).toBeInstanceOf(Error);
         });
       }
@@ -901,9 +772,6 @@ describe('sanitizeErrorInPlace', () => {
     });
   });
 
-  // ----------------------------------------
-  // INV-SIP-5: preserves non-heavy fields
-  // ----------------------------------------
   describe('preserves non-heavy fields', () => {
     test('name, message, code on FetchError', () => {
       const error = createFetchErrorUnexpectedBatchResult();
@@ -950,14 +818,10 @@ describe('sanitizeErrorInPlace', () => {
       const stackBefore = error.stack;
       sanitizeErrorInPlace(error);
 
-      // sanitizeErrorInPlace should NOT remove stack — it only truncates heavy fields
       expect(error.stack).toBe(stackBefore);
     });
   });
 
-  // ----------------------------------------
-  // INV-SIP-4: recursive sanitization of nested error/cause
-  // ----------------------------------------
   describe('recursively sanitizes nested errors', () => {
     test('AllProvidersFailedError with huge-body cause', () => {
       const hugeError = createEthersServerErrorWithHugeBody();
@@ -978,19 +842,12 @@ describe('sanitizeErrorInPlace', () => {
     test('nested ethers error chain (outer.error.serverError)', () => {
       const error = createEthersNestedServerError();
       const outer = error as unknown as Record<string, unknown>;
-      const middle = outer.error as Record<string, unknown>;
-      const inner = middle.serverError as Record<string, unknown>;
-
-      // inner has body field
-      expect(inner.body).toBeDefined();
 
       sanitizeErrorInPlace(error, 30);
 
-      // outer requestBody should be truncated
       const requestBody = outer.requestBody as string;
       expect(requestBody.length).toBeLessThan(150);
 
-      // middle.serverError should also be sanitized (it's nested via .error -> .serverError)
       const middleAfter = outer.error as Record<string, unknown>;
       expect(middleAfter.serverError).toBeDefined();
     });
@@ -1013,15 +870,93 @@ describe('sanitizeErrorInPlace', () => {
     });
   });
 
-  // ----------------------------------------
-  // INV-SIP-7: after mutation, heavy fields are bounded
-  // ----------------------------------------
+  describe('circular error chains (stack overflow protection)', () => {
+    test('err.cause = err (self-referencing)', () => {
+      const err = new Error('Boom') as Error & Record<string, unknown>;
+      err.cause = err;
+
+      expect(() => sanitizeErrorInPlace(err)).not.toThrow();
+    });
+
+    test('A.cause = B, B.cause = A', () => {
+      const a = new Error('A') as Error & Record<string, unknown>;
+      const b = new Error('B') as Error & Record<string, unknown>;
+      a.cause = b;
+      b.cause = a;
+
+      expect(() => sanitizeErrorInPlace(a)).not.toThrow();
+    });
+  });
+
+  describe('read-only properties', () => {
+    test('frozen error — does not throw', () => {
+      const err = new Error('frozen');
+      (err as unknown as Record<string, unknown>).data = 'x'.repeat(5000);
+      Object.freeze(err);
+
+      expect(() => sanitizeErrorInPlace(err, 100)).not.toThrow();
+    });
+
+    test('non-writable data property — does not throw', () => {
+      const err = new Error('readonly');
+      Object.defineProperty(err, 'data', {
+        value: 'x'.repeat(5000),
+        writable: false,
+        enumerable: true,
+      });
+
+      expect(() => sanitizeErrorInPlace(err, 100)).not.toThrow();
+    });
+
+    test('non-writable body — does not throw, other fields still sanitized', () => {
+      const err = new Error('partial-readonly') as Error &
+        Record<string, unknown>;
+      Object.defineProperty(err, 'body', {
+        value: 'y'.repeat(5000),
+        writable: false,
+        enumerable: true,
+      });
+      err.data = 'x'.repeat(5000);
+
+      sanitizeErrorInPlace(err, 100);
+
+      expect((err.body as string).length).toBe(5000);
+      expect((err.data as string).length).toBeLessThan(300);
+    });
+  });
+
+  describe('dangerous getters', () => {
+    test('throwing getter on data — does not crash', () => {
+      const err = new Error('getter-inplace');
+      Object.defineProperty(err, 'data', {
+        get() {
+          throw new Error('getter exploded');
+        },
+        enumerable: true,
+      });
+
+      expect(() => sanitizeErrorInPlace(err)).not.toThrow();
+    });
+
+    test('throwing getter on cause — does not crash', () => {
+      const err = new Error('getter-cause-inplace');
+      Object.defineProperty(err, 'cause', {
+        get() {
+          throw new Error('cause getter exploded');
+        },
+        enumerable: true,
+      });
+
+      expect(() => sanitizeErrorInPlace(err)).not.toThrow();
+    });
+  });
+
   describe('heavy fields are bounded after mutation', () => {
     const MAX = 500;
 
     for (const [errorName, factory, fields] of INFLATABLE_ERRORS) {
       for (const [sizeName, sizeBytes] of SIZES) {
-        test(`${errorName} inflated to ${sizeName} — all heavy fields bounded after mutation`, () => {
+        test(`${errorName} inflated to ${sizeName} — all heavy fields bounded`, () => {
           const error = factory();
           inflateError(error, fields, sizeBytes);
 
@@ -1042,9 +977,6 @@ describe('sanitizeErrorInPlace', () => {
     }
   });
 
-  // ----------------------------------------
-  // Coverage for every error mock
-  // ----------------------------------------
   describe('works for every error mock type without throwing', () => {
     const errorFactories = [
       [
@@ -1090,5 +1022,173 @@ describe('sanitizeErrorInPlace', () => {
         expect(error).toBeInstanceOf(Error);
       },
     );
+  });
+});
+
+// ============================================================
+// V8 string limit protection — huge data tests
+// ============================================================
+
+describe('V8 string limit protection — huge data', () => {
+  const MAX = 1000;
+
+  describe('huge string fields', () => {
+    test('sanitizeErrorData — 50 MB string', () => {
+      const huge = 'x'.repeat(50_000_000);
+      const result = sanitizeErrorData(huge, MAX) as string;
+
+      expect(typeof result).toBe('string');
+      expect(result.length).toBeLessThan(MAX + 100);
+      expect(result).toContain('...[truncated, total length: 50000000]');
+    });
+
+    test('sanitizeError — error with 50 MB data/body/requestBody', () => {
+      const error = new Error('huge') as Error & Record<string, unknown>;
+      error.data = 'x'.repeat(50_000_000);
+      error.body = 'y'.repeat(50_000_000);
+      error.requestBody = 'z'.repeat(50_000_000);
+
+      const result = sanitizeError(error, MAX);
+
+      expect(typeof result).toBe('string');
+      expect(result.length).toBeLessThan(MAX + 100);
+    });
+
+    test('sanitizeErrorInPlace — 50 MB fields truncated in place', () => {
+      const error = new Error('huge') as Error & Record<string, unknown>;
+      error.data = 'x'.repeat(50_000_000);
+      error.body = 'y'.repeat(50_000_000);
+
+      sanitizeErrorInPlace(error, MAX);
+
+      expect((error.data as string).length).toBeLessThan(MAX + 100);
+      expect((error.body as string).length).toBeLessThan(MAX + 100);
+    });
+  });
+
+  describe('objects producing gigabyte-scale JSON', () => {
+    test('sanitizeErrorData — array of 1M shared objects (~1 GB JSON)', () => {
+      const sharedItem = { id: 0, data: 'x'.repeat(100) };
+      const hugeArray = new Array(1_000_000).fill(sharedItem);
+
+      const result = sanitizeErrorData(hugeArray, MAX) as string;
+
+      expect(typeof result).toBe('string');
+      expect(result.length).toBeLessThan(MAX + 100);
+      expect(result).toContain('...[truncated');
+    });
+
+    test('sanitizeErrorData — object with 1M-element array field', () => {
+      const sharedItem = { id: 0, payload: 'a'.repeat(100) };
+      const hugeObj = {
+        results: new Array(1_000_000).fill(sharedItem),
+      };
+
+      const result = sanitizeErrorData(hugeObj, MAX) as string;
+
+      expect(typeof result).toBe('string');
+      expect(result.length).toBeLessThan(MAX + 100);
+      expect(result).toContain('...[truncated');
+    });
+
+    test('sanitizeError — error carrying 1M-element data field', () => {
+      const sharedItem = { id: 0, payload: 'a'.repeat(100) };
+      const error = new Error('huge payload') as Error &
+        Record<string, unknown>;
+      error.data = new Array(1_000_000).fill(sharedItem);
+
+      const result = sanitizeError(error, MAX);
+
+      expect(typeof result).toBe('string');
+      expect(result.length).toBeLessThan(MAX + 100);
+    });
+  });
+
+  describe('deeply nested structures', () => {
+    test('sanitizeErrorData — 1000-level nesting with data at each level', () => {
+      const root: Record<string, unknown> = {};
+      let current = root;
+      for (let i = 0; i < 1000; i++) {
+        current.data = 'x'.repeat(10_000);
+        current.nested = {};
+        current = current.nested as Record<string, unknown>;
+      }
+
+      const result = sanitizeErrorData(root, MAX) as string;
+
+      expect(typeof result).toBe('string');
+      expect(result.length).toBeLessThan(MAX + 100);
+      expect(result).toContain('...[truncated');
+    });
+
+    test('sanitizeError — error with deeply nested serverError', () => {
+      const root: Record<string, unknown> = {};
+      let current = root;
+      for (let i = 0; i < 100; i++) {
+        current.body = 'y'.repeat(10_000);
+        current.error = {};
+        current = current.error as Record<string, unknown>;
+      }
+
+      const error = new Error('deep') as Error & Record<string, unknown>;
+      error.serverError = root;
+
+      const result = sanitizeError(error, MAX);
+
+      expect(typeof result).toBe('string');
+      expect(result.length).toBeLessThan(MAX + 100);
+    });
+  });
+
+  describe('circular references at scale', () => {
+    test('sanitizeErrorData — circular with large payload', () => {
+      const obj: Record<string, unknown> = {
+        data: 'x'.repeat(100_000),
+      };
+      obj.self = obj;
+
+      const result = sanitizeErrorData(obj, MAX) as string;
+
+      expect(typeof result).toBe('string');
+      expect(result.length).toBeLessThan(MAX + 100);
+      expect(result).toContain('...[truncated');
+    });
+
+    test('sanitizeError — error with circular data field', () => {
+      const payload: Record<string, unknown> = {
+        items: new Array(10_000).fill('x'.repeat(100)),
+      };
+      payload.ref = payload;
+
+      const error = new Error('circular') as Error & Record<string, unknown>;
+      error.data = payload;
+
+      const result = sanitizeError(error, MAX);
+
+      expect(typeof result).toBe('string');
+      expect(result.length).toBeLessThan(MAX + 100);
+    });
+  });
+
+  describe('performance', () => {
+    test('50 MB string truncation completes in < 100 ms', () => {
+      const huge = 'x'.repeat(50_000_000);
+      const start = performance.now();
+      sanitizeErrorData(huge, MAX);
+      const elapsed = performance.now() - start;
+
+      expect(elapsed).toBeLessThan(100);
+    });
+
+    test('1M-element array truncation completes in < 500 ms', () => {
+      const sharedItem = { id: 0, data: 'x'.repeat(100) };
+      const hugeArray = new Array(1_000_000).fill(sharedItem);
+
+      const start = performance.now();
+      sanitizeErrorData(hugeArray, MAX);
+      const elapsed = performance.now() - start;
+
+      expect(elapsed).toBeLessThan(500);
+    });
   });
 });
