@@ -16,7 +16,6 @@ import {
   makeFakeFetchImplThrowsError,
   makeFetchImplWithSpecificFeeHistory,
   makeFetchImplWithSpecificNetwork,
-  makeFakeFetchImplThatHangs,
   makeFakeFetchImplWithPartialBatchResponse,
 } from './fixtures/fake-json-rpc';
 import { nullTransport, LoggerModule } from '@lido-nestjs/logger';
@@ -27,11 +26,7 @@ import { MiddlewareCallback } from '@lido-nestjs/middleware';
 import { Network } from '@ethersproject/networks';
 import { nonRetryableErrors } from '../src/common/errors';
 import { ErrorCode, Logger } from '@ethersproject/logger';
-import {
-  AllProvidersFailedError,
-  FallbackProviderEvents,
-  RequestTimeoutError,
-} from '../src';
+import { AllProvidersFailedError, FallbackProviderEvents } from '../src';
 
 export type MockedExtendedJsonRpcBatchProvider =
   ExtendedJsonRpcBatchProvider & {
@@ -1212,161 +1207,6 @@ describe('Execution module. ', () => {
         /Partial payload batch result/,
       );
     });
-
-    test('should timeout after requestTimeoutMs with single provider', async () => {
-      // Provider hangs for 2 seconds, but timeout is 500ms
-      await createMocks(
-        1,
-        1,
-        1,
-        1, // maxRetries = 1 (no retry)
-        false,
-        null,
-        undefined,
-        undefined,
-        500, // requestTimeoutMs: 500ms
-      );
-
-      // Provider hangs for 2 seconds (longer than timeout)
-      mockedFallbackProviderFetch[0].mockImplementation(
-        makeFakeFetchImplThatHangs(2000),
-      );
-
-      const startTime = Date.now();
-
-      await expect(
-        async () => await mockedProvider.getBlock(42),
-      ).rejects.toThrow(/All attempts to do ETH1 RPC request failed/);
-
-      const duration = Date.now() - startTime;
-
-      // Should fail quickly with timeout (no retries)
-      expect(duration).toBeGreaterThan(500); // at least timeout
-      expect(duration).toBeLessThan(3000); // but faster than hang time
-
-      // Network detection + 1 getBlock attempt
-      expect(mockedFallbackProviderFetch[0]).toHaveBeenCalledTimes(2);
-    }, 4000);
-
-    test('should timeout and switch to next provider', async () => {
-      await createMocks(
-        2,
-        1,
-        1,
-        1, // maxRetries = 1 (no retry)
-        false,
-        null,
-        undefined,
-        undefined,
-        500, // requestTimeoutMs: 500ms
-      );
-
-      let callCount = 0;
-      // First provider: succeeds for network detection, then hangs
-      mockedFallbackProviderFetch[0].mockImplementation(async (conn, json) => {
-        callCount++;
-        if (callCount === 1) {
-          // First call is network detection - let it succeed
-          return fakeFetchImpl()(conn, json);
-        }
-        // Subsequent calls hang (longer than timeout)
-        return makeFakeFetchImplThatHangs(2000)(conn, json);
-      });
-
-      // Second provider works normally
-      mockedFallbackProviderFetch[1].mockImplementation(fakeFetchImpl());
-
-      expect(mockedProvider.activeProviderIndex).toBe(0);
-
-      const block = await mockedProvider.getBlock(42);
-
-      // Should switch to second provider
-      expect(mockedProvider.activeProviderIndex).toBe(1);
-      expect(block.hash).toBe(fixtures.eth_getBlockByNumber.default.hash);
-
-      // First provider: network detection (1) + getBlock timeout (1)
-      expect(mockedFallbackProviderFetch[0]).toHaveBeenCalledTimes(2);
-
-      // Second provider: network detection (1) + successful getBlock (1)
-      expect(mockedFallbackProviderFetch[1]).toHaveBeenCalledTimes(2);
-    }, 4000);
-
-    test('should fail with AllProvidersFailedError when all providers timeout', async () => {
-      await createMocks(
-        2,
-        1,
-        1,
-        1, // maxRetries = 1 (no retry)
-        false,
-        null,
-        undefined,
-        undefined,
-        500, // requestTimeoutMs: 500ms
-      );
-
-      let callCount0 = 0;
-      let callCount1 = 0;
-
-      // Both providers: succeed for network detection, then hang
-      mockedFallbackProviderFetch[0].mockImplementation(async (conn, json) => {
-        callCount0++;
-        if (callCount0 === 1) {
-          return fakeFetchImpl()(conn, json);
-        }
-        return makeFakeFetchImplThatHangs(2000)(conn, json);
-      });
-
-      mockedFallbackProviderFetch[1].mockImplementation(async (conn, json) => {
-        callCount1++;
-        if (callCount1 === 1) {
-          return fakeFetchImpl()(conn, json);
-        }
-        return makeFakeFetchImplThatHangs(2000)(conn, json);
-      });
-
-      let caughtError: AllProvidersFailedError | null = null;
-
-      try {
-        await mockedProvider.getBlock(42);
-      } catch (e) {
-        caughtError = e as AllProvidersFailedError;
-      }
-
-      expect(caughtError).toBeInstanceOf(AllProvidersFailedError);
-      expect(caughtError?.message).toMatch(
-        /All attempts to do ETH1 RPC request failed/,
-      );
-      expect(caughtError?.cause).toBeInstanceOf(RequestTimeoutError);
-
-      // Both providers: network detection (1) + getBlock timeout (1)
-      expect(mockedFallbackProviderFetch[0]).toHaveBeenCalledTimes(2);
-      expect(mockedFallbackProviderFetch[1]).toHaveBeenCalledTimes(2);
-    }, 4000);
-
-    test('should work without timeout when requestTimeoutMs is not set', async () => {
-      await createMocks(
-        1,
-        1,
-        1,
-        1,
-        false,
-        null,
-        undefined,
-        undefined,
-        undefined, // no requestTimeoutMs
-      );
-
-      // Provider hangs for 1 second, but there's no timeout
-      mockedFallbackProviderFetch[0].mockImplementation(
-        makeFakeFetchImplThatHangs(1000),
-      );
-
-      const block = await mockedProvider.getBlock(42);
-
-      // Should eventually succeed
-      expect(block.hash).toBe(fixtures.eth_getBlockByNumber.default.hash);
-      expect(mockedFallbackProviderFetch[0]).toHaveBeenCalledTimes(2);
-    }, 5000);
 
     test('should log with instanceLabel when provided', async () => {
       await createMocks(

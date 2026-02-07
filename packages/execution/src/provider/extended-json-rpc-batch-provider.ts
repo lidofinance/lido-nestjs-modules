@@ -26,6 +26,7 @@ import { TraceConfig, TraceResult } from '../interfaces/debug-traces';
 import { getDebugTraceBlockByHash } from '../ethers/debug-trace-block-by-hash';
 import { getConnectionFQDN } from '../common/networks';
 import { sanitizeErrorData } from '../common/sanitize-error';
+import { RequestTimeoutError } from '../error/request-timeout.error';
 import { LazyEventEmitter } from '../common/lazy-event-emitter';
 import {
   ProviderEvents,
@@ -128,14 +129,17 @@ export class ExtendedJsonRpcBatchProvider extends JsonRpcProvider {
   protected _fetchMiddlewareService: MiddlewareService<Promise<any>>;
   protected _domain: string;
   protected _eventEmitter: ExtendedJsonRpcBatchProviderEventEmitter;
+  protected _requestTimeoutMs?: number;
 
   public constructor(
     url: ConnectionInfo | string,
     network?: Networkish,
     requestPolicy?: RequestPolicy,
     fetchMiddlewares: MiddlewareCallback<Promise<any>>[] = [],
+    requestTimeoutMs?: number,
   ) {
     super(url, network);
+    this._requestTimeoutMs = requestTimeoutMs;
     this._eventEmitter = new LazyEventEmitter();
     this._domain = getConnectionFQDN(url);
     this._requestPolicy = requestPolicy ?? {
@@ -363,13 +367,29 @@ export class ExtendedJsonRpcBatchProvider extends JsonRpcProvider {
 
     const currentRequest: RequestIntent = {
       request,
-      reject: null,
       resolve: null,
+      reject: null,
     };
 
-    const promise = new Promise((resolve, reject) => {
+    let timerId: ReturnType<typeof setTimeout> | undefined;
+
+    const promise = new Promise<unknown>((resolve, reject) => {
       currentRequest.resolve = resolve;
       currentRequest.reject = reject;
+
+      if (this._requestTimeoutMs) {
+        const timeoutMs = this._requestTimeoutMs;
+        timerId = setTimeout(() => {
+          reject(
+            new RequestTimeoutError(
+              `Request timeout after ${timeoutMs}ms`,
+              timeoutMs,
+            ),
+          );
+        }, timeoutMs);
+      }
+    }).finally(() => {
+      if (timerId) clearTimeout(timerId);
     });
 
     this._queue.enqueue(<FullRequestIntent>currentRequest);

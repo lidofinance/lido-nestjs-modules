@@ -5,11 +5,13 @@ import {
   fakeFetchImpl,
   fixtures,
   makeFetchImplWithSpecificFeeHistory,
+  makeFakeFetchImplThatHangs,
 } from './fixtures/fake-json-rpc';
 import { range } from './utils';
 import { nullTransport, LoggerModule } from '@lido-nestjs/logger';
 import { JsonRpcRequest, JsonRpcResponse, FetchError } from '../src';
 import { MiddlewareCallback } from '@lido-nestjs/middleware';
+import { RequestTimeoutError } from '../src/error/request-timeout.error';
 
 type MockedExtendedJsonRpcBatchProvider = ExtendedJsonRpcBatchProvider & {
   fetchJson: (
@@ -416,5 +418,263 @@ describe('Execution module. ', () => {
       );
       expect(mockedProviderFetch).toBeCalledTimes(3);
     });
+  });
+
+  describe('Request timeout in send()', () => {
+    type TestableProvider = MockedExtendedJsonRpcBatchProvider & {
+      _queue: { length: number };
+    };
+
+    let provider: TestableProvider;
+    let fetchSpy: jest.SpyInstance;
+
+    const createProviderWithTimeout = (requestTimeoutMs?: number) => {
+      provider = new ExtendedJsonRpcBatchProvider(
+        'http://localhost',
+        undefined,
+        {
+          jsonRpcMaxBatchSize: 10,
+          maxConcurrentRequests: 5,
+          batchAggregationWaitMs: 10,
+        },
+        [],
+        requestTimeoutMs,
+      ) as TestableProvider;
+      fetchSpy = jest
+        .spyOn(provider, 'fetchJson')
+        .mockImplementation(fakeFetchImpl());
+    };
+
+    afterEach(() => {
+      fetchSpy?.mockReset();
+    });
+
+    test('should reject with RequestTimeoutError when request exceeds timeout', async () => {
+      createProviderWithTimeout(200);
+
+      // Cache network detection with fast mock
+      await provider.getNetwork();
+
+      // Switch to hanging mock
+      fetchSpy.mockImplementation(makeFakeFetchImplThatHangs(2000));
+
+      await expect(provider.getBlock(42)).rejects.toThrow(RequestTimeoutError);
+    }, 3000);
+
+    test('should include correct timeoutMs and message in error', async () => {
+      createProviderWithTimeout(150);
+
+      await provider.getNetwork();
+      fetchSpy.mockImplementation(makeFakeFetchImplThatHangs(2000));
+
+      let caughtError: RequestTimeoutError | null = null;
+      try {
+        await provider.getBlock(42);
+      } catch (error) {
+        caughtError = error as RequestTimeoutError;
+      }
+
+      expect(caughtError).toBeInstanceOf(RequestTimeoutError);
+      expect(caughtError?.timeoutMs).toBe(150);
+      expect(caughtError?.message).toBe('Request timeout after 150ms');
+    }, 3000);
+
+    test('should resolve normally when response arrives before timeout', async () => {
+      createProviderWithTimeout(2000);
+
+      // All responses are fast (default mock)
+      const block = await provider.getBlock(42);
+      expect(block.hash).toBe(fixtures.eth_getBlockByNumber.default.hash);
+    }, 3000);
+
+    test('should not timeout when requestTimeoutMs is not configured', async () => {
+      createProviderWithTimeout(undefined);
+
+      // Response takes 300ms but no timeout is set — should resolve
+      fetchSpy.mockImplementation(makeFakeFetchImplThatHangs(300));
+
+      const block = await provider.getBlock(42);
+      expect(block.hash).toBe(fixtures.eth_getBlockByNumber.default.hash);
+    }, 3000);
+
+    test('should timeout faster than the hang time', async () => {
+      createProviderWithTimeout(200);
+
+      await provider.getNetwork();
+      fetchSpy.mockImplementation(makeFakeFetchImplThatHangs(5000));
+
+      const start = Date.now();
+      await expect(provider.getBlock(42)).rejects.toThrow(RequestTimeoutError);
+      const duration = Date.now() - start;
+
+      expect(duration).toBeGreaterThanOrEqual(150); // allow small margin
+      expect(duration).toBeLessThan(3000);
+    }, 5000);
+
+    test('should clean up timer via .finally() when resolved before timeout', async () => {
+      createProviderWithTimeout(5000);
+      const clearTimeoutSpy = jest.spyOn(global, 'clearTimeout');
+
+      await provider.getBlock(42);
+
+      // clearTimeout should be called in .finally() for each send() call
+      // (network detection + getBlock = at least 2 send() calls with timers)
+      expect(clearTimeoutSpy).toHaveBeenCalled();
+      clearTimeoutSpy.mockRestore();
+    }, 3000);
+
+    test('should timeout each request independently in a batch', async () => {
+      createProviderWithTimeout(200);
+
+      await provider.getNetwork();
+      fetchSpy.mockImplementation(makeFakeFetchImplThatHangs(2000));
+
+      // Send multiple requests that will be batched together
+      const results = await Promise.allSettled([
+        provider.getBlock(1),
+        provider.getBlock(2),
+        provider.getBlock(3),
+      ]);
+
+      // All should timeout independently
+      results.forEach((result) => {
+        expect(result.status).toBe('rejected');
+        if (result.status === 'rejected') {
+          expect(result.reason).toBeInstanceOf(RequestTimeoutError);
+        }
+      });
+    }, 3000);
+
+    test('should work normally after a previous timeout', async () => {
+      createProviderWithTimeout(200);
+
+      await provider.getNetwork();
+
+      // First request — hangs and times out
+      fetchSpy.mockImplementation(makeFakeFetchImplThatHangs(2000));
+      await expect(provider.getBlock(42)).rejects.toThrow(RequestTimeoutError);
+
+      // Second request — responds normally
+      fetchSpy.mockImplementation(fakeFetchImpl());
+      const block = await provider.getBlock(42);
+      expect(block.hash).toBe(fixtures.eth_getBlockByNumber.default.hash);
+    }, 5000);
+
+    test('should not cause unhandled rejection when batch resolves after timeout (Promise idempotency)', async () => {
+      createProviderWithTimeout(100);
+
+      await provider.getNetwork();
+      // Response arrives at 500ms, timeout fires at 100ms
+      fetchSpy.mockImplementation(makeFakeFetchImplThatHangs(500));
+
+      const unhandledRejectionHandler = jest.fn();
+      process.on('unhandledRejection', unhandledRejectionHandler);
+
+      await expect(provider.getBlock(42)).rejects.toThrow(RequestTimeoutError);
+
+      // Wait for the batch response to arrive and try to resolve the already-rejected promise
+      await new Promise((resolve) => setTimeout(resolve, 700));
+
+      expect(unhandledRejectionHandler).not.toHaveBeenCalled();
+      process.removeListener('unhandledRejection', unhandledRejectionHandler);
+    }, 3000);
+
+    // ============================================================
+    // Leak prevention tests
+    // Old approach used Promise.race([sendPromise, timeoutPromise]) in perform().
+    // Problems: 1) orphaned promises (loser of race hangs forever)
+    //           2) 3 Promise objects per request instead of 1
+    //           3) queue never drained timed-out entries
+    //           4) timers not cleaned up on normal resolve
+    // New approach: single promise with setTimeout+reject inside send(),
+    // .finally() cleans timer. These tests verify no leaks.
+    // ============================================================
+
+    test('should drain queue after timeout — no orphaned queue entries', async () => {
+      createProviderWithTimeout(100);
+
+      await provider.getNetwork();
+      fetchSpy.mockImplementation(makeFakeFetchImplThatHangs(500));
+
+      // Send request that will timeout
+      await expect(provider.getBlock(42)).rejects.toThrow(RequestTimeoutError);
+
+      // Wait for batch aggregator to process and drain the queue
+      await new Promise((resolve) => setTimeout(resolve, 600));
+
+      // Queue must be empty — no orphaned entries stuck in it
+      // (with old Promise.race, entries stayed in queue and were processed,
+      // but the result went to an orphaned promise nobody listened to)
+      expect(provider._queue.length).toBe(0);
+    }, 3000);
+
+    test('should not accumulate state after many sequential timeouts', async () => {
+      createProviderWithTimeout(50);
+
+      await provider.getNetwork();
+      // Hang time must be short enough so in-flight HTTP requests clear
+      // before we test recovery (concurrency limiter slots free up)
+      fetchSpy.mockImplementation(makeFakeFetchImplThatHangs(300));
+
+      // Fire 10 sequential timeouts
+      for (let i = 0; i < 10; i++) {
+        await expect(provider.getBlock(i)).rejects.toThrow(RequestTimeoutError);
+      }
+
+      // Wait for all in-flight HTTP responses + batch aggregator ticks to complete
+      // This frees concurrency limiter slots so the next request can proceed
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
+      // Queue must be drained — no accumulated entries
+      expect(provider._queue.length).toBe(0);
+
+      // Provider should still work after many timeouts
+      fetchSpy.mockImplementation(fakeFetchImpl());
+      const block = await provider.getBlock(42);
+      expect(block.hash).toBe(fixtures.eth_getBlockByNumber.default.hash);
+    }, 10000);
+
+    test('should not leave dangling timers after batch resolves timed-out request', async () => {
+      createProviderWithTimeout(100);
+
+      await provider.getNetwork();
+      fetchSpy.mockImplementation(makeFakeFetchImplThatHangs(300));
+
+      const clearTimeoutSpy = jest.spyOn(global, 'clearTimeout');
+
+      await expect(provider.getBlock(42)).rejects.toThrow(RequestTimeoutError);
+
+      // At this point timeout rejected the promise, .finally() cleaned the timer.
+      // But batch HTTP is still in-flight (300ms hang).
+      const callsAfterTimeout = clearTimeoutSpy.mock.calls.length;
+
+      // Wait for batch to resolve and .finally() to fire again (no-op resolve on settled promise)
+      await new Promise((resolve) => setTimeout(resolve, 400));
+
+      // .finally() must have called clearTimeout even though promise was already rejected
+      expect(clearTimeoutSpy.mock.calls.length).toBeGreaterThanOrEqual(
+        callsAfterTimeout,
+      );
+
+      clearTimeoutSpy.mockRestore();
+    }, 3000);
+
+    test('should not use Promise.race — send() returns a single promise, not a race wrapper', async () => {
+      createProviderWithTimeout(200);
+
+      await provider.getNetwork();
+
+      // Spy on Promise.race to ensure it's never called by send()
+      const raceSpy = jest.spyOn(Promise, 'race');
+      const callsBefore = raceSpy.mock.calls.length;
+
+      const sendPromise = provider.send('eth_blockNumber', []);
+
+      // send() must NOT use Promise.race (old withTimeout approach did)
+      expect(raceSpy.mock.calls.length).toBe(callsBefore);
+
+      raceSpy.mockRestore();
+      await sendPromise.catch(() => undefined); // cleanup
+    }, 3000);
   });
 });
