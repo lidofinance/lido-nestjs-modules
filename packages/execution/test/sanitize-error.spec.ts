@@ -363,7 +363,8 @@ describe('sanitizeError', () => {
 
       expect(() => sanitizeError(a)).not.toThrow();
       const result = sanitizeError(a);
-      expect(result).toContain('Circular');
+      // inspect uses <ref *N> / [Circular *N] notation for circular references
+      expect(result).toMatch(/Circular|ref \*/);
     });
 
     test('3-error chain with cycle back to root', () => {
