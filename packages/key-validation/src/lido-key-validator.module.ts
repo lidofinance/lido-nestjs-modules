@@ -11,7 +11,7 @@ import {
   LidoKeyValidatorInterface,
   WithdrawalCredentialsExtractorInterface,
 } from './interfaces';
-import { LidoContractModule } from '@lido-nestjs/contracts';
+import { StakingRouterContractModule } from '@lido-nestjs/contracts';
 
 export const getDefaultLidoKeyValidatorModuleProviders = (): Provider[] => [
   {
@@ -41,7 +41,7 @@ export class LidoKeyValidatorModule {
     return {
       module: LidoKeyValidatorModule,
       imports: [
-        LidoContractModule,
+        StakingRouterContractModule,
         KeyValidatorModule.forFeature({
           multithreaded: options ? options.multithreaded : true,
         }),

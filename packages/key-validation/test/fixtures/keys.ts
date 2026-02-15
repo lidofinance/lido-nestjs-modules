@@ -46,6 +46,7 @@ export const invalidUsedKeyBadSignature = {
   depositSignature:
     '0xac8134f0138f56a0d6fe7a1cc681176d79125597cb9edda33a189a5b52a0b2cd0bcf41519dd5bb307ce3f64ed37b38d11faa31a32790564721aa5d572395a058ddd12031b55e3f81b3a5992291c68a36f063f24ee51a88915198ca96c276654',
   used: true,
+  moduleId: 1,
 };
 
 export const validUsedKey = {
@@ -53,6 +54,7 @@ export const validUsedKey = {
   depositSignature:
     '0xac813e4f0138f56a0d6fe7a1cc681176d79125597cb9edda33a189a5b52a0b2cd0bcf41519dd5bb307ce3f64ed37b38d11faa31a32790564721aa5d572395a058ddd12031b55e3f81b3a5992291c68a36f063f24ee51a88915198ca96c276654',
   used: true,
+  moduleId: 1,
 };
 
 export const invalidUsedKey = {
@@ -60,6 +62,7 @@ export const invalidUsedKey = {
   depositSignature:
     '0xac813e4f0138f56a0d6fe7a1cc681176d79125597cb9edda33a189a5b52a0b2cd0bcf41519dd5bb307ce3f64ed37b38d11faa31a32790564721aa5d572395a058ddd12031b55e3f81b3a5992291c68a36f063f24ee51a88915198ca96c276654',
   used: true,
+  moduleId: 1,
 };
 
 export const validUsedKeyCurrentWC = {
@@ -67,6 +70,7 @@ export const validUsedKeyCurrentWC = {
   depositSignature:
     '0xb7b225f21eb951bb3a3265b6574e84815dcceed50df3bd303440e5ea119cab5bd43775bf3b17c173f7f44d207f118ba309357de630c3fa452ef6267ae5bc4e22debece861cdb5b5756250c6c2c65071cf42fba2e52bc0227e02e439f842489ae',
   used: true,
+  moduleId: 1,
 };
 
 export const validUnusedKeyCurrentWC = {
@@ -74,6 +78,7 @@ export const validUnusedKeyCurrentWC = {
   depositSignature:
     '0x9677f0fa3e4531eb2c9cdd7ecb86e330cab024774bbf3950f833d58a11b03ca81c84739b74d2ea60441aed8ee11aa9451242a34c32ac18dda8215f2f016bb27c3c465c37f2a1db7219f9d57ce017baeaf1adf0015fa582a601a3f2d79041059c',
   used: false,
+  moduleId: 1,
 };
 
 export const invalidUnusedKey = {
@@ -81,6 +86,7 @@ export const invalidUnusedKey = {
   depositSignature:
     '0xac813e4f0138f56a0d6fe7a1cc681176d79125597cb9edda33a189a5b52a0b2cd0bcf41519dd5bb307ce3f64ed37b38d11faa31a32790564721aa5d572395a058ddd12031b55e3f81b3a5992291c68a36f063f24ee51a88915198ca96c276654',
   used: false,
+  moduleId: 1,
 };
 
 export const bigKeysBatch1k: Key[] = range(0, 10)
