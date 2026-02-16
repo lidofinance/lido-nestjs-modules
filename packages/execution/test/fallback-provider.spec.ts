@@ -871,6 +871,38 @@ describe('Execution module. ', () => {
       expect(mockedProvider.eventEmitter.listenerCount('rpc')).toBe(3);
     });
 
+    test('should trigger lazy subscription for once() listeners', async () => {
+      await createMocks(2);
+
+      const childProviders = mockedProvider.fallbackProviders;
+
+      // Verify no listeners before
+      for (const { provider } of childProviders) {
+        expect(provider.eventEmitter.listenerCount('rpc')).toBe(0);
+      }
+
+      // Subscribe with once
+      const listener = jest.fn();
+      mockedProvider.eventEmitter.once('rpc', listener);
+
+      // Child listeners should be attached
+      for (const { provider } of childProviders) {
+        expect(provider.eventEmitter.listenerCount('rpc')).toBe(1);
+      }
+
+      // Make a request to trigger the event
+      await mockedProvider.getBlock(42);
+
+      // Listener should have been called
+      expect(listener).toHaveBeenCalled();
+
+      // Parent listener removed after once(), but child listeners remain
+      expect(mockedProvider.eventEmitter.listenerCount('rpc')).toBe(0);
+      for (const { provider } of childProviders) {
+        expect(provider.eventEmitter.listenerCount('rpc')).toBe(1);
+      }
+    });
+
     test('should not attach child listeners for non-rpc events', async () => {
       await createMocks(2);
 

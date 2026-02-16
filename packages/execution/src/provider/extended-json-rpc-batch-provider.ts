@@ -25,6 +25,7 @@ import { ErrorCode } from '../error/codes/error-codes';
 import { TraceConfig, TraceResult } from '../interfaces/debug-traces';
 import { getDebugTraceBlockByHash } from '../ethers/debug-trace-block-by-hash';
 import { getConnectionFQDN } from '../common/networks';
+import { sanitizeErrorData } from '../common/sanitize-error';
 import { LazyEventEmitter } from '../common/lazy-event-emitter';
 import {
   ProviderEvents,
@@ -217,7 +218,7 @@ export class ExtendedJsonRpcBatchProvider extends JsonRpcProvider {
 
               const error = new FetchError(errMessage + detailedMessage);
               error.code = ErrorCode.UNEXPECTED_BATCH_RESULT;
-              error.data = batchResult.error;
+              error.data = sanitizeErrorData(batchResult.error);
 
               throw error;
             }
@@ -245,7 +246,7 @@ export class ExtendedJsonRpcBatchProvider extends JsonRpcProvider {
               } else if (payload.error) {
                 const error = new FetchError(payload.error.message);
                 error.code = payload.error.code;
-                error.data = payload.error.data;
+                error.data = sanitizeErrorData(payload.error.data);
                 inflightRequest.reject(error);
               } else {
                 inflightRequest.resolve(payload.result);
