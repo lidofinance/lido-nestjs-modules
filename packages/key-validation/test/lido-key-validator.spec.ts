@@ -1,7 +1,10 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { CHAINS } from '@lido-nestjs/constants';
-import { LidoContractModule } from '@lido-nestjs/contracts';
+import {
+  StakingRouterContractModule,
+  STAKING_ROUTER_CONTRACT_TOKEN,
+} from '@lido-nestjs/contracts';
 import {
   currentWC,
   invalidUnusedKey,
@@ -21,7 +24,23 @@ import {
 import { ModuleMetadata } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { usedValidKeys } from './fixtures/used-valid-keys';
-import { LIDO_CONTRACT_TOKEN } from '@lido-nestjs/contracts';
+
+// bytes32 of "curated-onchain-v1"
+const CURATED_ONCHAIN_V1_TYPE =
+  '0x637572617465642d6f6e636861696e2d76310000000000000000000000000000';
+
+// Mock IStakingModule__factory before imports use it
+jest.mock('@lido-nestjs/contracts', () => {
+  const actual = jest.requireActual('@lido-nestjs/contracts');
+  return {
+    ...actual,
+    IStakingModule__factory: {
+      connect: () => ({
+        getType: async () => CURATED_ONCHAIN_V1_TYPE,
+      }),
+    },
+  };
+});
 
 export const sleep = (ms: number) =>
   new Promise((resolve) => setTimeout(resolve, ms));
@@ -35,21 +54,24 @@ describe('LidoKeyValidator', () => {
   ): Promise<LidoKeyValidatorInterface> => {
     const module: ModuleMetadata = {
       imports: [
-        LidoContractModule.forRoot(),
+        StakingRouterContractModule.forRoot(),
         LidoKeyValidatorModule.forFeature({ multithreaded }),
       ],
     };
     const moduleRef = await Test.createTestingModule(module)
-      .overrideProvider(LIDO_CONTRACT_TOKEN)
+      .overrideProvider(STAKING_ROUTER_CONTRACT_TOKEN)
       .useValue({
-        getWithdrawalCredentials: async () => {
-          // this is needed because WC are cached
+        getStakingModuleWithdrawalCredentials: async () => {
           await sleep(10);
           return currentWC;
         },
+        getStakingModule: async () => {
+          return {
+            stakingModuleAddress: '0x0000000000000000000000000000000000000001',
+          };
+        },
         provider: {
           getNetwork: async () => {
-            // this is needed because WC are cached
             await sleep(100);
             return { chainId: chain, name: '' };
           },

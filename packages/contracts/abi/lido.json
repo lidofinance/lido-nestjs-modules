@@ -1,8 +1,45 @@
 [
   {
+    "constant": true,
+    "inputs": [
+      {
+        "name": "_sharesAmount",
+        "type": "uint256"
+      }
+    ],
+    "name": "getPooledEthBySharesRoundUp",
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "constant": false,
     "inputs": [],
     "name": "resume",
+    "outputs": [],
+    "payable": false,
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "constant": false,
+    "inputs": [
+      {
+        "name": "_recipient",
+        "type": "address"
+      },
+      {
+        "name": "_amountOfShares",
+        "type": "uint256"
+      }
+    ],
+    "name": "mintExternalShares",
     "outputs": [],
     "payable": false,
     "stateMutability": "nonpayable",
@@ -71,6 +108,20 @@
   {
     "constant": true,
     "inputs": [],
+    "name": "getFastLaneMaxAllowedAmount",
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [],
     "name": "STAKING_CONTROL_ROLE",
     "outputs": [
       {
@@ -116,6 +167,52 @@
     "type": "function"
   },
   {
+    "constant": false,
+    "inputs": [
+      {
+        "name": "_reportTimestamp",
+        "type": "uint256"
+      },
+      {
+        "name": "_timeElapsed",
+        "type": "uint256"
+      },
+      {
+        "name": "_preTotalShares",
+        "type": "uint256"
+      },
+      {
+        "name": "_preTotalEther",
+        "type": "uint256"
+      },
+      {
+        "name": "_postTotalShares",
+        "type": "uint256"
+      },
+      {
+        "name": "_postTotalEther",
+        "type": "uint256"
+      },
+      {
+        "name": "_postInternalShares",
+        "type": "uint256"
+      },
+      {
+        "name": "_postInternalEther",
+        "type": "uint256"
+      },
+      {
+        "name": "_sharesMintedAsFees",
+        "type": "uint256"
+      }
+    ],
+    "name": "emitTokenRebase",
+    "outputs": [],
+    "payable": false,
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
     "constant": true,
     "inputs": [],
     "name": "isStakingPaused",
@@ -127,6 +224,24 @@
     ],
     "payable": false,
     "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": false,
+    "inputs": [
+      {
+        "name": "_amount",
+        "type": "uint256"
+      },
+      {
+        "name": "_depositsCount",
+        "type": "uint256"
+      }
+    ],
+    "name": "withdrawDepositableEther",
+    "outputs": [],
+    "payable": false,
+    "stateMutability": "nonpayable",
     "type": "function"
   },
   {
@@ -205,24 +320,6 @@
     ],
     "payable": false,
     "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "constant": false,
-    "inputs": [
-      {
-        "name": "_lidoLocator",
-        "type": "address"
-      },
-      {
-        "name": "_eip712StETH",
-        "type": "address"
-      }
-    ],
-    "name": "finalizeUpgrade_v2",
-    "outputs": [],
-    "payable": false,
-    "stateMutability": "nonpayable",
     "type": "function"
   },
   {
@@ -402,6 +499,24 @@
     "type": "function"
   },
   {
+    "constant": false,
+    "inputs": [
+      {
+        "name": "_recipient",
+        "type": "address"
+      },
+      {
+        "name": "_amountOfShares",
+        "type": "uint256"
+      }
+    ],
+    "name": "mintShares",
+    "outputs": [],
+    "payable": false,
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
     "constant": true,
     "inputs": [],
     "name": "getWithdrawalCredentials",
@@ -432,10 +547,38 @@
   {
     "constant": true,
     "inputs": [],
+    "name": "getExternalShares",
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": false,
+    "inputs": [
+      {
+        "name": "_amountOfShares",
+        "type": "uint256"
+      }
+    ],
+    "name": "internalizeExternalBadDebt",
+    "outputs": [],
+    "payable": false,
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [],
     "name": "getStakeLimitFullInfo",
     "outputs": [
       {
-        "name": "isStakingPaused",
+        "name": "isStakingPaused_",
         "type": "bool"
       },
       {
@@ -495,6 +638,28 @@
     "type": "function"
   },
   {
+    "constant": false,
+    "inputs": [
+      {
+        "name": "_reportTimestamp",
+        "type": "uint256"
+      },
+      {
+        "name": "_clActiveBalance",
+        "type": "uint256"
+      },
+      {
+        "name": "_clPendingBalance",
+        "type": "uint256"
+      }
+    ],
+    "name": "processClStateUpdateV2",
+    "outputs": [],
+    "payable": false,
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
     "constant": true,
     "inputs": [
       {
@@ -511,6 +676,20 @@
     ],
     "payable": false,
     "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": false,
+    "inputs": [
+      {
+        "name": "_amountOfShares",
+        "type": "uint256"
+      }
+    ],
+    "name": "burnExternalShares",
+    "outputs": [],
+    "payable": false,
+    "stateMutability": "nonpayable",
     "type": "function"
   },
   {
@@ -573,6 +752,20 @@
     "type": "function"
   },
   {
+    "constant": false,
+    "inputs": [
+      {
+        "name": "_amountOfShares",
+        "type": "uint256"
+      }
+    ],
+    "name": "rebalanceExternalEtherToInternal",
+    "outputs": [],
+    "payable": true,
+    "stateMutability": "payable",
+    "type": "function"
+  },
+  {
     "constant": true,
     "inputs": [
       {
@@ -627,20 +820,6 @@
   {
     "constant": true,
     "inputs": [],
-    "name": "getOracle",
-    "outputs": [
-      {
-        "name": "",
-        "type": "address"
-      }
-    ],
-    "payable": false,
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "constant": true,
-    "inputs": [],
     "name": "eip712Domain",
     "outputs": [
       {
@@ -658,6 +837,34 @@
       {
         "name": "verifyingContract",
         "type": "address"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": false,
+    "inputs": [
+      {
+        "name": "_amountOfShares",
+        "type": "uint256"
+      }
+    ],
+    "name": "burnShares",
+    "outputs": [],
+    "payable": false,
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [],
+    "name": "getMaxMintableExternalShares",
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256"
       }
     ],
     "payable": false,
@@ -716,6 +923,48 @@
     "type": "function"
   },
   {
+    "constant": false,
+    "inputs": [
+      {
+        "name": "_reportTimestamp",
+        "type": "uint256"
+      },
+      {
+        "name": "_reportClBalance",
+        "type": "uint256"
+      },
+      {
+        "name": "_principalCLBalance",
+        "type": "uint256"
+      },
+      {
+        "name": "_withdrawalsToWithdraw",
+        "type": "uint256"
+      },
+      {
+        "name": "_elRewardsToWithdraw",
+        "type": "uint256"
+      },
+      {
+        "name": "_lastWithdrawalRequestToFinalize",
+        "type": "uint256"
+      },
+      {
+        "name": "_withdrawalsShareRate",
+        "type": "uint256"
+      },
+      {
+        "name": "_etherToLockOnWithdrawalQueue",
+        "type": "uint256"
+      }
+    ],
+    "name": "collectRewardsAndProcessWithdrawals",
+    "outputs": [],
+    "payable": false,
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
     "constant": true,
     "inputs": [],
     "name": "symbol",
@@ -737,6 +986,20 @@
       {
         "name": "",
         "type": "address"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [],
+    "name": "getMaxExternalRatioBP",
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256"
       }
     ],
     "payable": false,
@@ -864,28 +1127,6 @@
     "type": "function"
   },
   {
-    "constant": false,
-    "inputs": [
-      {
-        "name": "_maxDepositsCount",
-        "type": "uint256"
-      },
-      {
-        "name": "_stakingModuleId",
-        "type": "uint256"
-      },
-      {
-        "name": "_depositCalldata",
-        "type": "bytes"
-      }
-    ],
-    "name": "deposit",
-    "outputs": [],
-    "payable": false,
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
     "constant": true,
     "inputs": [],
     "name": "UNSAFE_CHANGE_DEPOSITED_VALIDATORS_ROLE",
@@ -909,11 +1150,11 @@
         "type": "uint256"
       },
       {
-        "name": "beaconValidators",
+        "name": "clActiveBalance",
         "type": "uint256"
       },
       {
-        "name": "beaconBalance",
+        "name": "clPendingBalance",
         "type": "uint256"
       }
     ],
@@ -934,49 +1175,12 @@
     "constant": false,
     "inputs": [
       {
-        "name": "_reportTimestamp",
-        "type": "uint256"
-      },
-      {
-        "name": "_timeElapsed",
-        "type": "uint256"
-      },
-      {
-        "name": "_clValidators",
-        "type": "uint256"
-      },
-      {
-        "name": "_clBalance",
-        "type": "uint256"
-      },
-      {
-        "name": "_withdrawalVaultBalance",
-        "type": "uint256"
-      },
-      {
-        "name": "_elRewardsVaultBalance",
-        "type": "uint256"
-      },
-      {
-        "name": "_sharesRequestedToBurn",
-        "type": "uint256"
-      },
-      {
-        "name": "_withdrawalFinalizationBatches",
-        "type": "uint256[]"
-      },
-      {
-        "name": "_simulatedShareRate",
+        "name": "_amount",
         "type": "uint256"
       }
     ],
-    "name": "handleOracleReport",
-    "outputs": [
-      {
-        "name": "postRebaseAmounts",
-        "type": "uint256[4]"
-      }
-    ],
+    "name": "setFastLaneMaxAllowedAmount",
+    "outputs": [],
     "payable": false,
     "stateMutability": "nonpayable",
     "type": "function"
@@ -1101,6 +1305,20 @@
   {
     "constant": true,
     "inputs": [],
+    "name": "getExternalEther",
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [],
     "name": "getLidoLocator",
     "outputs": [
       {
@@ -1152,6 +1370,20 @@
     ],
     "payable": false,
     "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": false,
+    "inputs": [
+      {
+        "name": "_maxExternalRatioBP",
+        "type": "uint256"
+      }
+    ],
+    "name": "setMaxExternalRatioBP",
+    "outputs": [],
+    "payable": false,
+    "stateMutability": "nonpayable",
     "type": "function"
   },
   {
@@ -1256,6 +1488,40 @@
       }
     ],
     "name": "CLValidatorsUpdated",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "name": "reportTimestamp",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "name": "clActiveBalance",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "name": "clPendingBalance",
+        "type": "uint256"
+      }
+    ],
+    "name": "CLBalancesUpdated",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "name": "clPendingBalance",
+        "type": "uint256"
+      }
+    ],
+    "name": "CLPendingBalancesUpdated",
     "type": "event"
   },
   {
@@ -1417,6 +1683,110 @@
       }
     ],
     "name": "Unbuffered",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "name": "reportTimestamp",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "name": "postInternalShares",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "name": "postInternalEther",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "name": "sharesMintedAsFees",
+        "type": "uint256"
+      }
+    ],
+    "name": "InternalShareRateUpdated",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "name": "receiver",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "name": "amountOfShares",
+        "type": "uint256"
+      }
+    ],
+    "name": "ExternalSharesMinted",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "name": "amountOfShares",
+        "type": "uint256"
+      }
+    ],
+    "name": "ExternalSharesBurnt",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "name": "maxExternalRatioBP",
+        "type": "uint256"
+      }
+    ],
+    "name": "MaxExternalRatioBPSet",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "name": "amount",
+        "type": "uint256"
+      }
+    ],
+    "name": "ExternalEtherTransferredToBuffer",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "name": "amountOfShares",
+        "type": "uint256"
+      }
+    ],
+    "name": "ExternalBadDebtInternalized",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "name": "amount",
+        "type": "uint256"
+      }
+    ],
+    "name": "FastLaneMaxAllowedAmountSet",
     "type": "event"
   },
   {

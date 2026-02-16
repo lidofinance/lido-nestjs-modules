@@ -21,6 +21,28 @@
         "type": "uint256"
       },
       {
+        "name": "_targetLimitMode",
+        "type": "uint256"
+      },
+      {
+        "name": "_targetLimit",
+        "type": "uint256"
+      }
+    ],
+    "name": "updateTargetValidatorsLimits",
+    "outputs": [],
+    "payable": false,
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "constant": false,
+    "inputs": [
+      {
+        "name": "_nodeOperatorId",
+        "type": "uint256"
+      },
+      {
         "name": "_keysCount",
         "type": "uint256"
       },
@@ -57,6 +79,25 @@
     "constant": true,
     "inputs": [
       {
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "name": "exitDeadlineThreshold",
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [
+      {
         "name": "_script",
         "type": "bytes"
       }
@@ -70,25 +111,6 @@
     ],
     "payable": false,
     "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "constant": false,
-    "inputs": [
-      {
-        "name": "_nodeOperatorId",
-        "type": "uint256"
-      }
-    ],
-    "name": "clearNodeOperatorPenalty",
-    "outputs": [
-      {
-        "name": "",
-        "type": "bool"
-      }
-    ],
-    "payable": false,
-    "stateMutability": "nonpayable",
     "type": "function"
   },
   {
@@ -126,6 +148,32 @@
     ],
     "payable": false,
     "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": false,
+    "inputs": [
+      {
+        "name": "_nodeOperatorId",
+        "type": "uint256"
+      },
+      {
+        "name": "_proofSlotTimestamp",
+        "type": "uint256"
+      },
+      {
+        "name": "_publicKey",
+        "type": "bytes"
+      },
+      {
+        "name": "_eligibleToExitInSec",
+        "type": "uint256"
+      }
+    ],
+    "name": "reportValidatorExitDelay",
+    "outputs": [],
+    "payable": false,
+    "stateMutability": "nonpayable",
     "type": "function"
   },
   {
@@ -279,7 +327,7 @@
         "type": "bytes32"
       },
       {
-        "name": "_stuckPenaltyDelay",
+        "name": "_exitDeadlineThresholdInSeconds",
         "type": "uint256"
       }
     ],
@@ -293,11 +341,23 @@
     "constant": false,
     "inputs": [
       {
-        "name": "_delay",
+        "name": "_nodeOperatorId",
+        "type": "uint256"
+      },
+      {
+        "name": "_publicKey",
+        "type": "bytes"
+      },
+      {
+        "name": "_withdrawalRequestPaidFee",
+        "type": "uint256"
+      },
+      {
+        "name": "_exitType",
         "type": "uint256"
       }
     ],
-    "name": "setStuckPenaltyDelay",
+    "name": "onValidatorExitTriggered",
     "outputs": [],
     "payable": false,
     "stateMutability": "nonpayable",
@@ -314,7 +374,7 @@
       }
     ],
     "payable": false,
-    "stateMutability": "view",
+    "stateMutability": "pure",
     "type": "function"
   },
   {
@@ -333,6 +393,20 @@
     "outputs": [],
     "payable": false,
     "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [],
+    "name": "getRewardDistributionState",
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint8"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "view",
     "type": "function"
   },
   {
@@ -361,7 +435,7 @@
     "constant": true,
     "inputs": [
       {
-        "name": "_nodeOperatorId",
+        "name": "",
         "type": "uint256"
       }
     ],
@@ -373,7 +447,7 @@
       }
     ],
     "payable": false,
-    "stateMutability": "view",
+    "stateMutability": "pure",
     "type": "function"
   },
   {
@@ -465,6 +539,37 @@
   },
   {
     "constant": true,
+    "inputs": [
+      {
+        "name": "",
+        "type": "uint256"
+      },
+      {
+        "name": "_proofSlotTimestamp",
+        "type": "uint256"
+      },
+      {
+        "name": "_publicKey",
+        "type": "bytes"
+      },
+      {
+        "name": "_eligibleToExitInSec",
+        "type": "uint256"
+      }
+    ],
+    "name": "isValidatorExitDelayPenaltyApplicable",
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": true,
     "inputs": [],
     "name": "getActiveNodeOperatorsCount",
     "outputs": [
@@ -548,7 +653,7 @@
     "type": "function"
   },
   {
-    "constant": true,
+    "constant": false,
     "inputs": [
       {
         "name": "",
@@ -558,7 +663,7 @@
     "name": "onRewardsMinted",
     "outputs": [],
     "payable": false,
-    "stateMutability": "view",
+    "stateMutability": "nonpayable",
     "type": "function"
   },
   {
@@ -573,6 +678,29 @@
     ],
     "payable": false,
     "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": false,
+    "inputs": [
+      {
+        "name": "_exitDeadlineThresholdInSeconds",
+        "type": "uint256"
+      }
+    ],
+    "name": "finalizeUpgrade_v4",
+    "outputs": [],
+    "payable": false,
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "constant": false,
+    "inputs": [],
+    "name": "distributeReward",
+    "outputs": [],
+    "payable": false,
+    "stateMutability": "nonpayable",
     "type": "function"
   },
   {
@@ -593,6 +721,24 @@
       }
     ],
     "name": "activateNodeOperator",
+    "outputs": [],
+    "payable": false,
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "constant": false,
+    "inputs": [
+      {
+        "name": "_nodeOperatorId",
+        "type": "uint256"
+      },
+      {
+        "name": "_exitedValidatorsCount",
+        "type": "uint256"
+      }
+    ],
+    "name": "unsafeUpdateValidatorsCount",
     "outputs": [],
     "payable": false,
     "stateMutability": "nonpayable",
@@ -664,28 +810,6 @@
     "type": "function"
   },
   {
-    "constant": false,
-    "inputs": [
-      {
-        "name": "_locator",
-        "type": "address"
-      },
-      {
-        "name": "_type",
-        "type": "bytes32"
-      },
-      {
-        "name": "_stuckPenaltyDelay",
-        "type": "uint256"
-      }
-    ],
-    "name": "finalizeUpgrade_v2",
-    "outputs": [],
-    "payable": false,
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
     "constant": true,
     "inputs": [],
     "name": "getStakingModuleSummary",
@@ -729,25 +853,7 @@
     "constant": false,
     "inputs": [
       {
-        "name": "_nodeOperatorIds",
-        "type": "bytes"
-      },
-      {
-        "name": "_stuckValidatorsCounts",
-        "type": "bytes"
-      }
-    ],
-    "name": "updateStuckValidatorsCount",
-    "outputs": [],
-    "payable": false,
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "constant": false,
-    "inputs": [
-      {
-        "name": "_token",
+        "name": "",
         "type": "address"
       }
     ],
@@ -782,24 +888,6 @@
     ],
     "payable": false,
     "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "constant": false,
-    "inputs": [
-      {
-        "name": "_nodeOperatorId",
-        "type": "uint256"
-      },
-      {
-        "name": "_refundedValidatorsCount",
-        "type": "uint256"
-      }
-    ],
-    "name": "updateRefundedValidatorsCount",
-    "outputs": [],
-    "payable": false,
-    "stateMutability": "nonpayable",
     "type": "function"
   },
   {
@@ -881,8 +969,8 @@
     "name": "getNodeOperatorSummary",
     "outputs": [
       {
-        "name": "isTargetLimitActive",
-        "type": "bool"
+        "name": "targetLimitMode",
+        "type": "uint256"
       },
       {
         "name": "targetValidatorsCount",
@@ -966,6 +1054,61 @@
     "constant": false,
     "inputs": [
       {
+        "name": "_nodeOperatorIds",
+        "type": "bytes"
+      },
+      {
+        "name": "_vettedSigningKeysCounts",
+        "type": "bytes"
+      }
+    ],
+    "name": "decreaseVettedSigningKeysCount",
+    "outputs": [],
+    "payable": false,
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [
+      {
+        "name": "_publicKey",
+        "type": "bytes"
+      }
+    ],
+    "name": "isValidatorExitingKeyReported",
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": false,
+    "inputs": [
+      {
+        "name": "_threshold",
+        "type": "uint256"
+      },
+      {
+        "name": "_lateReportingWindow",
+        "type": "uint256"
+      }
+    ],
+    "name": "setExitDeadlineThreshold",
+    "outputs": [],
+    "payable": false,
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "constant": false,
+    "inputs": [
+      {
         "name": "_depositsCount",
         "type": "uint256"
       },
@@ -987,6 +1130,20 @@
     ],
     "payable": false,
     "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [],
+    "name": "exitPenaltyCutoffTimestamp",
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "view",
     "type": "function"
   },
   {
@@ -1148,28 +1305,6 @@
     "type": "function"
   },
   {
-    "constant": false,
-    "inputs": [
-      {
-        "name": "_nodeOperatorId",
-        "type": "uint256"
-      },
-      {
-        "name": "_exitedValidatorsCount",
-        "type": "uint256"
-      },
-      {
-        "name": "_stuckValidatorsCount",
-        "type": "uint256"
-      }
-    ],
-    "name": "unsafeUpdateValidatorsCount",
-    "outputs": [],
-    "payable": false,
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
     "constant": true,
     "inputs": [],
     "name": "MANAGE_SIGNING_KEYS",
@@ -1187,7 +1322,7 @@
     "constant": true,
     "inputs": [
       {
-        "name": "_nodeOperatorId",
+        "name": "",
         "type": "uint256"
       }
     ],
@@ -1199,7 +1334,7 @@
       }
     ],
     "payable": false,
-    "stateMutability": "view",
+    "stateMutability": "pure",
     "type": "function"
   },
   {
@@ -1343,6 +1478,18 @@
     "inputs": [
       {
         "indexed": false,
+        "name": "state",
+        "type": "uint8"
+      }
+    ],
+    "name": "RewardDistributionStateChanged",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
         "name": "locatorAddress",
         "type": "address"
       }
@@ -1434,45 +1581,6 @@
     "anonymous": false,
     "inputs": [
       {
-        "indexed": false,
-        "name": "stuckPenaltyDelay",
-        "type": "uint256"
-      }
-    ],
-    "name": "StuckPenaltyDelayChanged",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": true,
-        "name": "nodeOperatorId",
-        "type": "uint256"
-      },
-      {
-        "indexed": false,
-        "name": "stuckValidatorsCount",
-        "type": "uint256"
-      },
-      {
-        "indexed": false,
-        "name": "refundedValidatorsCount",
-        "type": "uint256"
-      },
-      {
-        "indexed": false,
-        "name": "stuckPenaltyEndTimestamp",
-        "type": "uint256"
-      }
-    ],
-    "name": "StuckPenaltyStateChanged",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
         "indexed": true,
         "name": "nodeOperatorId",
         "type": "uint256"
@@ -1480,6 +1588,11 @@
       {
         "indexed": false,
         "name": "targetValidatorsCount",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "name": "targetLimitMode",
         "type": "uint256"
       }
     ],
@@ -1491,16 +1604,70 @@
     "inputs": [
       {
         "indexed": true,
-        "name": "recipientAddress",
-        "type": "address"
+        "name": "nodeOperatorId",
+        "type": "uint256"
       },
       {
         "indexed": false,
-        "name": "sharesPenalizedAmount",
+        "name": "publicKey",
+        "type": "bytes"
+      },
+      {
+        "indexed": false,
+        "name": "eligibleToExitInSec",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "name": "proofSlotTimestamp",
         "type": "uint256"
       }
     ],
-    "name": "NodeOperatorPenalized",
+    "name": "ValidatorExitStatusUpdated",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "name": "nodeOperatorId",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "name": "publicKey",
+        "type": "bytes"
+      },
+      {
+        "indexed": false,
+        "name": "withdrawalRequestPaidFee",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "name": "exitType",
+        "type": "uint256"
+      }
+    ],
+    "name": "ValidatorExitTriggered",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "name": "threshold",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "name": "reportingWindow",
+        "type": "uint256"
+      }
+    ],
+    "name": "ExitDeadlineThresholdChanged",
     "type": "event"
   },
   {

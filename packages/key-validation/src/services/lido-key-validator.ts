@@ -23,8 +23,9 @@ export class LidoKeyValidator implements LidoKeyValidatorInterface {
   public async validateKey<T>(
     lidoKey: LidoKey & T,
   ): Promise<[Key & LidoKey & T, boolean]> {
-    const possibleWC =
-      await this.wcExtractor.getPossibleWithdrawalCredentials();
+    const possibleWC = await this.wcExtractor.getPossibleWithdrawalCredentials(
+      lidoKey.moduleId,
+    );
 
     return (
       await this.validateLidoKeysForDifferentPossibleWC([lidoKey], possibleWC)
@@ -37,13 +38,33 @@ export class LidoKeyValidator implements LidoKeyValidatorInterface {
     if (lidoKeys.length === 0) {
       return [];
     }
-    const possibleWC =
-      await this.wcExtractor.getPossibleWithdrawalCredentials();
 
-    return await this.validateLidoKeysForDifferentPossibleWC(
-      lidoKeys,
-      possibleWC,
-    );
+    const keysByModule = this.groupKeysByModule(lidoKeys);
+    const results: [Key & LidoKey & T, boolean][] = [];
+
+    for (const [moduleId, moduleKeys] of keysByModule) {
+      const possibleWC =
+        await this.wcExtractor.getPossibleWithdrawalCredentials(moduleId);
+      const moduleResults = await this.validateLidoKeysForDifferentPossibleWC(
+        moduleKeys,
+        possibleWC,
+      );
+      results.push(...moduleResults);
+    }
+
+    return results;
+  }
+
+  protected groupKeysByModule<T>(
+    keys: (LidoKey & T)[],
+  ): Map<number, (LidoKey & T)[]> {
+    const map = new Map<number, (LidoKey & T)[]>();
+    for (const key of keys) {
+      const existing = map.get(key.moduleId) ?? [];
+      existing.push(key);
+      map.set(key.moduleId, existing);
+    }
+    return map;
   }
 
   protected async validateLidoKeysForDifferentPossibleWC<T>(
