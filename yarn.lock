@@ -3134,6 +3134,29 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@lido-nestjs/request@workspace:packages/request":
+  version: 0.0.0-use.local
+  resolution: "@lido-nestjs/request@workspace:packages/request"
+  dependencies:
+    "@lido-nestjs/middleware": "workspace:*"
+    "@nestjs/common": ^8.2.5
+    "@nestjs/core": ^8.2.5
+    "@nestjs/testing": ^8.2.5
+    "@types/node-fetch": ^2.5.12
+    nock: ^13.2.9
+    node-fetch: ^2.6.7
+    prom-client: ^14.1.0
+    reflect-metadata: ^0.1.13
+    rxjs: ^7.5.2
+  peerDependencies:
+    "@nestjs/common": ^8.2.5
+    "@nestjs/core": ^8.2.5
+    reflect-metadata: ^0.1.13
+    rxjs: ^7.5.2
+    tslib: ^2.3.1
+  languageName: unknown
+  linkType: soft
+
 "@lido-nestjs/utils@workspace:*, @lido-nestjs/utils@workspace:packages/utils":
   version: 0.0.0-use.local
   resolution: "@lido-nestjs/utils@workspace:packages/utils"
@@ -5793,6 +5816,13 @@ __metadata:
   version: 2.2.0
   resolution: "binary-extensions@npm:2.2.0"
   checksum: ccd267956c58d2315f5d3ea6757cf09863c5fc703e50fbeb13a7dc849b812ef76e3cf9ca8f35a0c48498776a7478d7b4a0418e1e2b8cb9cb9731f2922aaad7f8
+  languageName: node
+  linkType: hard
+
+"bintrees@npm:1.0.2":
+  version: 1.0.2
+  resolution: "bintrees@npm:1.0.2"
+  checksum: 56a52b7d3634e30002b1eda740d2517a22fa8e9e2eb088e919f37c030a0ed86e364ab59e472fc770fc8751308054bb1c892979d150e11d9e11ac33bcc1b5d16e
   languageName: node
   linkType: hard
 
@@ -13193,6 +13223,18 @@ __metadata:
   languageName: node
   linkType: hard
 
+"nock@npm:^13.2.9":
+  version: 13.2.9
+  resolution: "nock@npm:13.2.9"
+  dependencies:
+    debug: ^4.1.0
+    json-stringify-safe: ^5.0.1
+    lodash: ^4.17.21
+    propagate: ^2.0.0
+  checksum: 04a2dc60b4b55fd1240f28fe34865bbc744088a4570db3781fcf66021644cc3cc9178fd86a0cb0c1f28ea77b83e8f1c9288535f6b39a6d07100059f156ccc23b
+  languageName: node
+  linkType: hard
+
 "node-abort-controller@npm:^3.0.1":
   version: 3.0.1
   resolution: "node-abort-controller@npm:3.0.1"
@@ -14652,6 +14694,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"prom-client@npm:^14.1.0":
+  version: 14.1.0
+  resolution: "prom-client@npm:14.1.0"
+  dependencies:
+    tdigest: ^0.1.1
+  checksum: 88f8e67020c0af07d09ab8f15caaa2a3d0810b01d903d0977d82947d3b0100a539db77bcccfde0bf2449a85060475f7fb05b64e7c34951c8a54b84240ae7ae81
+  languageName: node
+  linkType: hard
+
 "promise-all-reject-late@npm:^1.0.0":
   version: 1.0.1
   resolution: "promise-all-reject-late@npm:1.0.1"
@@ -14716,6 +14767,13 @@ __metadata:
   dependencies:
     read: 1
   checksum: 443a3b39ac916099988ee0161ab4e22edd1fa27e3d39a38d60e48c11ca6df3f5a90bfe44d95af06ed8659c4050b789ffe64c3f9f8e49a4bea1ea19105c98445a
+  languageName: node
+  linkType: hard
+
+"propagate@npm:^2.0.0":
+  version: 2.0.1
+  resolution: "propagate@npm:2.0.1"
+  checksum: c4febaee2be0979e82fb6b3727878fd122a98d64a7fa3c9d09b0576751b88514a9e9275b1b92e76b364d488f508e223bd7e1dcdc616be4cdda876072fbc2a96c
   languageName: node
   linkType: hard
 
@@ -16770,6 +16828,15 @@ __metadata:
   version: 3.0.2
   resolution: "tarn@npm:3.0.2"
   checksum: 27a69658f02504979c5b02e500522e78ec12ef893b90cb00fdef794f9d847a92ed78f6c0ad12e82b8919519bded6a8d6d0000442cd0c6d6ea83cd9b7297729af
+  languageName: node
+  linkType: hard
+
+"tdigest@npm:^0.1.1":
+  version: 0.1.2
+  resolution: "tdigest@npm:0.1.2"
+  dependencies:
+    bintrees: 1.0.2
+  checksum: 44de8246752b6f8c2924685f969fd3d94c36949f22b0907e99bef2b2220726dd8467f4730ea96b06040b9aa2587c0866049640039d1b956952dfa962bc2075a3
   languageName: node
   linkType: hard
 
