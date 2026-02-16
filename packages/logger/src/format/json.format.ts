@@ -7,8 +7,16 @@ export const json = (
 ): winston.Logform.Format => {
   const { secrets, regex } = options;
 
-  return winston.format.combine(
-    cleanSecrets({ secrets, regex }),
-    winston.format.json(),
-  );
+  return options.timestamp === true
+    ? winston.format.combine(
+        cleanSecrets({ secrets, regex }),
+        winston.format.timestamp({
+          format: 'YYYY-MM-DD HH:mm:ss',
+        }),
+        winston.format.json(),
+      )
+    : winston.format.combine(
+        cleanSecrets({ secrets, regex }),
+        winston.format.json(),
+      );
 };
