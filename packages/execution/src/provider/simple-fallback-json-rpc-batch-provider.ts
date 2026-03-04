@@ -149,6 +149,7 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
         config.requestPolicy,
         config.fetchMiddlewares ?? [],
         config.requestTimeoutMs,
+        config.fetchFn,
       );
 
       return {

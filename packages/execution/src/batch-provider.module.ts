@@ -18,6 +18,8 @@ const getModuleProviders = (
           options.network,
           options.requestPolicy,
           options.fetchMiddlewares,
+          options.requestTimeoutMs,
+          options.fetchFn,
         );
       },
     },
@@ -75,6 +77,8 @@ export class BatchProviderModule {
               options.network,
               options.requestPolicy,
               options.fetchMiddlewares,
+              options.requestTimeoutMs,
+              options.fetchFn,
             );
           },
           inject: [BATCH_PROVIDER_MODULE_OPTIONS],

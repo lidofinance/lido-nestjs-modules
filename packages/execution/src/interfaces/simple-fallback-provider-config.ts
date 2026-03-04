@@ -3,6 +3,7 @@ import { ConnectionInfo } from '@ethersproject/web';
 import { Networkish } from './networkish';
 import { NonEmptyArray } from './non-empty-array';
 import { MiddlewareCallback } from '@lido-nestjs/middleware';
+import { FetchFn } from './fetch-fn';
 
 export interface SimpleFallbackProviderConfig {
   urls: NonEmptyArray<ConnectionInfo | string>;
@@ -34,4 +35,6 @@ export interface SimpleFallbackProviderConfig {
   // optional label to identify this provider instance in logs
   // useful when multiple instances are running
   instanceLabel?: string;
+
+  fetchFn?: FetchFn;
 }

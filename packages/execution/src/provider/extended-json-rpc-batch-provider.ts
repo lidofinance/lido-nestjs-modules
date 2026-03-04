@@ -28,6 +28,8 @@ import { getConnectionFQDN } from '../common/networks';
 import { sanitizeErrorData } from '../common/sanitize-error';
 import { RequestTimeoutError } from '../error/request-timeout.error';
 import { LazyEventEmitter } from '../common/lazy-event-emitter';
+import { FetchFn } from '../interfaces/fetch-fn';
+
 import {
   ProviderEvents,
   ProviderRequestBatchedEvent,
@@ -130,6 +132,7 @@ export class ExtendedJsonRpcBatchProvider extends JsonRpcProvider {
   protected _domain: string;
   protected _eventEmitter: ExtendedJsonRpcBatchProviderEventEmitter;
   protected _requestTimeoutMs?: number;
+  protected _fetchFn?: FetchFn;
 
   public constructor(
     url: ConnectionInfo | string,
@@ -137,9 +140,11 @@ export class ExtendedJsonRpcBatchProvider extends JsonRpcProvider {
     requestPolicy?: RequestPolicy,
     fetchMiddlewares: MiddlewareCallback<Promise<any>>[] = [],
     requestTimeoutMs?: number,
+    fetchFn?: FetchFn,
   ) {
     super(url, network);
     this._requestTimeoutMs = requestTimeoutMs;
+    this._fetchFn = fetchFn;
     this._eventEmitter = new LazyEventEmitter();
     this._domain = getConnectionFQDN(url);
     this._requestPolicy = requestPolicy ?? {
@@ -418,10 +423,17 @@ export class ExtendedJsonRpcBatchProvider extends JsonRpcProvider {
   }
 
   protected async fetchJson(
-    connection: string | ConnectionInfo,
-    json?: string,
+    connection: ConnectionInfo,
+    json: string,
     processFunc?: (value: any, response: FetchJsonResponse) => any,
   ) {
+    if (this._fetchFn) {
+      const response = await this._fetchFn({
+        url: connection.url,
+        body: json,
+      });
+      return response.data;
+    }
     return await fetchJson(connection, json, processFunc);
   }
 }

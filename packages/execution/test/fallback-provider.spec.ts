@@ -6,6 +6,7 @@ import {
   SimpleFallbackJsonRpcBatchProvider,
 } from '../src';
 import {
+  fakeJsonRpc,
   fakeFetchImpl,
   fakeFetchImplThatAlwaysFails,
   fakeFetchImplThatCanOnlyDoNetworkDetection,
@@ -1404,6 +1405,57 @@ describe('Execution module. ', () => {
 
       // Restore
       mockedProvider['logger'].debug = originalDebug;
+    });
+
+    test('should use custom fetchFn instead of default fetchJson', async () => {
+      const customFetchFn = jest.fn(
+        async (params: { url: string; body?: string }) => {
+          const requests = params.body ? JSON.parse(params.body) : [];
+          const responses = requests.map(fakeJsonRpc());
+          return { data: responses };
+        },
+      );
+
+      const module = {
+        imports: [
+          FallbackProviderModule.forFeature({
+            imports: [LoggerModule.forRoot({ transports: [nullTransport()] })],
+            urls: ['http://localhost:8545'] as NonEmptyArray<string>,
+            requestPolicy: {
+              jsonRpcMaxBatchSize: 2,
+              batchAggregationWaitMs: 10,
+              maxConcurrentRequests: 2,
+            },
+            network: 1,
+            maxRetries: 1,
+            logRetries: false,
+            fetchFn: customFetchFn,
+          }),
+        ],
+      };
+      const moduleRef = await Test.createTestingModule(module).compile();
+      const provider = moduleRef.get(
+        SimpleFallbackJsonRpcBatchProvider,
+      ) as MockedSimpleFallbackJsonRpcBatchProvider;
+
+      const fetchJsonSpy = jest.spyOn(
+        provider.fallbackProviders[0].provider,
+        'fetchJson',
+      );
+
+      const block = await provider.getBlock(42);
+      expect(block.hash).toBe(fixtures.eth_getBlockByNumber.default.hash);
+      expect(customFetchFn).toHaveBeenCalled();
+      expect(fetchJsonSpy).toHaveBeenCalled();
+
+      // Verify that the underlying ethers fetchJson was NOT called directly
+      // by checking that our custom fetchFn was the one producing results.
+      // Since fetchJson calls _fetchFn internally, fetchJson is called but
+      // it delegates to customFetchFn instead of ethers' fetchJson.
+      const allCallUrls = customFetchFn.mock.calls.map((call) => call[0].url);
+      expect(
+        allCallUrls.every((url: string) => url === 'http://localhost:8545'),
+      ).toBe(true);
     });
 
     // This test must be last - it creates provider without RPC calls,

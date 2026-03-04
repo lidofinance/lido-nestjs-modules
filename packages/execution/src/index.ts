@@ -12,3 +12,4 @@ export * from './ethers/fee-history';
 export * from './ethers/block-tag';
 export * from './error';
 export * from './events';
+export * from './interfaces/fetch-fn';

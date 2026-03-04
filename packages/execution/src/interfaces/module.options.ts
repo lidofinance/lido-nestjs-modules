@@ -6,6 +6,7 @@ import { ConnectionInfo } from '@ethersproject/web';
 import { Networkish } from './networkish';
 import { RequestPolicy } from '../provider/extended-json-rpc-batch-provider';
 import { MiddlewareCallback } from '@lido-nestjs/middleware';
+import { FetchFn } from './fetch-fn';
 
 export interface FallbackProviderModuleSyncOptions
   extends Pick<ModuleMetadata, 'imports'>,
@@ -17,6 +18,8 @@ export interface BatchProviderModuleSyncOptions
   network?: Networkish;
   requestPolicy?: RequestPolicy;
   fetchMiddlewares?: MiddlewareCallback<Promise<any>>[]; // eslint-disable-line @typescript-eslint/no-explicit-any
+  requestTimeoutMs?: number;
+  fetchFn?: FetchFn;
 }
 
 export interface FallbackProviderModuleAsyncOptions
