@@ -662,7 +662,7 @@ describe('Execution module. ', () => {
       expect(mockCallback).toBeCalledTimes(0);
 
       await mockedProvider.getBlock('latest');
-      expect(mockCallback).toBeCalledTimes(8); // TODO
+      expect(mockCallback).toBeCalledTimes(4);
 
       // 'getNetwork' fetch call
       expect(mockCallback.mock.calls[0][0]).toBe('foo');

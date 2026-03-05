@@ -1,5 +1,4 @@
 import { DynamicModule, Module, Provider } from '@nestjs/common';
-import { ExtendedJsonRpcBatchProvider } from './provider/extended-json-rpc-batch-provider';
 import {
   FallbackProviderModuleAsyncOptions,
   FallbackProviderModuleSyncOptions,
@@ -19,17 +18,6 @@ const getModuleProviders = (
         return new SimpleFallbackJsonRpcBatchProvider(options, logger);
       },
       inject: [LOGGER_PROVIDER],
-    },
-    {
-      provide: ExtendedJsonRpcBatchProvider,
-      useFactory: () => {
-        return new ExtendedJsonRpcBatchProvider(
-          options.urls[0],
-          undefined, // options.network,
-          options.requestPolicy,
-          options.fetchMiddlewares,
-        );
-      },
     },
   ];
 };
