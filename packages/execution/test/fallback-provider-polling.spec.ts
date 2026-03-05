@@ -5,7 +5,7 @@ import {
   FallbackProviderModule,
   SimpleFallbackJsonRpcBatchProvider,
 } from '../src';
-import { fakeFetchImpl } from './fixtures/fake-json-rpc';
+import { createUrlDispatchedFetchFn } from './fixtures/fake-json-rpc';
 import { nullTransport, LoggerModule } from '@lido-nestjs/logger';
 import { ConnectionInfo } from '@ethersproject/web';
 import { range, sleep } from './utils';
@@ -14,19 +14,11 @@ import { MiddlewareCallback } from '@lido-nestjs/middleware';
 import { Network } from '@ethersproject/networks';
 import { NoNewBlocksWhilePollingError } from '../src/error/no-new-blocks-while-polling.error';
 
-export type MockedExtendedJsonRpcBatchProvider =
-  ExtendedJsonRpcBatchProvider & {
-    fetchJson: (
-      connection: string | ConnectionInfo,
-      json?: string,
-    ) => Promise<unknown>;
-  };
-
 type MockedSimpleFallbackJsonRpcBatchProvider =
   SimpleFallbackJsonRpcBatchProvider & {
     networksEqual(networkA: Network, networkB: Network): boolean;
     fallbackProviders: [
-      { provider: MockedExtendedJsonRpcBatchProvider; valid: boolean },
+      { provider: ExtendedJsonRpcBatchProvider; valid: boolean },
     ];
   };
 
@@ -34,7 +26,7 @@ describe('Execution module. ', () => {
   describe('SimpleFallbackJsonRpcBatchProvider polling', () => {
     jest.setTimeout(20000);
     let mockedProvider: MockedSimpleFallbackJsonRpcBatchProvider;
-    const mockedFallbackProviderFetch: jest.SpyInstance[] = [];
+    const mockedFallbackProviderFetch: jest.Mock[] = [];
 
     const createMocks = async (
       fallbackProvidersQty = 2,
@@ -46,17 +38,26 @@ describe('Execution module. ', () => {
       fetchMiddlewares?: MiddlewareCallback<Promise<any>>[], // eslint-disable-line @typescript-eslint/no-explicit-any
       resetIntervalMs?: number,
     ) => {
+      if (!urls && fallbackProvidersQty < 1) {
+        throw new Error('fallbackProvidersQty must be >= 1');
+      }
+
+      const resolvedUrls =
+        urls ??
+        (range(0, fallbackProvidersQty).map(
+          (i: number) => `'http://localhost:100${i}'`,
+        ) as NonEmptyArray<string>);
+
+      const fetchFn = createUrlDispatchedFetchFn(
+        resolvedUrls as string[],
+        mockedFallbackProviderFetch,
+      );
+
       const module = {
         imports: [
           FallbackProviderModule.forFeature({
             imports: [LoggerModule.forRoot({ transports: [nullTransport()] })],
-            urls:
-              urls ??
-              <[string]>(
-                range(0, fallbackProvidersQty).map(
-                  (i: number) => `'http://localhost:100${i}'`,
-                )
-              ),
+            urls: resolvedUrls,
             requestPolicy: {
               jsonRpcMaxBatchSize,
               batchAggregationWaitMs: 10,
@@ -68,19 +69,12 @@ describe('Execution module. ', () => {
             resetIntervalMs: resetIntervalMs,
             maxTimeWithoutNewBlocksMs: 1000,
             fetchMiddlewares,
+            fetchFn,
           }),
         ],
       };
       const moduleRef = await Test.createTestingModule(module).compile();
       mockedProvider = moduleRef.get(SimpleFallbackJsonRpcBatchProvider);
-
-      range(0, fallbackProvidersQty).forEach((i) => {
-        if (mockedProvider.fallbackProviders[i]) {
-          mockedFallbackProviderFetch[i] = jest
-            .spyOn(mockedProvider.fallbackProviders[i].provider, 'fetchJson')
-            .mockImplementation(fakeFetchImpl());
-        }
-      });
     };
 
     afterEach(async () => {

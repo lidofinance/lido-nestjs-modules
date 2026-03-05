@@ -6,11 +6,12 @@ import {
   SimpleFallbackJsonRpcBatchProvider,
 } from '../src';
 import {
-  fakeFetchImpl,
-  fakeFetchImplThatCantDo,
+  fakeFetchFn,
+  fakeFetchFnThatCantDo,
+  createUrlDispatchedFetchFn,
 } from './fixtures/fake-json-rpc';
+import { FetchRequestParams } from '../src/interfaces/fetch-fn';
 import { nullTransport, LoggerModule } from '@lido-nestjs/logger';
-import { ConnectionInfo } from '@ethersproject/web';
 import { Wallet } from '@ethersproject/wallet';
 import { range, sleep } from './utils';
 import { NonEmptyArray } from '../src/interfaces/non-empty-array';
@@ -23,19 +24,11 @@ import {
 } from '@ethersproject/abstract-provider';
 import { Transaction } from '@ethersproject/transactions';
 
-export type MockedExtendedJsonRpcBatchProvider =
-  ExtendedJsonRpcBatchProvider & {
-    fetchJson: (
-      connection: string | ConnectionInfo,
-      json?: string,
-    ) => Promise<unknown>;
-  };
-
 type MockedSimpleFallbackJsonRpcBatchProvider =
   SimpleFallbackJsonRpcBatchProvider & {
     networksEqual(networkA: Network, networkB: Network): boolean;
     fallbackProviders: [
-      { provider: MockedExtendedJsonRpcBatchProvider; valid: boolean },
+      { provider: ExtendedJsonRpcBatchProvider; valid: boolean },
     ];
     _originalWrapTransaction: SimpleFallbackJsonRpcBatchProvider['_wrapTransaction'];
   };
@@ -45,7 +38,7 @@ describe('Execution module. ', () => {
     jest.setTimeout(20000);
     let mockedProvider: MockedSimpleFallbackJsonRpcBatchProvider;
     let mockedProviderDetectNetwork: jest.SpyInstance;
-    const mockedFallbackProviderFetch: jest.SpyInstance[] = [];
+    const mockedFallbackProviderFetch: jest.Mock[] = [];
     const mockedFallbackDetectNetwork: jest.SpyInstance[] = [];
 
     const createMocks = async (
@@ -54,21 +47,30 @@ describe('Execution module. ', () => {
       maxConcurrentRequests = 2,
       maxRetries = 1,
       logRetries = false,
-      urls: NonEmptyArray<string | ConnectionInfo> | null = null,
+      urls: NonEmptyArray<string | { url: string }> | null = null,
       fetchMiddlewares?: MiddlewareCallback<Promise<any>>[], // eslint-disable-line @typescript-eslint/no-explicit-any
       resetIntervalMs?: number,
     ) => {
+      if (!urls && fallbackProvidersQty < 1) {
+        throw new Error('fallbackProvidersQty must be >= 1');
+      }
+
+      const resolvedUrls =
+        urls ??
+        (range(0, fallbackProvidersQty).map(
+          (i: number) => `'http://localhost:100${i}'`,
+        ) as NonEmptyArray<string>);
+
+      const fetchFn = createUrlDispatchedFetchFn(
+        resolvedUrls as string[],
+        mockedFallbackProviderFetch,
+      );
+
       const module = {
         imports: [
           FallbackProviderModule.forFeature({
             imports: [LoggerModule.forRoot({ transports: [nullTransport()] })],
-            urls:
-              urls ??
-              <[string]>(
-                range(0, fallbackProvidersQty).map(
-                  (i: number) => `'http://localhost:100${i}'`,
-                )
-              ),
+            urls: resolvedUrls as NonEmptyArray<string>,
             requestPolicy: {
               jsonRpcMaxBatchSize,
               batchAggregationWaitMs: 10,
@@ -79,6 +81,7 @@ describe('Execution module. ', () => {
             logRetries: logRetries,
             resetIntervalMs: resetIntervalMs,
             fetchMiddlewares,
+            fetchFn,
           }),
         ],
       };
@@ -90,10 +93,6 @@ describe('Execution module. ', () => {
 
       range(0, fallbackProvidersQty).forEach((i) => {
         if (mockedProvider.fallbackProviders[i]) {
-          mockedFallbackProviderFetch[i] = jest
-            .spyOn(mockedProvider.fallbackProviders[i].provider, 'fetchJson')
-            .mockImplementation(fakeFetchImpl());
-
           mockedFallbackDetectNetwork[i] = jest.spyOn(
             mockedProvider.fallbackProviders[i].provider,
             'detectNetwork',
@@ -115,20 +114,17 @@ describe('Execution module. ', () => {
 
       // first provider always fails on eth_sendRawTransaction, should fallback to next provider
       mockedFallbackProviderFetch[0].mockImplementation(
-        (conn: string | ConnectionInfo, json: string) => {
-          jsons[0].push(...JSON.parse(json));
+        async (params: FetchRequestParams) => {
+          jsons[0].push(...JSON.parse(params.body));
 
-          return fakeFetchImplThatCantDo(['eth_sendRawTransaction'])(
-            conn,
-            json,
-          );
+          return fakeFetchFnThatCantDo(['eth_sendRawTransaction'])(params);
         },
       );
       mockedFallbackProviderFetch[1].mockImplementation(
-        (conn: string | ConnectionInfo, json: string) => {
-          jsons[1].push(...JSON.parse(json));
+        async (params: FetchRequestParams) => {
+          jsons[1].push(...JSON.parse(params.body));
 
-          return fakeFetchImpl()(conn, json);
+          return fakeFetchFn()(params);
         },
       );
 
@@ -198,12 +194,12 @@ describe('Execution module. ', () => {
 
       // first provider always fails on eth_sendRawTransaction or eth_getBlockByNumber
       mockedFallbackProviderFetch[0].mockImplementation(
-        fakeFetchImplThatCantDo([
+        fakeFetchFnThatCantDo([
           'eth_sendRawTransaction',
           'eth_getBlockByNumber',
         ]),
       );
-      mockedFallbackProviderFetch[1].mockImplementation(fakeFetchImpl());
+      mockedFallbackProviderFetch[1].mockImplementation(fakeFetchFn());
 
       function wrapTransaction(
         this: MockedSimpleFallbackJsonRpcBatchProvider,

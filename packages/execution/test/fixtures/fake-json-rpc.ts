@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { ConnectionInfo } from '@ethersproject/web';
 import { NonEmptyArray } from '../../src/interfaces/non-empty-array';
 import { BigNumber } from '@ethersproject/bignumber';
+import { FetchFn, FetchRequestParams } from '../../src/interfaces/fetch-fn';
 
 interface JsonRpcRequest {
   jsonrpc: '2.0';
@@ -280,20 +280,23 @@ export const fakeJsonRpc =
     }
   };
 
-export const fakeFetchImpl =
+// ============================================================
+// FetchFn-compatible mock factories
+// ============================================================
+
+const parseBatchBody = (body: string): JsonRpcRequest[] =>
+  body ? JSON.parse(body) : [];
+
+export const fakeFetchFn =
   (
     chainId?: number,
     blockNumber?: number,
     blockHash?: string,
     txHash?: string,
     feeHistory?: any,
-  ) =>
-  async (
-    connection: string | ConnectionInfo,
-    json?: string,
-  ): Promise<unknown> => {
-    const requests = json ? JSON.parse(json) : {};
-    return requests.map(
+  ): FetchFn =>
+  async ({ body }: FetchRequestParams) => ({
+    data: parseBatchBody(body).map(
       fakeJsonRpc(
         chainId ? BigNumber.from(chainId).toHexString() : undefined,
         blockNumber ? BigNumber.from(blockNumber).toHexString() : undefined,
@@ -301,310 +304,288 @@ export const fakeFetchImpl =
         txHash,
         feeHistory,
       ),
-    );
-  };
-
-export const fakeFetchImplThatCantDo =
-  (methods: string[]) =>
-  async (
-    connection: string | ConnectionInfo,
-    json?: string,
-  ): Promise<unknown> => {
-    const requests = json ? JSON.parse(json) : {};
-
-    const results = requests.map((request: JsonRpcRequest) => {
-      if (!methods.includes(request.method)) {
-        return fakeJsonRpc()(request);
-      }
-      return null;
-    });
-
-    if (results.filter((r: JsonRpcResponse | null) => r === null).length > 0) {
-      throw new Error("Can't do a method");
-    }
-
-    return results;
-  };
-
-export const fakeFetchImplThatCanOnlyDoNetworkDetection = async (
-  connection: string | ConnectionInfo,
-  json?: string,
-): Promise<unknown> => {
-  const requests = json ? JSON.parse(json) : {};
-
-  const results = requests.map((request: JsonRpcRequest) => {
-    if (request.method === 'eth_chainId') {
-      return fakeJsonRpc()(request);
-    }
-    return null;
+    ),
   });
 
-  if (results.filter((r: JsonRpcResponse | null) => r === null).length > 0) {
-    throw new Error('Some error');
-  }
-
-  return results;
+export const fakeFetchFnThatAlwaysFails: FetchFn = async () => {
+  throw new Error('Always fail');
 };
 
-export const makeFakeFetchImplThrowsError = (error: Error) => {
-  return async (): Promise<unknown> => {
+export const fakeFetchFnThatCanOnlyDoNetworkDetection: FetchFn = async ({
+  body,
+}) => {
+  const requests = parseBatchBody(body);
+  const results = requests.map((request) => {
+    if (request.method === 'eth_chainId') return fakeJsonRpc()(request);
+    return null;
+  });
+  if (results.some((r) => r === null)) throw new Error('Some error');
+  return { data: results };
+};
+
+export const fakeFetchFnThatCantDo =
+  (methods: string[]): FetchFn =>
+  async ({ body }) => {
+    const requests = parseBatchBody(body);
+    const results = requests.map((request) => {
+      if (!methods.includes(request.method)) return fakeJsonRpc()(request);
+      return null;
+    });
+    if (results.some((r) => r === null)) throw new Error("Can't do a method");
+    return { data: results };
+  };
+
+export const makeFakeFetchFnThrowsError = (error: Error): FetchFn => {
+  return async () => {
     throw error;
   };
 };
 
-export const makeFakeFetchImplReturnsNull = () => {
-  return async (): Promise<unknown> => {
-    return null;
-  };
+export const makeFakeFetchFnReturnsNull = (): FetchFn => {
+  return async () => ({ data: null });
 };
 
-export const fakeFetchImplThatAlwaysFails = async (): Promise<never> => {
-  throw new Error('Always fail');
-};
-
-export const makeFakeFetchImplThatFailsAfterNRequests = (
+export const makeFakeFetchFnThatFailsAfterNRequests = (
   firstNSuccessfulRequests: number,
   chainId: number,
   blockNumber: number,
-) => {
+): FetchFn => {
   let counter = 0;
-
-  return async (
-    connection: string | ConnectionInfo,
-    json?: string,
-  ): Promise<unknown> => {
-    if (counter++ >= firstNSuccessfulRequests) {
-      throw new Error('Failure');
-    }
-    const requests = json ? JSON.parse(json) : {};
-    return requests.map(
-      fakeJsonRpc(
-        BigNumber.from(chainId).toHexString(),
-        BigNumber.from(blockNumber).toHexString(),
+  return async ({ body }) => {
+    if (counter++ >= firstNSuccessfulRequests) throw new Error('Failure');
+    return {
+      data: parseBatchBody(body).map(
+        fakeJsonRpc(
+          BigNumber.from(chainId).toHexString(),
+          BigNumber.from(blockNumber).toHexString(),
+        ),
       ),
-    );
+    };
   };
 };
 
-export const makeFakeFetchImplThatFailsFirstNRequests = (
+export const makeFakeFetchFnThatFailsFirstNRequests = (
   firstNFailedRequests: number,
   chainId: number,
   blockNumber: number,
-) => {
+): FetchFn => {
   let counter = firstNFailedRequests;
-
-  return async (
-    connection: string | ConnectionInfo,
-    json?: string,
-  ): Promise<unknown> => {
-    if (counter-- > 0) {
-      throw new Error('Failure');
-    }
-    const requests = json ? JSON.parse(json) : {};
-    return requests.map(
-      fakeJsonRpc(
-        BigNumber.from(chainId).toHexString(),
-        BigNumber.from(blockNumber).toHexString(),
+  return async ({ body }) => {
+    if (counter-- > 0) throw new Error('Failure');
+    return {
+      data: parseBatchBody(body).map(
+        fakeJsonRpc(
+          BigNumber.from(chainId).toHexString(),
+          BigNumber.from(blockNumber).toHexString(),
+        ),
       ),
-    );
+    };
   };
 };
 
-export const makeFetchImplWithSpecificNetwork = (chainId: number) => {
-  return fakeFetchImpl(chainId);
+export const makeFetchFnWithSpecificNetwork = (chainId: number): FetchFn => {
+  return fakeFetchFn(chainId);
 };
 
-export const makeFetchImplWithSpecificFeeHistory = (feeHistory: any) => {
-  return fakeFetchImpl(undefined, undefined, undefined, undefined, feeHistory);
+export const makeFetchFnWithSpecificFeeHistory = (feeHistory: any): FetchFn => {
+  return fakeFetchFn(undefined, undefined, undefined, undefined, feeHistory);
 };
 
-export const makeFakeFetchImplThatHangs = (hangTimeMs: number) => {
-  return async (
-    connection: string | ConnectionInfo,
-    json?: string,
-  ): Promise<unknown> => {
+export const makeFakeFetchFnThatHangs = (hangTimeMs: number): FetchFn => {
+  return async ({ body }) => {
     return new Promise((resolve) => {
       setTimeout(() => {
-        const requests = json ? JSON.parse(json) : {};
-        resolve(requests.map(fakeJsonRpc()));
+        resolve({ data: parseBatchBody(body).map(fakeJsonRpc()) });
       }, hangTimeMs);
     });
   };
 };
 
 /**
- * Creates a fake fetch impl that returns null for eth_getTransactionReceipt
- * for the first N calls, then returns a valid receipt.
- * This simulates a transaction that is pending for some time before being mined.
+ * Returns null for eth_getTransactionReceipt for the first N calls,
+ * then returns a valid receipt.
+ * Simulates a transaction that is pending for some time before being mined.
  */
-export const makeFakeFetchImplWithPendingReceipt = (
+export const makeFakeFetchFnWithPendingReceipt = (
   pendingCount: number,
   chainId?: number,
-) => {
+): FetchFn => {
   let count = 0;
   const logsBloom =
     '0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000';
 
-  return async (
-    _connection: string | ConnectionInfo,
-    json?: string,
-  ): Promise<unknown> => {
-    const requests = json ? JSON.parse(json) : {};
-
-    return requests.map((request: JsonRpcRequest) => {
-      if (request.method === 'eth_getTransactionReceipt') {
-        count++;
-        if (count <= pendingCount) {
-          return { jsonrpc: '2.0', id: request.id, result: null };
-        }
-        return {
-          jsonrpc: '2.0',
-          id: request.id,
-          result: {
-            transactionHash: request.params?.[0],
-            transactionIndex: '0x1',
-            blockNumber: '0x2710',
-            blockHash:
-              '0xdc2d938e4cd0a149681e9e04352953ef5ab399d59bcd5b0357f6c0797470a524',
-            from: '0x4329419C7aF27A622C7004b9d3C8B90d3be8c54f',
-            to: '0xbf71642d7cbae8faf1cfdc6c1c48fcb45b15ed22',
-            cumulativeGasUsed: '0x5208',
-            gasUsed: '0x5208',
-            contractAddress: null,
-            logs: [],
-            logsBloom,
-            status: '0x1',
-          },
-        };
-      }
-      return fakeJsonRpc(
-        chainId ? BigNumber.from(chainId).toHexString() : undefined,
-      )(request);
-    });
-  };
-};
-
-/**
- * Creates a fake fetch impl that fails for eth_getTransactionReceipt calls
- * This simulates provider failures during transaction wait
- */
-export const makeFakeFetchImplThatFailsOnReceipt = () => {
-  return async (
-    connection: string | ConnectionInfo,
-    json?: string,
-  ): Promise<unknown> => {
-    const requests = json ? JSON.parse(json) : {};
-
-    const results = requests.map((request: JsonRpcRequest) => {
-      if (request.method === 'eth_getTransactionReceipt') {
-        return null; // Will cause the batch to fail
-      }
-      return fakeJsonRpc()(request);
-    });
-
-    if (results.some((r: JsonRpcResponse | null) => r === null)) {
-      throw new Error('eth_getTransactionReceipt failed');
-    }
-
-    return results;
-  };
-};
-
-/**
- * Creates a fake fetch impl that returns receipt with low confirmations initially,
- * then increases confirmations after N calls.
- * This simulates waiting for more confirmations.
- */
-/**
- * Creates a fake fetch impl that returns partial batch results.
- * It returns responses with wrong IDs, simulating a malformed RPC response.
- */
-export const makeFakeFetchImplWithPartialBatchResponse = () => {
-  let callCount = 0;
-
-  return async (
-    _connection: string | ConnectionInfo,
-    json?: string,
-  ): Promise<unknown> => {
-    const requests = json ? JSON.parse(json) : {};
-    callCount++;
-
-    // First call is network detection - return all responses
-    if (callCount === 1) {
-      return requests.map(fakeJsonRpc());
-    }
-
-    // Second call onwards - return responses with wrong IDs
-    // This simulates partial batch where some request IDs are missing from response
-    return requests.map((request: JsonRpcRequest) => {
-      const response = fakeJsonRpc()(request);
-      // Change the ID to a wrong one so it won't match
-      return { ...response, id: response.id + 999999 };
-    });
-  };
-};
-
-export const makeFakeFetchImplWithLowConfirmations = (
-  lowConfirmationCalls: number,
-  chainId?: number,
-) => {
-  let blockNumberCallCount = 0;
-  const logsBloom =
-    '0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000';
-
-  // Transaction is at block 0x2710 (10000)
-  const txBlockNumber = 0x2710;
-
-  return async (
-    _connection: string | ConnectionInfo,
-    json?: string,
-  ): Promise<unknown> => {
-    const requests = json ? JSON.parse(json) : {};
-
-    return requests.map((request: JsonRpcRequest) => {
-      if (request.method === 'eth_getTransactionReceipt') {
-        return {
-          jsonrpc: '2.0',
-          id: request.id,
-          result: {
-            transactionHash: request.params?.[0],
-            transactionIndex: '0x1',
-            blockNumber: BigNumber.from(txBlockNumber).toHexString(),
-            blockHash:
-              '0xdc2d938e4cd0a149681e9e04352953ef5ab399d59bcd5b0357f6c0797470a524',
-            from: '0x4329419C7aF27A622C7004b9d3C8B90d3be8c54f',
-            to: '0xbf71642d7cbae8faf1cfdc6c1c48fcb45b15ed22',
-            cumulativeGasUsed: '0x5208',
-            gasUsed: '0x5208',
-            contractAddress: null,
-            logs: [],
-            logsBloom,
-            status: '0x1',
-          },
-        };
-      }
-
-      if (request.method === 'eth_blockNumber') {
-        blockNumberCallCount++;
-        // For first N calls, return same block (0 confirmations)
-        // After that, return higher block number for more confirmations
-        if (blockNumberCallCount <= lowConfirmationCalls) {
+  return async ({ body }) => {
+    const requests = parseBatchBody(body);
+    return {
+      data: requests.map((request) => {
+        if (request.method === 'eth_getTransactionReceipt') {
+          count++;
+          if (count <= pendingCount) {
+            return { jsonrpc: '2.0', id: request.id, result: null };
+          }
           return {
             jsonrpc: '2.0',
             id: request.id,
-            result: BigNumber.from(txBlockNumber).toHexString(), // same block = 0 confirmations
+            result: {
+              transactionHash: request.params?.[0],
+              transactionIndex: '0x1',
+              blockNumber: '0x2710',
+              blockHash:
+                '0xdc2d938e4cd0a149681e9e04352953ef5ab399d59bcd5b0357f6c0797470a524',
+              from: '0x4329419C7aF27A622C7004b9d3C8B90d3be8c54f',
+              to: '0xbf71642d7cbae8faf1cfdc6c1c48fcb45b15ed22',
+              cumulativeGasUsed: '0x5208',
+              gasUsed: '0x5208',
+              contractAddress: null,
+              logs: [],
+              logsBloom,
+              status: '0x1',
+            },
           };
         }
-        return {
-          jsonrpc: '2.0',
-          id: request.id,
-          result: BigNumber.from(txBlockNumber + 5).toHexString(), // +5 blocks = 5 confirmations
-        };
-      }
+        return fakeJsonRpc(
+          chainId ? BigNumber.from(chainId).toHexString() : undefined,
+        )(request);
+      }),
+    };
+  };
+};
 
-      return fakeJsonRpc(
-        chainId ? BigNumber.from(chainId).toHexString() : undefined,
-      )(request);
+/**
+ * Fails for eth_getTransactionReceipt calls.
+ * Simulates provider failures during transaction wait.
+ */
+export const makeFakeFetchFnThatFailsOnReceipt = (): FetchFn => {
+  return async ({ body }) => {
+    const requests = parseBatchBody(body);
+    const results = requests.map((request) => {
+      if (request.method === 'eth_getTransactionReceipt') return null;
+      return fakeJsonRpc()(request);
     });
+    if (results.some((r) => r === null))
+      throw new Error('eth_getTransactionReceipt failed');
+    return { data: results };
+  };
+};
+
+/**
+ * Returns partial batch results with wrong IDs, simulating a malformed RPC response.
+ */
+export const makeFakeFetchFnWithPartialBatchResponse = (): FetchFn => {
+  let callCount = 0;
+  return async ({ body }) => {
+    const requests = parseBatchBody(body);
+    callCount++;
+    // First call is network detection — return all responses normally
+    if (callCount === 1) return { data: requests.map(fakeJsonRpc()) };
+    // Second call onwards — return responses with wrong IDs.
+    // This simulates partial batch where some request IDs are missing from response.
+    return {
+      data: requests.map((request) => {
+        const response = fakeJsonRpc()(request);
+        return { ...response, id: response.id + 999999 };
+      }),
+    };
+  };
+};
+
+/**
+ * Filters valid URLs and extracts URL strings from a mixed array of
+ * string | { url: string } entries (same logic as SimpleFallbackJsonRpcBatchProvider).
+ */
+export const resolveUrlStrings = (
+  urls: (string | { url: string })[],
+): string[] => {
+  return urls
+    .filter((url) => {
+      if (!url) return false;
+      if (typeof url === 'object' && !url.url) return false;
+      return true;
+    })
+    .map((u) => (typeof u === 'string' ? u : u.url));
+};
+
+/**
+ * Creates a URL-dispatched fetchFn for fallback provider tests.
+ * Routes requests to per-provider jest.fn() mocks based on URL.
+ */
+export const createUrlDispatchedFetchFn = (
+  urls: string[],
+  mocks: jest.Mock[],
+): FetchFn => {
+  mocks.length = 0;
+  urls.forEach((_, i) => {
+    mocks[i] = jest.fn(fakeFetchFn());
+  });
+
+  return async (params) => {
+    const idx = urls.indexOf(params.url);
+    if (idx === -1) throw new Error(`No mock for URL: ${params.url}`);
+    return mocks[idx](params);
+  };
+};
+
+/**
+ * Returns receipt with low confirmations initially,
+ * then increases confirmations after N calls.
+ * Simulates waiting for more confirmations.
+ */
+export const makeFakeFetchFnWithLowConfirmations = (
+  lowConfirmationCalls: number,
+  chainId?: number,
+): FetchFn => {
+  let blockNumberCallCount = 0;
+  const logsBloom =
+    '0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000';
+  // Transaction is at block 0x2710 (10000)
+  const txBlockNumber = 0x2710;
+
+  return async ({ body }) => {
+    const requests = parseBatchBody(body);
+    return {
+      data: requests.map((request) => {
+        if (request.method === 'eth_getTransactionReceipt') {
+          return {
+            jsonrpc: '2.0',
+            id: request.id,
+            result: {
+              transactionHash: request.params?.[0],
+              transactionIndex: '0x1',
+              blockNumber: BigNumber.from(txBlockNumber).toHexString(),
+              blockHash:
+                '0xdc2d938e4cd0a149681e9e04352953ef5ab399d59bcd5b0357f6c0797470a524',
+              from: '0x4329419C7aF27A622C7004b9d3C8B90d3be8c54f',
+              to: '0xbf71642d7cbae8faf1cfdc6c1c48fcb45b15ed22',
+              cumulativeGasUsed: '0x5208',
+              gasUsed: '0x5208',
+              contractAddress: null,
+              logs: [],
+              logsBloom,
+              status: '0x1',
+            },
+          };
+        }
+        if (request.method === 'eth_blockNumber') {
+          blockNumberCallCount++;
+          // For first N calls, return same block (0 confirmations)
+          // After that, return higher block number for more confirmations
+          if (blockNumberCallCount <= lowConfirmationCalls) {
+            return {
+              jsonrpc: '2.0',
+              id: request.id,
+              result: BigNumber.from(txBlockNumber).toHexString(), // same block = 0 confirmations
+            };
+          }
+          return {
+            jsonrpc: '2.0',
+            id: request.id,
+            result: BigNumber.from(txBlockNumber + 5).toHexString(), // +5 blocks = 5 confirmations
+          };
+        }
+        return fakeJsonRpc(
+          chainId ? BigNumber.from(chainId).toHexString() : undefined,
+        )(request);
+      }),
+    };
   };
 };

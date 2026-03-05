@@ -1,29 +1,22 @@
 import { Test } from '@nestjs/testing';
 import { ExtendedJsonRpcBatchProvider, BatchProviderModule } from '../src';
-import { ConnectionInfo } from '@ethersproject/web';
 import {
-  fakeFetchImpl,
+  fakeFetchFn,
   fixtures,
-  makeFetchImplWithSpecificFeeHistory,
-  makeFakeFetchImplThatHangs,
+  makeFetchFnWithSpecificFeeHistory,
+  makeFakeFetchFnThatHangs,
 } from './fixtures/fake-json-rpc';
 import { range } from './utils';
 import { nullTransport, LoggerModule } from '@lido-nestjs/logger';
-import { JsonRpcRequest, JsonRpcResponse, FetchError } from '../src';
+import { JsonRpcRequest, FetchError } from '../src';
 import { MiddlewareCallback } from '@lido-nestjs/middleware';
 import { RequestTimeoutError } from '../src/error/request-timeout.error';
-
-type MockedExtendedJsonRpcBatchProvider = ExtendedJsonRpcBatchProvider & {
-  fetchJson: (
-    connection: string | ConnectionInfo,
-    json?: string,
-  ) => Promise<unknown>;
-};
+import { FetchFn } from '../src/interfaces/fetch-fn';
 
 describe('Execution module. ', () => {
   describe('ExtendedJsonRpcBatchProvider', () => {
-    let mockedProvider: MockedExtendedJsonRpcBatchProvider;
-    let mockedProviderFetch: jest.SpyInstance;
+    let mockedProvider: ExtendedJsonRpcBatchProvider;
+    let mockFetchFn: jest.Mock<ReturnType<FetchFn>, Parameters<FetchFn>>;
     let mockedDetectNetwork: jest.SpyInstance;
 
     const createMocks = async (
@@ -31,6 +24,8 @@ describe('Execution module. ', () => {
       maxConcurrentRequests: number,
       fetchMiddlewares?: MiddlewareCallback<Promise<any>>[], // eslint-disable-line @typescript-eslint/no-explicit-any
     ) => {
+      mockFetchFn = jest.fn(fakeFetchFn());
+
       const module = {
         imports: [
           BatchProviderModule.forFeature({
@@ -42,36 +37,31 @@ describe('Execution module. ', () => {
               maxConcurrentRequests,
             },
             fetchMiddlewares,
+            fetchFn: mockFetchFn,
           }),
         ],
       };
       const moduleRef = await Test.createTestingModule(module).compile();
       mockedProvider = moduleRef.get(ExtendedJsonRpcBatchProvider);
 
-      mockedProviderFetch = jest
-        .spyOn(mockedProvider, 'fetchJson')
-        .mockImplementation(fakeFetchImpl());
-
       mockedDetectNetwork = jest.spyOn(mockedProvider, 'detectNetwork');
     };
 
-    // beforeEach(async () => {});
-
-    afterEach(async () => mockedProviderFetch.mockReset());
+    afterEach(async () => mockFetchFn.mockReset());
 
     test('should do basic functionality and return correct data', async () => {
       await createMocks(1, 1);
 
-      expect(mockedProviderFetch).toBeCalledTimes(0);
+      expect(mockFetchFn).toBeCalledTimes(0);
       expect(mockedDetectNetwork).toBeCalledTimes(0);
 
       const block = await mockedProvider.getBlock(1);
-      expect(mockedProviderFetch).toBeCalledTimes(2);
+      expect(mockFetchFn).toBeCalledTimes(2);
       expect(mockedDetectNetwork).toBeCalledTimes(2);
       expect(block.hash).toBe(fixtures.eth_getBlockByNumber.default.hash);
 
       const balance = await mockedProvider.getBalance(fixtures.address);
-      expect(mockedProviderFetch).toBeCalledTimes(3);
+      expect(mockFetchFn).toBeCalledTimes(3);
       expect(mockedDetectNetwork).toBeCalledTimes(3);
       expect(balance.toHexString()).toBe(fixtures.eth_getBalance.latest);
     });
@@ -79,23 +69,23 @@ describe('Execution module. ', () => {
     test('should do sync network detection fetch only once (network should be cached)', async () => {
       await createMocks(1, 1);
 
-      expect(mockedProviderFetch).toBeCalledTimes(0);
+      expect(mockFetchFn).toBeCalledTimes(0);
       expect(mockedDetectNetwork).toBeCalledTimes(0);
 
       await mockedProvider.getNetwork();
-      expect(mockedProviderFetch).toBeCalledTimes(1);
+      expect(mockFetchFn).toBeCalledTimes(1);
       expect(mockedDetectNetwork).toBeCalledTimes(2);
 
       await mockedProvider.getNetwork();
-      expect(mockedProviderFetch).toBeCalledTimes(1);
+      expect(mockFetchFn).toBeCalledTimes(1);
       expect(mockedDetectNetwork).toBeCalledTimes(3);
 
       await mockedProvider.getBlock(10000);
-      expect(mockedProviderFetch).toBeCalledTimes(2);
+      expect(mockFetchFn).toBeCalledTimes(2);
       expect(mockedDetectNetwork).toBeCalledTimes(4);
 
       await mockedProvider.getBalance(fixtures.address);
-      expect(mockedProviderFetch).toBeCalledTimes(3);
+      expect(mockFetchFn).toBeCalledTimes(3);
       expect(mockedDetectNetwork).toBeCalledTimes(5);
 
       mockedProvider.polling;
@@ -105,57 +95,53 @@ describe('Execution module. ', () => {
       await createMocks(1, 10);
 
       await mockedProvider.getNetwork();
-      expect(mockedProviderFetch).toBeCalledTimes(1);
+      expect(mockFetchFn).toBeCalledTimes(1);
 
       await Promise.all([mockedProvider.getBlock(10000)]);
 
-      expect(mockedProviderFetch).toBeCalledTimes(2);
+      expect(mockFetchFn).toBeCalledTimes(2);
     });
 
     test('should do no batching when batch size = 1, total = 6', async () => {
       await createMocks(1, 10);
 
       await mockedProvider.getNetwork();
-      expect(mockedProviderFetch).toBeCalledTimes(1);
+      expect(mockFetchFn).toBeCalledTimes(1);
 
       await Promise.all(range(0, 6).map(() => mockedProvider.getBlock(10000)));
 
-      expect(mockedProviderFetch).toBeCalledTimes(7);
+      expect(mockFetchFn).toBeCalledTimes(7);
     });
 
     test('should do proper batching when batch size = 3, total = 6', async () => {
       await createMocks(3, 10);
 
       await mockedProvider.getNetwork();
-      expect(mockedProviderFetch).toBeCalledTimes(1);
+      expect(mockFetchFn).toBeCalledTimes(1);
 
       await Promise.all(range(0, 6).map(() => mockedProvider.getBlock(10000)));
 
-      expect(mockedProviderFetch).toBeCalledTimes(3);
+      expect(mockFetchFn).toBeCalledTimes(3);
     });
 
     test('should do no batching when batch size = 10, total = 6', async () => {
       await createMocks(10, 10);
 
       await mockedProvider.getNetwork();
-      expect(mockedProviderFetch).toBeCalledTimes(1);
+      expect(mockFetchFn).toBeCalledTimes(1);
 
       await Promise.all(range(0, 6).map(() => mockedProvider.getBlock(10000)));
 
-      expect(mockedProviderFetch).toBeCalledTimes(2);
+      expect(mockFetchFn).toBeCalledTimes(2);
     });
 
     test('should throw exception on JsonRpc error', async () => {
       await createMocks(10, 10);
 
-      const fakeFetchImplWithRPCError = async (
-        connection: string | ConnectionInfo,
-        json?: string,
-      ): Promise<JsonRpcResponse> => {
-        const requests = json ? JSON.parse(json) : {};
-
-        return requests.map((request: JsonRpcRequest) => {
-          return {
+      const fakeFetchFnWithRPCError: FetchFn = async ({ body }) => {
+        const requests = body ? JSON.parse(body) : {};
+        return {
+          data: requests.map((request: JsonRpcRequest) => ({
             jsonrpc: '2.0',
             id: request.id,
             error: {
@@ -163,16 +149,16 @@ describe('Execution module. ', () => {
               message: 'json-rpc-error',
               data: { foo: 'foo' },
             },
-          };
-        });
+          })),
+        };
       };
 
-      mockedProviderFetch.mockImplementation(fakeFetchImplWithRPCError);
+      mockFetchFn.mockImplementation(fakeFetchFnWithRPCError);
 
       await expect(
         async () => await mockedProvider.getBlock(1000),
       ).rejects.toThrow();
-      expect(mockedProviderFetch).toBeCalledTimes(4);
+      expect(mockFetchFn).toBeCalledTimes(4);
     });
 
     test('should support multiple static (via constructor) middleware for fetching', async () => {
@@ -330,8 +316,8 @@ describe('Execution module. ', () => {
     test('should return undefined fee history if not exists', async () => {
       await createMocks(2, 2);
 
-      mockedProviderFetch.mockImplementation(
-        makeFetchImplWithSpecificFeeHistory({
+      mockFetchFn.mockImplementation(
+        makeFetchFnWithSpecificFeeHistory({
           baseFeePerGas: ['0x602828e60', '0x5d014f665'],
           gasUsedRatio: [0.36889105544897927, 0.21068196330316574],
           oldestBlock: '0xdfb206',
@@ -351,18 +337,18 @@ describe('Execution module. ', () => {
       // this will trigger network detection and provider initialization
       await mockedProvider.getBlock(1000);
 
-      const fakeFetchImplWithRPCError = async (): Promise<JsonRpcResponse> => {
-        return {
+      const fakeFetchFnWithRPCError: FetchFn = async () => ({
+        data: {
           jsonrpc: '2.0',
-          id: <number>(<unknown>null), // real scenario from Erigon node
+          id: null as unknown as number, // real scenario from Erigon node
           error: {
             code: -32000,
             message: 'rpc batch limit reached',
           },
-        };
-      };
+        },
+      });
 
-      mockedProviderFetch.mockImplementation(fakeFetchImplWithRPCError);
+      mockFetchFn.mockImplementation(fakeFetchFnWithRPCError);
 
       await expect(
         async () => await mockedProvider.getBlock(42),
@@ -371,7 +357,7 @@ describe('Execution module. ', () => {
           'Unexpected batch result. Possible reason: "rpc batch limit reached".',
         ),
       );
-      expect(mockedProviderFetch).toBeCalledTimes(3);
+      expect(mockFetchFn).toBeCalledTimes(3);
     });
 
     test('should throw exception on JsonRpc error when node reached rpc batching limit without any error message', async () => {
@@ -380,19 +366,19 @@ describe('Execution module. ', () => {
       // this will trigger network detection and provider initialization
       await mockedProvider.getBlock(1000);
 
-      const fakeFetchImplWithRPCError = async (): Promise<JsonRpcResponse> => {
-        return {
+      const fakeFetchFnWithRPCError: FetchFn = async () => ({
+        data: {
           jsonrpc: '2.0',
           id: 1,
-        };
-      };
+        },
+      });
 
-      mockedProviderFetch.mockImplementation(fakeFetchImplWithRPCError);
+      mockFetchFn.mockImplementation(fakeFetchFnWithRPCError);
 
       await expect(
         async () => await mockedProvider.getBlock(42),
       ).rejects.toThrowError(new FetchError('Unexpected batch result.'));
-      expect(mockedProviderFetch).toBeCalledTimes(3);
+      expect(mockFetchFn).toBeCalledTimes(3);
     });
 
     test('should throw exception on JsonRpc error when partial rpc response received from node', async () => {
@@ -401,13 +387,11 @@ describe('Execution module. ', () => {
       // this will trigger network detection and provider initialization
       await mockedProvider.getBlock(1000);
 
-      const fakeFetchImplWithRPCError = async (): Promise<
-        JsonRpcResponse[]
-      > => {
-        return [];
-      };
+      const fakeFetchFnWithRPCError: FetchFn = async () => ({
+        data: [],
+      });
 
-      mockedProviderFetch.mockImplementation(fakeFetchImplWithRPCError);
+      mockFetchFn.mockImplementation(fakeFetchFnWithRPCError);
 
       await expect(async () => {
         // these requests will be batched
@@ -416,19 +400,20 @@ describe('Execution module. ', () => {
       }).rejects.toThrowError(
         new FetchError('Partial payload batch result. Response 44 not found'),
       );
-      expect(mockedProviderFetch).toBeCalledTimes(3);
+      expect(mockFetchFn).toBeCalledTimes(3);
     });
   });
 
   describe('Request timeout in send()', () => {
-    type TestableProvider = MockedExtendedJsonRpcBatchProvider & {
+    type TestableProvider = ExtendedJsonRpcBatchProvider & {
       _queue: { length: number };
     };
 
     let provider: TestableProvider;
-    let fetchSpy: jest.SpyInstance;
+    let mockFetchFn: jest.Mock<ReturnType<FetchFn>, Parameters<FetchFn>>;
 
     const createProviderWithTimeout = (requestTimeoutMs?: number) => {
+      mockFetchFn = jest.fn(fakeFetchFn());
       provider = new ExtendedJsonRpcBatchProvider(
         'http://localhost',
         undefined,
@@ -439,14 +424,12 @@ describe('Execution module. ', () => {
         },
         [],
         requestTimeoutMs,
+        mockFetchFn,
       ) as TestableProvider;
-      fetchSpy = jest
-        .spyOn(provider, 'fetchJson')
-        .mockImplementation(fakeFetchImpl());
     };
 
     afterEach(() => {
-      fetchSpy?.mockReset();
+      mockFetchFn?.mockReset();
     });
 
     test('should reject with RequestTimeoutError when request exceeds timeout', async () => {
@@ -456,7 +439,7 @@ describe('Execution module. ', () => {
       await provider.getNetwork();
 
       // Switch to hanging mock
-      fetchSpy.mockImplementation(makeFakeFetchImplThatHangs(2000));
+      mockFetchFn.mockImplementation(makeFakeFetchFnThatHangs(2000));
 
       await expect(provider.getBlock(42)).rejects.toThrow(RequestTimeoutError);
     }, 3000);
@@ -465,7 +448,7 @@ describe('Execution module. ', () => {
       createProviderWithTimeout(150);
 
       await provider.getNetwork();
-      fetchSpy.mockImplementation(makeFakeFetchImplThatHangs(2000));
+      mockFetchFn.mockImplementation(makeFakeFetchFnThatHangs(2000));
 
       let caughtError: RequestTimeoutError | null = null;
       try {
@@ -491,7 +474,7 @@ describe('Execution module. ', () => {
       createProviderWithTimeout(undefined);
 
       // Response takes 300ms but no timeout is set — should resolve
-      fetchSpy.mockImplementation(makeFakeFetchImplThatHangs(300));
+      mockFetchFn.mockImplementation(makeFakeFetchFnThatHangs(300));
 
       const block = await provider.getBlock(42);
       expect(block.hash).toBe(fixtures.eth_getBlockByNumber.default.hash);
@@ -501,7 +484,7 @@ describe('Execution module. ', () => {
       createProviderWithTimeout(200);
 
       await provider.getNetwork();
-      fetchSpy.mockImplementation(makeFakeFetchImplThatHangs(5000));
+      mockFetchFn.mockImplementation(makeFakeFetchFnThatHangs(5000));
 
       const start = Date.now();
       await expect(provider.getBlock(42)).rejects.toThrow(RequestTimeoutError);
@@ -527,7 +510,7 @@ describe('Execution module. ', () => {
       createProviderWithTimeout(200);
 
       await provider.getNetwork();
-      fetchSpy.mockImplementation(makeFakeFetchImplThatHangs(2000));
+      mockFetchFn.mockImplementation(makeFakeFetchFnThatHangs(2000));
 
       // Send multiple requests that will be batched together
       const results = await Promise.allSettled([
@@ -551,11 +534,11 @@ describe('Execution module. ', () => {
       await provider.getNetwork();
 
       // First request — hangs and times out
-      fetchSpy.mockImplementation(makeFakeFetchImplThatHangs(2000));
+      mockFetchFn.mockImplementation(makeFakeFetchFnThatHangs(2000));
       await expect(provider.getBlock(42)).rejects.toThrow(RequestTimeoutError);
 
       // Second request — responds normally
-      fetchSpy.mockImplementation(fakeFetchImpl());
+      mockFetchFn.mockImplementation(fakeFetchFn());
       const block = await provider.getBlock(42);
       expect(block.hash).toBe(fixtures.eth_getBlockByNumber.default.hash);
     }, 5000);
@@ -565,7 +548,7 @@ describe('Execution module. ', () => {
 
       await provider.getNetwork();
       // Response arrives at 500ms, timeout fires at 100ms
-      fetchSpy.mockImplementation(makeFakeFetchImplThatHangs(500));
+      mockFetchFn.mockImplementation(makeFakeFetchFnThatHangs(500));
 
       const unhandledRejectionHandler = jest.fn();
       process.on('unhandledRejection', unhandledRejectionHandler);
@@ -594,7 +577,7 @@ describe('Execution module. ', () => {
       createProviderWithTimeout(100);
 
       await provider.getNetwork();
-      fetchSpy.mockImplementation(makeFakeFetchImplThatHangs(500));
+      mockFetchFn.mockImplementation(makeFakeFetchFnThatHangs(500));
 
       // Send request that will timeout
       await expect(provider.getBlock(42)).rejects.toThrow(RequestTimeoutError);
@@ -614,7 +597,7 @@ describe('Execution module. ', () => {
       await provider.getNetwork();
       // Hang time must be short enough so in-flight HTTP requests clear
       // before we test recovery (concurrency limiter slots free up)
-      fetchSpy.mockImplementation(makeFakeFetchImplThatHangs(300));
+      mockFetchFn.mockImplementation(makeFakeFetchFnThatHangs(300));
 
       // Fire 10 sequential timeouts
       for (let i = 0; i < 10; i++) {
@@ -629,7 +612,7 @@ describe('Execution module. ', () => {
       expect(provider._queue.length).toBe(0);
 
       // Provider should still work after many timeouts
-      fetchSpy.mockImplementation(fakeFetchImpl());
+      mockFetchFn.mockImplementation(fakeFetchFn());
       const block = await provider.getBlock(42);
       expect(block.hash).toBe(fixtures.eth_getBlockByNumber.default.hash);
     }, 10000);
@@ -638,7 +621,7 @@ describe('Execution module. ', () => {
       createProviderWithTimeout(100);
 
       await provider.getNetwork();
-      fetchSpy.mockImplementation(makeFakeFetchImplThatHangs(300));
+      mockFetchFn.mockImplementation(makeFakeFetchFnThatHangs(300));
 
       const clearTimeoutSpy = jest.spyOn(global, 'clearTimeout');
 

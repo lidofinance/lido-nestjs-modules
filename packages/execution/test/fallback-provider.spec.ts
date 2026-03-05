@@ -7,21 +7,24 @@ import {
 } from '../src';
 import {
   fakeJsonRpc,
-  fakeFetchImpl,
-  fakeFetchImplThatAlwaysFails,
-  fakeFetchImplThatCanOnlyDoNetworkDetection,
+  fakeFetchFn,
+  fakeFetchFnThatAlwaysFails,
+  fakeFetchFnThatCanOnlyDoNetworkDetection,
   fixtures,
-  makeFakeFetchImplReturnsNull,
-  makeFakeFetchImplThatFailsAfterNRequests,
-  makeFakeFetchImplThatFailsFirstNRequests,
-  makeFakeFetchImplThrowsError,
-  makeFetchImplWithSpecificFeeHistory,
-  makeFetchImplWithSpecificNetwork,
-  makeFakeFetchImplWithPartialBatchResponse,
-  makeFakeFetchImplThatHangs,
+  makeFakeFetchFnReturnsNull,
+  makeFakeFetchFnThatFailsAfterNRequests,
+  makeFakeFetchFnThatFailsFirstNRequests,
+  makeFakeFetchFnThrowsError,
+  makeFetchFnWithSpecificFeeHistory,
+  makeFetchFnWithSpecificNetwork,
+  makeFakeFetchFnWithPartialBatchResponse,
+  makeFakeFetchFnThatHangs,
+  createUrlDispatchedFetchFn,
+  resolveUrlStrings,
 } from './fixtures/fake-json-rpc';
 import { nullTransport, LoggerModule } from '@lido-nestjs/logger';
 import { ConnectionInfo } from '@ethersproject/web';
+import { FetchRequestParams } from '../src/interfaces/fetch-fn';
 import { range, sleep } from './utils';
 import { NonEmptyArray } from '../src/interfaces/non-empty-array';
 import { MiddlewareCallback } from '@lido-nestjs/middleware';
@@ -30,19 +33,11 @@ import { nonRetryableErrors } from '../src/common/errors';
 import { ErrorCode, Logger } from '@ethersproject/logger';
 import { AllProvidersFailedError, FallbackProviderEvents } from '../src';
 
-export type MockedExtendedJsonRpcBatchProvider =
-  ExtendedJsonRpcBatchProvider & {
-    fetchJson: (
-      connection: string | ConnectionInfo,
-      json?: string,
-    ) => Promise<unknown>;
-  };
-
 type MockedSimpleFallbackJsonRpcBatchProvider =
   SimpleFallbackJsonRpcBatchProvider & {
     networksEqual(networkA: Network, networkB: Network): boolean;
     fallbackProviders: [
-      { provider: MockedExtendedJsonRpcBatchProvider; valid: boolean },
+      { provider: ExtendedJsonRpcBatchProvider; valid: boolean },
     ];
   };
 
@@ -50,7 +45,7 @@ describe('Execution module. ', () => {
   describe('SimpleFallbackJsonRpcBatchProvider', () => {
     let mockedProvider: MockedSimpleFallbackJsonRpcBatchProvider;
     let mockedProviderDetectNetwork: jest.SpyInstance;
-    const mockedFallbackProviderFetch: jest.SpyInstance[] = [];
+    const mockedFallbackProviderFetch: jest.Mock[] = [];
     const mockedFallbackDetectNetwork: jest.SpyInstance[] = [];
 
     const createMocks = async (
@@ -65,17 +60,26 @@ describe('Execution module. ', () => {
       requestTimeoutMs?: number,
       instanceLabel?: string,
     ) => {
+      if (!urls && fallbackProvidersQty < 1) {
+        throw new Error('fallbackProvidersQty must be >= 1');
+      }
+
+      const resolvedUrls =
+        urls ??
+        (range(0, fallbackProvidersQty).map(
+          (i: number) => `'http://localhost:100${i}'`,
+        ) as NonEmptyArray<string>);
+
+      const fetchFn = createUrlDispatchedFetchFn(
+        resolveUrlStrings(resolvedUrls),
+        mockedFallbackProviderFetch,
+      );
+
       const module = {
         imports: [
           FallbackProviderModule.forFeature({
             imports: [LoggerModule.forRoot({ transports: [nullTransport()] })],
-            urls:
-              urls ??
-              <[string]>(
-                range(0, fallbackProvidersQty).map(
-                  (i: number) => `'http://localhost:100${i}'`,
-                )
-              ),
+            urls: resolvedUrls,
             requestPolicy: {
               jsonRpcMaxBatchSize,
               batchAggregationWaitMs: 10,
@@ -88,18 +92,17 @@ describe('Execution module. ', () => {
             requestTimeoutMs: requestTimeoutMs,
             fetchMiddlewares,
             instanceLabel,
+            fetchFn,
           }),
         ],
       };
       const moduleRef = await Test.createTestingModule(module).compile();
       mockedProvider = moduleRef.get(SimpleFallbackJsonRpcBatchProvider);
 
+      // Set up detectNetwork spies (still needed, these don't mock behavior)
+      mockedFallbackDetectNetwork.length = 0;
       range(0, fallbackProvidersQty).forEach((i) => {
         if (mockedProvider.fallbackProviders[i]) {
-          mockedFallbackProviderFetch[i] = jest
-            .spyOn(mockedProvider.fallbackProviders[i].provider, 'fetchJson')
-            .mockImplementation(fakeFetchImpl());
-
           mockedFallbackDetectNetwork[i] = jest.spyOn(
             mockedProvider.fallbackProviders[i].provider,
             'detectNetwork',
@@ -203,7 +206,7 @@ describe('Execution module. ', () => {
         mockedFallbackProviderFetch[1].mockClear();
 
         mockedFallbackProviderFetch[0].mockImplementation(
-          makeFakeFetchImplThrowsError(makeError(nonRetryableErrors[i])),
+          makeFakeFetchFnThrowsError(makeError(nonRetryableErrors[i])),
         );
 
         await expect(
@@ -222,12 +225,10 @@ describe('Execution module. ', () => {
 
       // first provider always fails
       mockedFallbackProviderFetch[0].mockImplementation(
-        fakeFetchImplThatAlwaysFails,
+        fakeFetchFnThatAlwaysFails,
       );
 
-      mockedFallbackProviderFetch[1].mockImplementation(
-        fakeFetchImpl(1, 10068),
-      );
+      mockedFallbackProviderFetch[1].mockImplementation(fakeFetchFn(1, 10068));
 
       // will do a fallback from 1st provider to 2nd provider
       expect(mockedProvider.activeProviderIndex).toBe(0);
@@ -236,9 +237,7 @@ describe('Execution module. ', () => {
       expect(blockA.number).toBe(10068);
 
       // mocking first provider to return certain block data
-      mockedFallbackProviderFetch[0].mockImplementation(
-        fakeFetchImpl(1, 10032),
-      );
+      mockedFallbackProviderFetch[0].mockImplementation(fakeFetchFn(1, 10032));
 
       await sleep(2500); // will do a reset
 
@@ -253,7 +252,7 @@ describe('Execution module. ', () => {
       await createMocks(1, 1, 1, 1);
 
       mockedFallbackProviderFetch[0].mockImplementation(
-        fakeFetchImplThatCanOnlyDoNetworkDetection,
+        fakeFetchFnThatCanOnlyDoNetworkDetection,
       );
 
       // first provider should do network detection and then 'getBlock'
@@ -273,7 +272,7 @@ describe('Execution module. ', () => {
         await createMocks(2);
 
         mockedFallbackProviderFetch[0].mockImplementation(
-          fakeFetchImplThatCanOnlyDoNetworkDetection,
+          fakeFetchFnThatCanOnlyDoNetworkDetection,
         );
 
         // first provider attempt
@@ -297,12 +296,12 @@ describe('Execution module. ', () => {
     test('should do fallback to next provider if first provider always throws exception', async () => {
       await createMocks(2);
 
-      const fakeFetchImplThatAlwaysThrows = async (): Promise<never> => {
+      const fakeFetchFnThatAlwaysThrows = async (): Promise<never> => {
         throw new Error('foo');
       };
 
       mockedFallbackProviderFetch[0].mockImplementation(
-        fakeFetchImplThatAlwaysThrows,
+        fakeFetchFnThatAlwaysThrows,
       );
 
       // first provider
@@ -361,10 +360,10 @@ describe('Execution module. ', () => {
       await createMocks(2, 1, 1, 1);
 
       mockedFallbackProviderFetch[0].mockImplementation(
-        makeFakeFetchImplThatFailsFirstNRequests(3, 1, 10001),
+        makeFakeFetchFnThatFailsFirstNRequests(3, 1, 10001),
       );
       mockedFallbackProviderFetch[1].mockImplementation(
-        makeFakeFetchImplThatFailsAfterNRequests(2, 1, 10002),
+        makeFakeFetchFnThatFailsAfterNRequests(2, 1, 10002),
       );
 
       // fallback from 1st provider to 2nd provider
@@ -380,10 +379,10 @@ describe('Execution module. ', () => {
       await createMocks(2);
 
       mockedFallbackProviderFetch[0].mockImplementation(
-        fakeFetchImplThatAlwaysFails,
+        fakeFetchFnThatAlwaysFails,
       );
       mockedFallbackProviderFetch[1].mockImplementation(
-        fakeFetchImplThatAlwaysFails,
+        fakeFetchFnThatAlwaysFails,
       );
 
       await expect(
@@ -397,10 +396,10 @@ describe('Execution module. ', () => {
       await createMocks(2);
 
       mockedFallbackProviderFetch[0].mockImplementation(
-        fakeFetchImplThatAlwaysFails,
+        fakeFetchFnThatAlwaysFails,
       );
       mockedFallbackProviderFetch[1].mockImplementation(
-        fakeFetchImplThatAlwaysFails,
+        fakeFetchFnThatAlwaysFails,
       );
 
       let error: AllProvidersFailedError | null = null;
@@ -422,10 +421,10 @@ describe('Execution module. ', () => {
       await createMocks(2);
 
       mockedFallbackProviderFetch[0].mockImplementation(
-        makeFetchImplWithSpecificNetwork(1),
+        makeFetchFnWithSpecificNetwork(1),
       );
       mockedFallbackProviderFetch[1].mockImplementation(
-        makeFetchImplWithSpecificNetwork(2),
+        makeFetchFnWithSpecificNetwork(2),
       );
 
       await expect(
@@ -445,10 +444,10 @@ describe('Execution module. ', () => {
         });
 
       mockedFallbackProviderFetch[0].mockImplementation(
-        makeFetchImplWithSpecificNetwork(1),
+        makeFetchFnWithSpecificNetwork(1),
       );
       mockedFallbackProviderFetch[1].mockImplementation(
-        makeFetchImplWithSpecificNetwork(1),
+        makeFetchFnWithSpecificNetwork(1),
       );
 
       await expect(
@@ -470,11 +469,11 @@ describe('Execution module. ', () => {
         });
 
       mockedFallbackProviderFetch[0].mockImplementation(
-        makeFakeFetchImplReturnsNull(),
+        makeFakeFetchFnReturnsNull(),
       );
 
       mockedFallbackProviderFetch[1].mockImplementation(
-        makeFetchImplWithSpecificNetwork(1),
+        makeFetchFnWithSpecificNetwork(1),
       );
 
       const block = await mockedProvider.getBlock('latest');
@@ -494,10 +493,10 @@ describe('Execution module. ', () => {
         });
 
       mockedFallbackProviderFetch[0].mockImplementation(
-        makeFakeFetchImplThatFailsFirstNRequests(0, 1, 10011),
+        makeFakeFetchFnThatFailsFirstNRequests(0, 1, 10011),
       );
       mockedFallbackProviderFetch[1].mockImplementation(
-        makeFakeFetchImplThatFailsFirstNRequests(3, 1, 10042),
+        makeFakeFetchFnThatFailsFirstNRequests(3, 1, 10042),
       );
 
       const blockA = await mockedProvider.getBlock('latest');
@@ -516,10 +515,10 @@ describe('Execution module. ', () => {
       await createMocks(2);
 
       mockedFallbackProviderFetch[0].mockImplementation(
-        makeFetchImplWithSpecificNetwork(2),
+        makeFetchFnWithSpecificNetwork(2),
       );
       mockedFallbackProviderFetch[1].mockImplementation(
-        makeFetchImplWithSpecificNetwork(3),
+        makeFetchFnWithSpecificNetwork(3),
       );
 
       await expect(
@@ -537,10 +536,10 @@ describe('Execution module. ', () => {
         await createMocks(2, 1, 1, 1, false, null, undefined, 2000);
 
         mockedFallbackProviderFetch[0].mockImplementation(
-          makeFakeFetchImplThatFailsFirstNRequests(3, 2, 10000),
+          makeFakeFetchFnThatFailsFirstNRequests(3, 2, 10000),
         );
         mockedFallbackProviderFetch[1].mockImplementation(
-          makeFakeFetchImplThatFailsAfterNRequests(4, 1, 10042),
+          makeFakeFetchFnThatFailsAfterNRequests(4, 1, 10042),
         );
 
         // fallback from 1st provider to 2nd provider
@@ -559,16 +558,16 @@ describe('Execution module. ', () => {
       await createMocks(4);
 
       mockedFallbackProviderFetch[0].mockImplementation(
-        makeFetchImplWithSpecificNetwork(1),
+        makeFetchFnWithSpecificNetwork(1),
       );
       mockedFallbackProviderFetch[1].mockImplementation(
-        makeFetchImplWithSpecificNetwork(1),
+        makeFetchFnWithSpecificNetwork(1),
       );
       mockedFallbackProviderFetch[2].mockImplementation(
-        makeFetchImplWithSpecificNetwork(1),
+        makeFetchFnWithSpecificNetwork(1),
       );
       mockedFallbackProviderFetch[3].mockImplementation(
-        makeFetchImplWithSpecificNetwork(2),
+        makeFetchFnWithSpecificNetwork(2),
       );
 
       await expect(
@@ -630,7 +629,7 @@ describe('Execution module. ', () => {
       await createMocks(1);
 
       mockedFallbackProviderFetch[0].mockImplementation(
-        makeFetchImplWithSpecificFeeHistory({
+        makeFetchFnWithSpecificFeeHistory({
           baseFeePerGas: ['0x602828e60', '0x5d014f665'],
           gasUsedRatio: [0.36889105544897927, 0.21068196330316574],
           oldestBlock: '0xdfb206',
@@ -782,7 +781,7 @@ describe('Execution module. ', () => {
       mockedFallbackProviderFetch[1].mockClear();
 
       mockedFallbackProviderFetch[0].mockImplementation(
-        makeFakeFetchImplThrowsError(makeError()),
+        makeFakeFetchFnThrowsError(makeError()),
       );
 
       expect(mockedFallbackProviderFetch[0]).toBeCalledTimes(0);
@@ -1105,7 +1104,7 @@ describe('Execution module. ', () => {
       };
 
       mockedFallbackProviderFetch[0].mockImplementation(
-        makeFakeFetchImplThrowsError(makeError()),
+        makeFakeFetchFnThrowsError(makeError()),
       );
 
       await expect(
@@ -1135,10 +1134,10 @@ describe('Execution module. ', () => {
       // Both providers succeed for network detection but fail for actual requests
       // This allows detectNetwork() to succeed, then perform() will fail on all providers
       mockedFallbackProviderFetch[0].mockImplementation(
-        fakeFetchImplThatCanOnlyDoNetworkDetection,
+        fakeFetchFnThatCanOnlyDoNetworkDetection,
       );
       mockedFallbackProviderFetch[1].mockImplementation(
-        fakeFetchImplThatCanOnlyDoNetworkDetection,
+        fakeFetchFnThatCanOnlyDoNetworkDetection,
       );
 
       await expect(
@@ -1187,11 +1186,40 @@ describe('Execution module. ', () => {
       }
     });
 
+    test('should emit provider:response-batched:error when listener attached and success handler throws', async () => {
+      await createMocks(1);
+
+      // Trigger network detection first
+      await mockedProvider.getBlock(10000);
+
+      const events: FallbackProviderEvents[] = [];
+      mockedProvider.eventEmitter.on('rpc', (event) => events.push(event));
+
+      // Return non-array response so the success handler throws
+      // (covers the .catch() path, not the .then(_, errorHandler) path)
+      mockedFallbackProviderFetch[0].mockImplementation(async () => ({
+        data: { jsonrpc: '2.0', id: 1, error: { message: 'batch limit' } },
+      }));
+
+      await expect(
+        async () => await mockedProvider.getBlock(42),
+      ).rejects.toThrow();
+
+      const errorEvent = events.find(
+        (e) => e.action === 'provider:response-batched:error',
+      );
+      expect(errorEvent).toBeDefined();
+      if (errorEvent?.action === 'provider:response-batched:error') {
+        expect(errorEvent.error).toBeDefined();
+        expect(Array.isArray(errorEvent.request)).toBe(true);
+      }
+    });
+
     test('should handle partial batch response with PARTIAL_BATCH_RESULT error', async () => {
       await createMocks(1);
 
       mockedFallbackProviderFetch[0].mockImplementation(
-        makeFakeFetchImplWithPartialBatchResponse(),
+        makeFakeFetchFnWithPartialBatchResponse(),
       );
 
       // This should fail because the batch response is missing some IDs
@@ -1226,17 +1254,17 @@ describe('Execution module. ', () => {
       let callCount = 0;
       // First provider: succeeds for network detection, then hangs
       mockedFallbackProviderFetch[0].mockImplementation(
-        async (conn: string | ConnectionInfo, json?: string) => {
+        async (params: FetchRequestParams) => {
           callCount++;
           if (callCount === 1) {
-            return fakeFetchImpl()(conn, json);
+            return fakeFetchFn()(params);
           }
-          return makeFakeFetchImplThatHangs(2000)(conn, json);
+          return makeFakeFetchFnThatHangs(2000)(params);
         },
       );
 
       // Second provider works normally
-      mockedFallbackProviderFetch[1].mockImplementation(fakeFetchImpl());
+      mockedFallbackProviderFetch[1].mockImplementation(fakeFetchFn());
 
       const errorSpy = jest.spyOn(mockedProvider['logger'], 'error');
 
@@ -1292,10 +1320,10 @@ describe('Execution module. ', () => {
 
       // Test with failed request - should log errors with instance label
       mockedFallbackProviderFetch[0].mockImplementation(
-        fakeFetchImplThatAlwaysFails,
+        fakeFetchFnThatAlwaysFails,
       );
       mockedFallbackProviderFetch[1].mockImplementation(
-        fakeFetchImplThatAlwaysFails,
+        fakeFetchFnThatAlwaysFails,
       );
 
       await expect(
@@ -1337,7 +1365,7 @@ describe('Execution module. ', () => {
       await createMocks(1, 1, 1, 1);
 
       mockedFallbackProviderFetch[0].mockImplementation(
-        fakeFetchImplThatCanOnlyDoNetworkDetection,
+        fakeFetchFnThatCanOnlyDoNetworkDetection,
       );
 
       let caughtError: AllProvidersFailedError | null = null;
@@ -1408,13 +1436,11 @@ describe('Execution module. ', () => {
     });
 
     test('should use custom fetchFn instead of default fetchJson', async () => {
-      const customFetchFn = jest.fn(
-        async (params: { url: string; body?: string }) => {
-          const requests = params.body ? JSON.parse(params.body) : [];
-          const responses = requests.map(fakeJsonRpc());
-          return { data: responses };
-        },
-      );
+      const customFetchFn = jest.fn(async (params: FetchRequestParams) => {
+        const requests = params.body ? JSON.parse(params.body) : [];
+        const responses = requests.map(fakeJsonRpc());
+        return { data: responses };
+      });
 
       const module = {
         imports: [
@@ -1434,24 +1460,12 @@ describe('Execution module. ', () => {
         ],
       };
       const moduleRef = await Test.createTestingModule(module).compile();
-      const provider = moduleRef.get(
-        SimpleFallbackJsonRpcBatchProvider,
-      ) as MockedSimpleFallbackJsonRpcBatchProvider;
-
-      const fetchJsonSpy = jest.spyOn(
-        provider.fallbackProviders[0].provider,
-        'fetchJson',
-      );
+      const provider = moduleRef.get(SimpleFallbackJsonRpcBatchProvider);
 
       const block = await provider.getBlock(42);
       expect(block.hash).toBe(fixtures.eth_getBlockByNumber.default.hash);
       expect(customFetchFn).toHaveBeenCalled();
-      expect(fetchJsonSpy).toHaveBeenCalled();
 
-      // Verify that the underlying ethers fetchJson was NOT called directly
-      // by checking that our custom fetchFn was the one producing results.
-      // Since fetchJson calls _fetchFn internally, fetchJson is called but
-      // it delegates to customFetchFn instead of ethers' fetchJson.
       const allCallUrls = customFetchFn.mock.calls.map((call) => call[0].url);
       expect(
         allCallUrls.every((url: string) => url === 'http://localhost:8545'),

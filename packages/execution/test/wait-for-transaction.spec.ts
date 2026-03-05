@@ -7,27 +7,20 @@ import {
   TransactionWaitTimeoutError,
 } from '../src';
 import {
-  fakeFetchImpl,
-  makeFakeFetchImplWithPendingReceipt,
-  makeFakeFetchImplThatFailsOnReceipt,
-  makeFakeFetchImplWithLowConfirmations,
+  fakeFetchFn,
+  makeFakeFetchFnWithPendingReceipt,
+  makeFakeFetchFnThatFailsOnReceipt,
+  makeFakeFetchFnWithLowConfirmations,
+  createUrlDispatchedFetchFn,
 } from './fixtures/fake-json-rpc';
 import { nullTransport, LoggerModule } from '@lido-nestjs/logger';
-import { ConnectionInfo } from '@ethersproject/web';
 import { range, sleep } from './utils';
-
-export type MockedExtendedJsonRpcBatchProvider =
-  ExtendedJsonRpcBatchProvider & {
-    fetchJson: (
-      connection: string | ConnectionInfo,
-      json?: string,
-    ) => Promise<unknown>;
-  };
+import { NonEmptyArray } from '../src/interfaces/non-empty-array';
 
 type MockedSimpleFallbackJsonRpcBatchProvider =
   SimpleFallbackJsonRpcBatchProvider & {
     fallbackProviders: [
-      { provider: MockedExtendedJsonRpcBatchProvider; valid: boolean },
+      { provider: ExtendedJsonRpcBatchProvider; valid: boolean },
     ];
   };
 
@@ -43,22 +36,31 @@ type MockedSimpleFallbackJsonRpcBatchProvider =
 describe('Execution module - waitForTransactionWithFallback', () => {
   jest.setTimeout(30000);
   let mockedProvider: MockedSimpleFallbackJsonRpcBatchProvider;
-  const mockedFallbackProviderFetch: jest.SpyInstance[] = [];
+  const mockedFallbackProviderFetch: jest.Mock[] = [];
 
   const createMocks = async (
     fallbackProvidersQty = 2,
     maxRetries = 1,
     requestTimeoutMs?: number,
   ) => {
+    if (fallbackProvidersQty < 1) {
+      throw new Error('fallbackProvidersQty must be >= 1');
+    }
+
+    const resolvedUrls = range(0, fallbackProvidersQty).map(
+      (i: number) => `http://localhost:100${i}`,
+    ) as NonEmptyArray<string>;
+
+    const fetchFn = createUrlDispatchedFetchFn(
+      resolvedUrls,
+      mockedFallbackProviderFetch,
+    );
+
     const module = {
       imports: [
         FallbackProviderModule.forFeature({
           imports: [LoggerModule.forRoot({ transports: [nullTransport()] })],
-          urls: <[string]>(
-            range(0, fallbackProvidersQty).map(
-              (i: number) => `http://localhost:100${i}`,
-            )
-          ),
+          urls: resolvedUrls,
           requestPolicy: {
             jsonRpcMaxBatchSize: 10,
             batchAggregationWaitMs: 10,
@@ -68,19 +70,12 @@ describe('Execution module - waitForTransactionWithFallback', () => {
           maxRetries,
           logRetries: false,
           requestTimeoutMs,
+          fetchFn,
         }),
       ],
     };
     const moduleRef = await Test.createTestingModule(module).compile();
     mockedProvider = moduleRef.get(SimpleFallbackJsonRpcBatchProvider);
-
-    range(0, fallbackProvidersQty).forEach((i) => {
-      if (mockedProvider.fallbackProviders[i]) {
-        mockedFallbackProviderFetch[i] = jest
-          .spyOn(mockedProvider.fallbackProviders[i].provider, 'fetchJson')
-          .mockImplementation(fakeFetchImpl());
-      }
-    });
   };
 
   afterEach(async () => {
@@ -116,7 +111,7 @@ describe('Execution module - waitForTransactionWithFallback', () => {
 
       // First 2 calls return null (pending), then return valid receipt
       mockedFallbackProviderFetch[0].mockImplementation(
-        makeFakeFetchImplWithPendingReceipt(2, 1),
+        makeFakeFetchFnWithPendingReceipt(2, 1),
       );
 
       const txHash =
@@ -179,7 +174,7 @@ describe('Execution module - waitForTransactionWithFallback', () => {
 
       // Always return null (transaction never confirms)
       mockedFallbackProviderFetch[0].mockImplementation(
-        makeFakeFetchImplWithPendingReceipt(100, 1), // 100 pending calls
+        makeFakeFetchFnWithPendingReceipt(100, 1), // 100 pending calls
       );
 
       const txHash =
@@ -200,7 +195,7 @@ describe('Execution module - waitForTransactionWithFallback', () => {
       await createMocks(2);
 
       mockedFallbackProviderFetch[0].mockImplementation(
-        makeFakeFetchImplWithPendingReceipt(100, 1),
+        makeFakeFetchFnWithPendingReceipt(100, 1),
       );
 
       const txHash =
@@ -230,10 +225,10 @@ describe('Execution module - waitForTransactionWithFallback', () => {
 
       // First provider always fails on getTransactionReceipt
       mockedFallbackProviderFetch[0].mockImplementation(
-        makeFakeFetchImplThatFailsOnReceipt(),
+        makeFakeFetchFnThatFailsOnReceipt(),
       );
       // Second provider works normally
-      mockedFallbackProviderFetch[1].mockImplementation(fakeFetchImpl());
+      mockedFallbackProviderFetch[1].mockImplementation(fakeFetchFn());
 
       const txHash =
         '0xbdbda178dac948c2ff214526717069e4f4aaf8a550bd0335bfa2235412403489';
@@ -257,10 +252,10 @@ describe('Execution module - waitForTransactionWithFallback', () => {
 
       // Both providers fail on getTransactionReceipt
       mockedFallbackProviderFetch[0].mockImplementation(
-        makeFakeFetchImplThatFailsOnReceipt(),
+        makeFakeFetchFnThatFailsOnReceipt(),
       );
       mockedFallbackProviderFetch[1].mockImplementation(
-        makeFakeFetchImplThatFailsOnReceipt(),
+        makeFakeFetchFnThatFailsOnReceipt(),
       );
 
       const txHash =
@@ -314,7 +309,7 @@ describe('Execution module - waitForTransactionWithFallback', () => {
       // First 1 blockNumber call returns same block as tx (0 confirmations),
       // then returns higher block (5 confirmations)
       mockedFallbackProviderFetch[0].mockImplementation(
-        makeFakeFetchImplWithLowConfirmations(1, 1),
+        makeFakeFetchFnWithLowConfirmations(1, 1),
       );
 
       const txHash =
@@ -347,7 +342,7 @@ describe('Execution module - waitForTransactionWithFallback', () => {
 
       // First 3 calls return null (pending), then return valid receipt
       mockedFallbackProviderFetch[0].mockImplementation(
-        makeFakeFetchImplWithPendingReceipt(pendingPolls, 1),
+        makeFakeFetchFnWithPendingReceipt(pendingPolls, 1),
       );
 
       const txHash =
@@ -376,7 +371,7 @@ describe('Execution module - waitForTransactionWithFallback', () => {
       const timeout = 500;
 
       mockedFallbackProviderFetch[0].mockImplementation(
-        makeFakeFetchImplWithPendingReceipt(100, 1),
+        makeFakeFetchFnWithPendingReceipt(100, 1),
       );
 
       const txHash =
