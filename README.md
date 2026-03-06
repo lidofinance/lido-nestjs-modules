@@ -8,6 +8,7 @@ NestJS modules for Lido Finance projects.
 - [@lido-nestjs/fetch](/packages/fetch/README.md)
 - [@lido-nestjs/consensus](/packages/consensus/README.md)
 - [@lido-nestjs/execution](/packages/execution/README.md)
+- [@lido-nestjs/rpc-metrics-prometheus](/packages/rpc-metrics-prometheus/README.md)
 
 ## Install
 
@@ -30,19 +31,19 @@ Database migration files should be placed in `/packages/{package name}/src/migra
 Migrations filenames should comply with the datetime pattern: `MigrationYYYYMMDDhhmmss.ts`
 
 Where:
-* YYYY - year (example: 2022)
-* MM - month (example: 01)
-* DD - day of month (example: 29)
-* hh - hour in 24h format (example: 23)
-* mm - minutes (example: 05)
-* ss - seconds (example: 02)
 
-Examples: 
- - `Migration20220301040302.ts`
- - `Migration20221129230502.ts`
+- YYYY - year (example: 2022)
+- MM - month (example: 01)
+- DD - day of month (example: 29)
+- hh - hour in 24h format (example: 23)
+- mm - minutes (example: 05)
+- ss - seconds (example: 02)
 
+Examples:
 
+- `Migration20220301040302.ts`
+- `Migration20221129230502.ts`
 
 Please DO NOT edit migrations after they are created and pushed to NPM.
-If you want to change the migration, 
+If you want to change the migration,
 please make another one with the needed database schema transitions.
