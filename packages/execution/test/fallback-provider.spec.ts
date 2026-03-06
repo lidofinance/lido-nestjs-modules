@@ -1084,6 +1084,13 @@ describe('Execution module. ', () => {
         expect(typeof responseBatchedEvent.domain).toBe('string');
         // Verify response field is NOT present (was removed)
         expect((responseBatchedEvent as any).response).toBeUndefined();
+        // Verify new results field
+        expect(Array.isArray(responseBatchedEvent.results)).toBe(true);
+        expect(responseBatchedEvent.results.length).toBeGreaterThan(0);
+        for (const result of responseBatchedEvent.results) {
+          expect(typeof result.id).toBe('number');
+          expect(['success', 'fail']).toContain(result.result);
+        }
       }
     });
 

@@ -2,6 +2,8 @@ import { Test } from '@nestjs/testing';
 import { ExtendedJsonRpcBatchProvider, BatchProviderModule } from '../src';
 import {
   fakeFetchFn,
+  fakeFetchFnWithMetrics,
+  fakeJsonRpc,
   fixtures,
   makeFetchFnWithSpecificFeeHistory,
   makeFakeFetchFnThatHangs,
@@ -12,6 +14,8 @@ import { JsonRpcRequest, FetchError } from '../src';
 import { MiddlewareCallback } from '@lido-nestjs/middleware';
 import { RequestTimeoutError } from '../src/error/request-timeout.error';
 import { FetchFn } from '../src/interfaces/fetch-fn';
+import { ProviderEvents, ProviderResponseBatchedEvent } from '../src/events';
+import * as ethersWeb from '@ethersproject/web';
 
 describe('Execution module. ', () => {
   describe('ExtendedJsonRpcBatchProvider', () => {
@@ -659,5 +663,305 @@ describe('Execution module. ', () => {
       raceSpy.mockRestore();
       await sendPromise.catch(() => undefined); // cleanup
     }, 3000);
+  });
+
+  describe('provider:response-batched event', () => {
+    let mockedProvider: ExtendedJsonRpcBatchProvider;
+    let mockFetchFn: jest.Mock<ReturnType<FetchFn>, Parameters<FetchFn>>;
+
+    const createMocks = async (
+      fetchFnImpl?: FetchFn,
+      requestTimeoutMs?: number,
+    ) => {
+      mockFetchFn = jest.fn(fetchFnImpl ?? fakeFetchFn());
+
+      const module = {
+        imports: [
+          BatchProviderModule.forFeature({
+            imports: [LoggerModule.forRoot({ transports: [nullTransport()] })],
+            url: 'http://localhost',
+            fetchFn: mockFetchFn,
+            requestTimeoutMs,
+          }),
+        ],
+      };
+      const moduleRef = await Test.createTestingModule(module).compile();
+      mockedProvider = moduleRef.get(ExtendedJsonRpcBatchProvider);
+    };
+
+    afterEach(() => mockFetchFn.mockReset());
+
+    const collectEvents = (): ProviderEvents[] => {
+      const events: ProviderEvents[] = [];
+      mockedProvider.eventEmitter.on('rpc', (event: ProviderEvents) => {
+        events.push(event);
+      });
+      return events;
+    };
+
+    const getResponseBatched = (
+      events: ProviderEvents[],
+    ): ProviderResponseBatchedEvent => {
+      const event = events.find(
+        (e): e is ProviderResponseBatchedEvent =>
+          e.action === 'provider:response-batched',
+      );
+
+      expect(event).toBeDefined();
+
+      if (!event) {
+        throw new Error('Expected provider:response-batched event');
+      }
+
+      return event;
+    };
+
+    test('should include results with success for each request in batch', async () => {
+      await createMocks();
+      const events = collectEvents();
+
+      await mockedProvider.getBlock(42);
+
+      const event = getResponseBatched(events);
+      expect(event.results.length).toBeGreaterThan(0);
+      expect(event.results.every((r) => r.result === 'success')).toBe(true);
+      expect(event.results.every((r) => typeof r.id === 'number')).toBe(true);
+    });
+
+    test('should include fail when response arrives after request timeout', async () => {
+      await createMocks(undefined, 100);
+
+      await mockedProvider.getNetwork();
+      const events = collectEvents();
+
+      mockFetchFn.mockImplementation(makeFakeFetchFnThatHangs(500));
+
+      await expect(mockedProvider.getBlock(42)).rejects.toThrow(
+        RequestTimeoutError,
+      );
+
+      // Wait for late batch response and corresponding event emission.
+      await new Promise((resolve) => setTimeout(resolve, 700));
+
+      const event = getResponseBatched(events);
+      expect(event.results.length).toBeGreaterThan(0);
+      expect(event.results.every((r) => r.result === 'fail')).toBe(true);
+    }, 3000);
+
+    test('should include results with fail and rpcErrorCode on JSON-RPC error', async () => {
+      await createMocks();
+
+      // Network detection succeeds
+      await mockedProvider.getNetwork();
+
+      // Now start collecting events after network detection
+      const events = collectEvents();
+
+      const rpcErrorFetchFn: FetchFn = async ({ body }) => {
+        const requests = body ? JSON.parse(body) : [];
+        return {
+          data: requests.map((request: JsonRpcRequest) => ({
+            jsonrpc: '2.0',
+            id: request.id,
+            error: {
+              code: -32603,
+              message: 'internal error',
+              data: null,
+            },
+          })),
+        };
+      };
+      mockFetchFn.mockImplementation(rpcErrorFetchFn);
+
+      await expect(mockedProvider.getBlock(42)).rejects.toThrow();
+
+      const event = getResponseBatched(events);
+      expect(event.results.length).toBeGreaterThan(0);
+
+      const failResult = event.results.find((r) => r.result === 'fail');
+      expect(failResult).toBeDefined();
+      expect(failResult?.rpcErrorCode).toBe('-32603');
+    });
+
+    test('should include results with fail when response ID is missing (partial batch)', async () => {
+      await createMocks();
+
+      await mockedProvider.getNetwork();
+
+      // Now start collecting events after network detection
+      const events = collectEvents();
+
+      // Return response with wrong IDs
+      const partialFetchFn: FetchFn = async ({ body }) => {
+        const requests = body ? JSON.parse(body) : [];
+        return {
+          data: requests.map((request: JsonRpcRequest) => ({
+            jsonrpc: '2.0',
+            id: request.id + 999999,
+            result: {},
+          })),
+        };
+      };
+      mockFetchFn.mockImplementation(partialFetchFn);
+
+      await expect(mockedProvider.getBlock(42)).rejects.toThrow();
+
+      // Allow event emission to propagate
+      await new Promise((r) => setTimeout(r, 50));
+
+      // Partial batch: each request with missing ID is rejected and recorded as fail,
+      // then provider:response-batched is emitted with results
+      const responseBatched = getResponseBatched(events);
+      expect(responseBatched.results.length).toBeGreaterThan(0);
+      expect(responseBatched.results.every((r) => r.result === 'fail')).toBe(
+        true,
+      );
+    });
+
+    test('should pass httpInfo from fetchFn metrics', async () => {
+      const metrics = {
+        durationMs: 150,
+        payloadLengthBytes: 512,
+        responseLengthBytes: 2048,
+        statusCode: 200,
+      };
+      await createMocks(fakeFetchFnWithMetrics(metrics));
+      const events = collectEvents();
+
+      await mockedProvider.getBlock(42);
+
+      const event = getResponseBatched(events);
+      expect(event.httpInfo).toEqual({
+        durationMs: 150,
+        payloadLengthBytes: 512,
+        responseLengthBytes: 2048,
+        statusCode: 200,
+      });
+    });
+
+    test('should have undefined httpInfo when fetchFn returns no metrics', async () => {
+      await createMocks(); // default fakeFetchFn returns no metrics
+      const events = collectEvents();
+
+      await mockedProvider.getBlock(42);
+
+      const event = getResponseBatched(events);
+      expect(event.httpInfo).toBeUndefined();
+    });
+
+    test('should include correct request methods in event', async () => {
+      await createMocks();
+
+      // Network detection first
+      await mockedProvider.getNetwork();
+
+      const events = collectEvents();
+
+      await mockedProvider.getBalance(fixtures.address);
+
+      const event = getResponseBatched(events);
+      expect(Array.isArray(event.request)).toBe(true);
+      // Should contain the eth_getBalance method
+      const methods = event.request.map((r) => r.method);
+      expect(methods).toContain('eth_getBalance');
+    });
+
+    test('should have results with matching ids from request', async () => {
+      await createMocks();
+      const events = collectEvents();
+
+      await mockedProvider.getBlock(42);
+
+      const event = getResponseBatched(events);
+      const requestIds = event.request.map((r) => r.id);
+      const resultIds = event.results.map((r) => r.id);
+      expect(resultIds.sort()).toEqual(requestIds.sort());
+    });
+  });
+
+  describe('fetchJson fallback (no fetchFn)', () => {
+    let provider: ExtendedJsonRpcBatchProvider;
+    let fetchJsonSpy: jest.SpyInstance;
+
+    const getResponseBatched = (
+      events: ProviderEvents[],
+    ): ProviderResponseBatchedEvent => {
+      const event = events.find(
+        (e): e is ProviderResponseBatchedEvent =>
+          e.action === 'provider:response-batched',
+      );
+
+      expect(event).toBeDefined();
+
+      if (!event) {
+        throw new Error('Expected provider:response-batched event');
+      }
+
+      return event;
+    };
+
+    beforeEach(() => {
+      fetchJsonSpy = jest
+        .spyOn(ethersWeb, 'fetchJson')
+        .mockImplementation(
+          async (_connection: any, json?: string, processFunc?: any) => {
+            const requests: { method: string; id: number }[] = json
+              ? JSON.parse(json)
+              : [];
+            const data = requests.map((r) => fakeJsonRpc()(r as any));
+            if (processFunc) {
+              return processFunc(data, { statusCode: 200 });
+            }
+            return data;
+          },
+        );
+
+      provider = new ExtendedJsonRpcBatchProvider(
+        'http://localhost',
+        undefined,
+        {
+          jsonRpcMaxBatchSize: 10,
+          maxConcurrentRequests: 5,
+          batchAggregationWaitMs: 10,
+        },
+        [],
+        undefined,
+        undefined, // no fetchFn — triggers ethers fetchJson fallback
+      );
+    });
+
+    afterEach(() => {
+      fetchJsonSpy.mockRestore();
+    });
+
+    test('should use ethers fetchJson and return metrics with durationMs, payloadLengthBytes, statusCode', async () => {
+      const events: ProviderEvents[] = [];
+      provider.eventEmitter.on('rpc', (event: ProviderEvents) => {
+        events.push(event);
+      });
+
+      await provider.getBlock(42);
+
+      const event = getResponseBatched(events);
+      expect(event.httpInfo).toBeDefined();
+
+      if (!event.httpInfo) {
+        throw new Error(
+          'Expected provider:response-batched event to have httpInfo',
+        );
+      }
+
+      expect(typeof event.httpInfo.durationMs).toBe('number');
+      expect(event.httpInfo.durationMs).toBeGreaterThanOrEqual(0);
+      expect(event.httpInfo.payloadLengthBytes).toBeGreaterThan(0);
+      expect(event.httpInfo.statusCode).toBe(200);
+      // responseLengthBytes is not available in ethers fallback
+      expect(event.httpInfo.responseLengthBytes).toBeUndefined();
+    });
+
+    test('should call ethers fetchJson (not custom fetchFn)', async () => {
+      await provider.getBlock(42);
+      expect(fetchJsonSpy).toHaveBeenCalled();
+    });
   });
 });

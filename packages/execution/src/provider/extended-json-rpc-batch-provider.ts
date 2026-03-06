@@ -28,13 +28,14 @@ import { getConnectionFQDN } from '../common/networks';
 import { sanitizeErrorData } from '../common/sanitize-error';
 import { RequestTimeoutError } from '../error/request-timeout.error';
 import { LazyEventEmitter } from '../common/lazy-event-emitter';
-import { FetchFn } from '../interfaces/fetch-fn';
+import { FetchFn, FetchResponse } from '../interfaces/fetch-fn';
 
 import {
   ProviderEvents,
   ProviderRequestBatchedEvent,
   ProviderResponseBatchedErrorEvent,
   ProviderResponseBatchedEvent,
+  ResponseBatchedResult,
 } from '../events';
 // this will help with autocomplete
 export interface ExtendedJsonRpcBatchProviderEventEmitter
@@ -75,12 +76,14 @@ export interface FullRequestIntent {
   request: JsonRpcRequest;
   resolve: (result: unknown) => void;
   reject: (error: Error) => void;
+  timedOut?: boolean;
 }
 
 export interface RequestIntent {
   request: FullRequestIntent['request'];
   resolve: FullRequestIntent['resolve'] | null;
   reject: FullRequestIntent['reject'] | null;
+  timedOut?: FullRequestIntent['timedOut'];
 }
 
 export type PartialRequestIntent =
@@ -89,6 +92,7 @@ export type PartialRequestIntent =
       request: RequestIntent['request'];
       resolve: null;
       reject: null;
+      timedOut?: false;
     };
 
 /**
@@ -207,16 +211,10 @@ export class ExtendedJsonRpcBatchProvider extends JsonRpcProvider {
         );
       })
         .then(
-          (batchResult: JsonRpcResponse[] | JsonRpcResponse) => {
-            this._eventEmitter.emitLazy(
-              'rpc',
-              (): ProviderResponseBatchedEvent => ({
-                action: 'provider:response-batched',
-                request: deepCopy(batchRequest),
-                provider: this,
-                domain: this._domain,
-              }),
-            );
+          (response: FetchResponse) => {
+            const batchResult = response.data as
+              | JsonRpcResponse[]
+              | JsonRpcResponse;
 
             if (!Array.isArray(batchResult)) {
               const errMessage = 'Unexpected batch result.';
@@ -237,6 +235,7 @@ export class ExtendedJsonRpcBatchProvider extends JsonRpcProvider {
               return resultMap;
             }, {} as Record<number, JsonRpcResponse | undefined>);
 
+            const results: ResponseBatchedResult[] = [];
             // For each batch, feed it to the correct Promise, depending
             // on whether it was a success or error
             batch.forEach((inflightRequest) => {
@@ -252,15 +251,51 @@ export class ExtendedJsonRpcBatchProvider extends JsonRpcProvider {
                   batchSize: batchResult.length,
                 };
                 inflightRequest.reject(error);
+                results.push({
+                  id: inflightRequest.request.id,
+                  result: 'fail',
+                });
               } else if (payload.error) {
                 const error = new FetchError(payload.error.message);
                 error.code = payload.error.code;
                 error.data = sanitizeErrorData(payload.error.data);
                 inflightRequest.reject(error);
+                results.push({
+                  id: inflightRequest.request.id,
+                  result: 'fail',
+                  rpcErrorCode: String(payload.error.code),
+                });
+              } else if (inflightRequest.timedOut) {
+                // Late response after per-request timeout should be counted as failure.
+                results.push({
+                  id: inflightRequest.request.id,
+                  result: 'fail',
+                });
               } else {
                 inflightRequest.resolve(payload.result);
+                results.push({
+                  id: inflightRequest.request.id,
+                  result: 'success',
+                });
               }
             });
+
+            this._eventEmitter.emitLazy(
+              'rpc',
+              (): ProviderResponseBatchedEvent => ({
+                action: 'provider:response-batched',
+                request: deepCopy(batchRequest),
+                provider: this,
+                domain: this._domain,
+                results,
+                httpInfo: response.metrics && {
+                  durationMs: response.metrics.durationMs,
+                  payloadLengthBytes: response.metrics.payloadLengthBytes,
+                  responseLengthBytes: response.metrics.responseLengthBytes,
+                  statusCode: response.metrics.statusCode,
+                },
+              }),
+            );
           },
           (error: Error) => {
             this._eventEmitter.emitLazy(
@@ -374,6 +409,7 @@ export class ExtendedJsonRpcBatchProvider extends JsonRpcProvider {
       request,
       resolve: null,
       reject: null,
+      timedOut: false,
     };
 
     let timerId: ReturnType<typeof setTimeout> | undefined;
@@ -385,6 +421,7 @@ export class ExtendedJsonRpcBatchProvider extends JsonRpcProvider {
       if (this._requestTimeoutMs) {
         const timeoutMs = this._requestTimeoutMs;
         timerId = setTimeout(() => {
+          currentRequest.timedOut = true;
           reject(
             new RequestTimeoutError(
               `Request timeout after ${timeoutMs}ms`,
@@ -422,18 +459,32 @@ export class ExtendedJsonRpcBatchProvider extends JsonRpcProvider {
     return network;
   }
 
-  protected async fetchJson(
+  private async fetchJson(
     connection: ConnectionInfo,
     json: string,
-    processFunc?: (value: any, response: FetchJsonResponse) => any,
-  ) {
+  ): Promise<FetchResponse> {
     if (this._fetchFn) {
-      const response = await this._fetchFn({
+      return await this._fetchFn({
         url: connection.url,
         body: json,
       });
-      return response.data;
     }
-    return await fetchJson(connection, json, processFunc);
+    let statusCode = 200;
+    const wrappedProcessFunc = (value: any, response: FetchJsonResponse) => {
+      statusCode = response.statusCode;
+      return value;
+    };
+    const start = Date.now();
+    const data = await fetchJson(connection, json, wrappedProcessFunc);
+    const end = Date.now();
+    return {
+      data,
+      metrics: {
+        durationMs: Math.max(0, end - start),
+        // JSON-RPC request typically ASCII, so it's correct approximation
+        payloadLengthBytes: json.length,
+        statusCode,
+      },
+    };
   }
 }

@@ -34,11 +34,26 @@ export type ProviderResponseBatchedErrorEvent = {
   domain: string;
 };
 
+export interface ResponseBatchedResult {
+  id: number;
+  result: 'success' | 'fail';
+  rpcErrorCode?: string;
+}
+
+export interface ResponseBatchedHttpInfo {
+  durationMs: number;
+  payloadLengthBytes: number;
+  responseLengthBytes?: number;
+  statusCode?: number;
+}
+
 export type ProviderResponseBatchedEvent = {
   action: 'provider:response-batched';
   request: JsonRpcRequest[];
   provider: ExtendedJsonRpcBatchProvider;
   domain: string;
+  results: ResponseBatchedResult[];
+  httpInfo?: ResponseBatchedHttpInfo;
 };
 
 export type ProviderRequestBatchedEvent = {

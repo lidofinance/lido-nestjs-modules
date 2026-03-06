@@ -2,7 +2,11 @@
 
 import { NonEmptyArray } from '../../src/interfaces/non-empty-array';
 import { BigNumber } from '@ethersproject/bignumber';
-import { FetchFn, FetchRequestParams } from '../../src/interfaces/fetch-fn';
+import {
+  FetchFn,
+  FetchMetrics,
+  FetchRequestParams,
+} from '../../src/interfaces/fetch-fn';
 
 interface JsonRpcRequest {
   jsonrpc: '2.0';
@@ -305,6 +309,13 @@ export const fakeFetchFn =
         feeHistory,
       ),
     ),
+  });
+
+export const fakeFetchFnWithMetrics =
+  (metrics: FetchMetrics): FetchFn =>
+  async ({ body }: FetchRequestParams) => ({
+    data: parseBatchBody(body).map(fakeJsonRpc()),
+    metrics,
   });
 
 export const fakeFetchFnThatAlwaysFails: FetchFn = async () => {

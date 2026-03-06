@@ -5,6 +5,14 @@ export interface FetchRequestParams {
 
 export interface FetchResponse {
   data: unknown;
+  metrics?: FetchMetrics;
+}
+
+export interface FetchMetrics {
+  durationMs: number;
+  payloadLengthBytes: number;
+  responseLengthBytes?: number;
+  statusCode?: number;
 }
 
 export type FetchFn = (params: FetchRequestParams) => Promise<FetchResponse>;
