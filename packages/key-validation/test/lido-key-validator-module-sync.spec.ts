@@ -7,7 +7,10 @@ import {
   MultiThreadedKeyValidatorExecutor,
   SingleThreadedKeyValidatorExecutor,
 } from '../src';
-import { StakingRouterContractModule } from '@lido-nestjs/contracts';
+import {
+  LidoContractModule,
+  StakingRouterContractModule,
+} from '@lido-nestjs/contracts';
 import { getDefaultProvider } from '@ethersproject/providers';
 import { InterfaceTag } from '@lido-nestjs/di';
 import { Type, Abstract } from '@nestjs/common';
@@ -29,6 +32,7 @@ describe('LidoKeyValidator sync module initializing', () => {
   test('forRoot - single threaded', async () => {
     const lidoKeyValidator = await testModules(
       [
+        LidoContractModule.forRoot({ provider }),
         StakingRouterContractModule.forRoot({ provider }),
         LidoKeyValidatorModule.forRoot({ multithreaded: false }),
       ],
@@ -48,6 +52,7 @@ describe('LidoKeyValidator sync module initializing', () => {
   test('forRoot - multi threaded (default)', async () => {
     const lidoKeyValidator = await testModules(
       [
+        LidoContractModule.forRoot({ provider }),
         StakingRouterContractModule.forRoot({ provider }),
         LidoKeyValidatorModule.forRoot(),
       ],
@@ -64,6 +69,7 @@ describe('LidoKeyValidator sync module initializing', () => {
   test('forRoot - multi threaded', async () => {
     const lidoKeyValidator = await testModules(
       [
+        LidoContractModule.forRoot({ provider }),
         StakingRouterContractModule.forRoot({ provider }),
         LidoKeyValidatorModule.forRoot({ multithreaded: true }),
       ],
@@ -80,6 +86,7 @@ describe('LidoKeyValidator sync module initializing', () => {
   test('forFeature - single threaded', async () => {
     const lidoKeyValidator = await testModules(
       [
+        LidoContractModule.forRoot({ provider }),
         StakingRouterContractModule.forRoot({ provider }),
         LidoKeyValidatorModule.forFeature({ multithreaded: false }),
       ],
@@ -96,6 +103,7 @@ describe('LidoKeyValidator sync module initializing', () => {
   test('forFeature - multi threaded (default)', async () => {
     const lidoKeyValidator = await testModules(
       [
+        LidoContractModule.forRoot({ provider }),
         StakingRouterContractModule.forRoot({ provider }),
         LidoKeyValidatorModule.forFeature(),
       ],
@@ -112,6 +120,7 @@ describe('LidoKeyValidator sync module initializing', () => {
   test('forFeature - multi threaded', async () => {
     const lidoKeyValidator = await testModules(
       [
+        LidoContractModule.forRoot({ provider }),
         StakingRouterContractModule.forRoot({ provider }),
         LidoKeyValidatorModule.forFeature({ multithreaded: true }),
       ],

@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { BigNumber } from '@ethersproject/bignumber';
 import { currentWC } from './fixtures/keys';
 import { withTimer } from '@lido-nestjs/utils';
 import {
@@ -7,7 +8,7 @@ import {
   WithdrawalCredentialsExtractorInterface,
   WithdrawalCredentialsFetcher,
 } from '../src';
-import { StakingRouter } from '@lido-nestjs/contracts';
+import { Lido, StakingRouter } from '@lido-nestjs/contracts';
 import { CHAINS } from '@lido-nestjs/constants';
 
 // bytes32 of "curated-onchain-v1"
@@ -34,7 +35,7 @@ describe('WC Extractor', () => {
   jest.setTimeout(30000);
 
   let wcExtractor!: WithdrawalCredentialsExtractorInterface;
-  let getStakingModuleWC!: jest.SpyInstance;
+  let getLidoContractWC!: jest.SpyInstance;
   let getNetwork!: jest.SpyInstance;
 
   beforeEach(() => {
@@ -48,6 +49,9 @@ describe('WC Extractor', () => {
           stakingModuleAddress: '0x0000000000000000000000000000000000000001',
         };
       },
+      getContractVersion: async () => {
+        return BigNumber.from(3);
+      },
       provider: {
         getNetwork: async () => {
           await sleep(1000);
@@ -56,13 +60,24 @@ describe('WC Extractor', () => {
       },
     });
 
-    getStakingModuleWC = jest.spyOn(
-      stakingRouterMock,
-      'getStakingModuleWithdrawalCredentials',
+    const lidoContractMock: Lido = <Lido>(<any>{
+      getWithdrawalCredentials: async () => {
+        await sleep(1000);
+
+        return currentWC;
+      },
+    });
+
+    getLidoContractWC = jest.spyOn(
+      lidoContractMock,
+      'getWithdrawalCredentials',
     );
     getNetwork = jest.spyOn(stakingRouterMock.provider, 'getNetwork');
 
-    wcExtractor = new WithdrawalCredentialsFetcher(stakingRouterMock);
+    wcExtractor = new WithdrawalCredentialsFetcher(
+      lidoContractMock,
+      stakingRouterMock,
+    );
   });
 
   test('should return getChainId', async () => {
@@ -72,13 +87,13 @@ describe('WC Extractor', () => {
   });
 
   test('should return WC', async () => {
-    const wc = await wcExtractor.getWithdrawalCredentials(1);
+    const wc = await wcExtractor.getWithdrawalCredentials();
 
     expect(wc).toBe(currentWC);
   });
 
   test('should return possible WC', async () => {
-    const possibleWC = await wcExtractor.getPossibleWithdrawalCredentials(1);
+    const possibleWC = await wcExtractor.getPossibleWithdrawalCredentials();
 
     expect(possibleWC).toHaveProperty('currentWC');
     expect(possibleWC).toHaveProperty('previousWC');
@@ -103,14 +118,14 @@ describe('WC Extractor', () => {
   test('should debounce getWithdrawalCredentials', async () => {
     const [wcs, time] = await withTimer(() =>
       Promise.all([
-        wcExtractor.getWithdrawalCredentials(1),
-        wcExtractor.getWithdrawalCredentials(1),
+        wcExtractor.getWithdrawalCredentials(),
+        wcExtractor.getWithdrawalCredentials(),
       ]),
     );
 
     expect(wcs[0]).toBe(currentWC);
     expect(wcs[1]).toBe(currentWC);
     expect(time).toBeLessThan(1100);
-    expect(getStakingModuleWC).toBeCalledTimes(1);
+    expect(getLidoContractWC).toBeCalledTimes(1);
   });
 });

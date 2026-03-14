@@ -8,6 +8,8 @@ import { Inject, Injectable } from '@nestjs/common';
 import { ImplementsAtRuntime } from '@lido-nestjs/di';
 import { CHAINS } from '@lido-nestjs/constants';
 import {
+  Lido,
+  LIDO_CONTRACT_TOKEN,
   StakingRouter,
   STAKING_ROUTER_CONTRACT_TOKEN,
   IStakingModule__factory,
@@ -27,15 +29,49 @@ export class WithdrawalCredentialsFetcher
   implements WithdrawalCredentialsExtractorInterface
 {
   public constructor(
+    @Inject(LIDO_CONTRACT_TOKEN)
+    private readonly lidoContract: Lido,
     @Inject(STAKING_ROUTER_CONTRACT_TOKEN)
     private readonly stakingRouter: StakingRouter,
   ) {}
 
   @MemoizeInFlightPromise()
   public async getWithdrawalCredentials(
-    moduleId: number,
+    moduleId?: number,
   ): Promise<WithdrawalCredentialsHex> {
-    return this.stakingRouter.getStakingModuleWithdrawalCredentials(moduleId);
+    const version = await this.stakingRouter.getContractVersion();
+    if (version.toNumber() > 3 && moduleId != null) {
+      return this.stakingRouter.getStakingModuleWithdrawalCredentials(moduleId);
+    }
+
+    return this.lidoContract.getWithdrawalCredentials();
+  }
+
+  @MemoizeInFlightPromise()
+  public async getPossibleWithdrawalCredentials(
+    moduleId?: number,
+  ): Promise<PossibleWC> {
+    const currentWC = await this.getWithdrawalCredentials(moduleId);
+
+    if (moduleId == null) {
+      return {
+        currentWC: [currentWC, bufferFromHexString(currentWC)],
+        previousWC: await this.getPreviousWithdrawalCredentials(),
+      };
+    }
+
+    const moduleType = await this.getModuleType(moduleId);
+
+    // Only curated-onchain-v1 modules could have historical WC
+    const isCurated = moduleType === CURATED_ONCHAIN_V1_TYPE;
+    const previousWC = isCurated
+      ? await this.getPreviousWithdrawalCredentials()
+      : [];
+
+    return {
+      currentWC: [currentWC, bufferFromHexString(currentWC)],
+      previousWC,
+    };
   }
 
   /**
@@ -52,25 +88,6 @@ export class WithdrawalCredentialsFetcher
       this.stakingRouter.provider,
     );
     return stakingModule.getType();
-  }
-
-  @MemoizeInFlightPromise()
-  public async getPossibleWithdrawalCredentials(
-    moduleId: number,
-  ): Promise<PossibleWC> {
-    const currentWC = await this.getWithdrawalCredentials(moduleId);
-    const moduleType = await this.getModuleType(moduleId);
-
-    // Only curated-onchain-v1 modules could have historical WC
-    const isCurated = moduleType === CURATED_ONCHAIN_V1_TYPE;
-    const previousWC = isCurated
-      ? await this.getPreviousWithdrawalCredentials()
-      : [];
-
-    return {
-      currentWC: [currentWC, bufferFromHexString(currentWC)],
-      previousWC,
-    };
   }
 
   @MemoizeInFlightPromise()

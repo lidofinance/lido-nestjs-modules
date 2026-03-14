@@ -1,7 +1,10 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { BigNumber } from '@ethersproject/bignumber';
 import { CHAINS } from '@lido-nestjs/constants';
 import {
+  LidoContractModule,
+  LIDO_CONTRACT_TOKEN,
   StakingRouterContractModule,
   STAKING_ROUTER_CONTRACT_TOKEN,
 } from '@lido-nestjs/contracts';
@@ -54,11 +57,19 @@ describe('LidoKeyValidator', () => {
   ): Promise<LidoKeyValidatorInterface> => {
     const module: ModuleMetadata = {
       imports: [
+        LidoContractModule.forRoot(),
         StakingRouterContractModule.forRoot(),
         LidoKeyValidatorModule.forFeature({ multithreaded }),
       ],
     };
     const moduleRef = await Test.createTestingModule(module)
+      .overrideProvider(LIDO_CONTRACT_TOKEN)
+      .useValue({
+        getWithdrawalCredentials: async () => {
+          await sleep(10);
+          return currentWC;
+        },
+      })
       .overrideProvider(STAKING_ROUTER_CONTRACT_TOKEN)
       .useValue({
         getStakingModuleWithdrawalCredentials: async () => {
@@ -69,6 +80,9 @@ describe('LidoKeyValidator', () => {
           return {
             stakingModuleAddress: '0x0000000000000000000000000000000000000001',
           };
+        },
+        getContractVersion: async () => {
+          return BigNumber.from(3);
         },
         provider: {
           getNetwork: async () => {
@@ -115,7 +129,7 @@ describe('LidoKeyValidator', () => {
   });
 
   test('[multi-thread] should validate one valid used key', async () => {
-    const keyValidator = await getLidoKeyValidator(false);
+    const keyValidator = await getLidoKeyValidator(true);
 
     const [res, time] = await withTimer(() =>
       keyValidator.validateKey(validUsedKey),

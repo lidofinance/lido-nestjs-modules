@@ -64,7 +64,10 @@ import {
   LidoKeyValidatorInterface,
   LidoKeyValidatorModule,
 } from '@lido-nestjs/key-validation';
-import { LidoContractModule } from '@lido-nestjs/contracts';
+import {
+  LidoContractModule,
+  StakingRouterContractModule,
+} from '@lido-nestjs/contracts';
 import {
   SimpleFallbackJsonRpcBatchProvider,
   FallbackProviderModule,
@@ -107,7 +110,13 @@ export class Example {
       network: 1,
     }),
     LidoContractModule.forRootAsync({
-      // needed for getting WithdrawalCredentials and Network chain id
+      // needed for getting WithdrawalCredentials
+      async useFactory(provider: SimpleFallbackJsonRpcBatchProvider) {
+        return { provider: provider };
+      },
+      inject: [SimpleFallbackJsonRpcBatchProvider],
+    }),
+    StakingRouterContractModule.forRootAsync({
       async useFactory(provider: SimpleFallbackJsonRpcBatchProvider) {
         return { provider: provider };
       },

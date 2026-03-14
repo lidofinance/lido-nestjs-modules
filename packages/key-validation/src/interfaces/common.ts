@@ -19,7 +19,7 @@ export interface LidoKey {
   key: Pubkey;
   depositSignature: string;
   used: boolean;
-  moduleId: number;
+  moduleId?: number;
 }
 
 export interface DepositMessageData {
