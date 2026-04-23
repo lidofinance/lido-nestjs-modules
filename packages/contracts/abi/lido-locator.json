@@ -20,11 +20,6 @@
           },
           {
             "internalType": "address",
-            "name": "legacyOracle",
-            "type": "address"
-          },
-          {
-            "internalType": "address",
             "name": "lido",
             "type": "address"
           },
@@ -72,6 +67,51 @@
             "internalType": "address",
             "name": "oracleDaemonConfig",
             "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "validatorExitDelayVerifier",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "triggerableWithdrawalsGateway",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "accounting",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "predepositGuarantee",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "wstETH",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "vaultHub",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "vaultFactory",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "lazyOracle",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "operatorGrid",
+            "type": "address"
           }
         ],
         "internalType": "struct LidoLocator.Config",
@@ -86,6 +126,19 @@
     "inputs": [],
     "name": "ZeroAddress",
     "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "accounting",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
   },
   {
     "inputs": [],
@@ -179,7 +232,7 @@
   },
   {
     "inputs": [],
-    "name": "legacyOracle",
+    "name": "lazyOracle",
     "outputs": [
       {
         "internalType": "address",
@@ -205,6 +258,19 @@
   },
   {
     "inputs": [],
+    "name": "operatorGrid",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "oracleDaemonConfig",
     "outputs": [
       {
@@ -218,7 +284,7 @@
   },
   {
     "inputs": [],
-    "name": "oracleReportComponentsForLido",
+    "name": "oracleReportComponents",
     "outputs": [
       {
         "internalType": "address",
@@ -287,6 +353,19 @@
   },
   {
     "inputs": [],
+    "name": "predepositGuarantee",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "stakingRouter",
     "outputs": [
       {
@@ -313,7 +392,59 @@
   },
   {
     "inputs": [],
+    "name": "triggerableWithdrawalsGateway",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "validatorExitDelayVerifier",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "validatorsExitBusOracle",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "vaultFactory",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "vaultHub",
     "outputs": [
       {
         "internalType": "address",
@@ -340,6 +471,19 @@
   {
     "inputs": [],
     "name": "withdrawalVault",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "wstETH",
     "outputs": [
       {
         "internalType": "address",

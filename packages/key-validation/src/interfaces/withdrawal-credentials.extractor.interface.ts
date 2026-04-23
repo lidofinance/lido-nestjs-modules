@@ -9,14 +9,23 @@ export const WithdrawalCredentialsExtractorInterface =
 
 export interface WithdrawalCredentialsExtractorInterface {
   /**
-   * Returns all possible (current and historic) WC
+   * Returns current WC for a specific module, or common WC from the Lido
+   * contract
    */
-  getPossibleWithdrawalCredentials(): Promise<PossibleWC>;
+  getWithdrawalCredentials(
+    moduleId?: number,
+  ): Promise<WithdrawalCredentialsHex>;
 
   /**
-   * Returns current WC as string (hexed)
+   * Returns all possible (current and historic) WC for a specific module, or
+   * common WC from the Lido contract.
    */
-  getWithdrawalCredentials(): Promise<WithdrawalCredentialsHex>;
+  getPossibleWithdrawalCredentials(moduleId?: number): Promise<PossibleWC>;
+
+  /**
+   * Returns module type (bytes32)
+   */
+  getModuleType(moduleId: number): Promise<string>;
 
   /**
    * Returns current chain id

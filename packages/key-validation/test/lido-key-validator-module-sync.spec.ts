@@ -7,7 +7,10 @@ import {
   MultiThreadedKeyValidatorExecutor,
   SingleThreadedKeyValidatorExecutor,
 } from '../src';
-import { LidoContractModule } from '@lido-nestjs/contracts';
+import {
+  LidoContractModule,
+  StakingRouterContractModule,
+} from '@lido-nestjs/contracts';
 import { getDefaultProvider } from '@ethersproject/providers';
 import { InterfaceTag } from '@lido-nestjs/di';
 import { Type, Abstract } from '@nestjs/common';
@@ -30,6 +33,7 @@ describe('LidoKeyValidator sync module initializing', () => {
     const lidoKeyValidator = await testModules(
       [
         LidoContractModule.forRoot({ provider }),
+        StakingRouterContractModule.forRoot({ provider }),
         LidoKeyValidatorModule.forRoot({ multithreaded: false }),
       ],
       LidoKeyValidatorInterface,
@@ -49,6 +53,7 @@ describe('LidoKeyValidator sync module initializing', () => {
     const lidoKeyValidator = await testModules(
       [
         LidoContractModule.forRoot({ provider }),
+        StakingRouterContractModule.forRoot({ provider }),
         LidoKeyValidatorModule.forRoot(),
       ],
       LidoKeyValidatorInterface,
@@ -65,6 +70,7 @@ describe('LidoKeyValidator sync module initializing', () => {
     const lidoKeyValidator = await testModules(
       [
         LidoContractModule.forRoot({ provider }),
+        StakingRouterContractModule.forRoot({ provider }),
         LidoKeyValidatorModule.forRoot({ multithreaded: true }),
       ],
       LidoKeyValidatorInterface,
@@ -81,6 +87,7 @@ describe('LidoKeyValidator sync module initializing', () => {
     const lidoKeyValidator = await testModules(
       [
         LidoContractModule.forRoot({ provider }),
+        StakingRouterContractModule.forRoot({ provider }),
         LidoKeyValidatorModule.forFeature({ multithreaded: false }),
       ],
       LidoKeyValidatorInterface,
@@ -97,6 +104,7 @@ describe('LidoKeyValidator sync module initializing', () => {
     const lidoKeyValidator = await testModules(
       [
         LidoContractModule.forRoot({ provider }),
+        StakingRouterContractModule.forRoot({ provider }),
         LidoKeyValidatorModule.forFeature(),
       ],
       LidoKeyValidatorInterface,
@@ -113,6 +121,7 @@ describe('LidoKeyValidator sync module initializing', () => {
     const lidoKeyValidator = await testModules(
       [
         LidoContractModule.forRoot({ provider }),
+        StakingRouterContractModule.forRoot({ provider }),
         LidoKeyValidatorModule.forFeature({ multithreaded: true }),
       ],
       LidoKeyValidatorInterface,

@@ -23,8 +23,9 @@ export class LidoKeyValidator implements LidoKeyValidatorInterface {
   public async validateKey<T>(
     lidoKey: LidoKey & T,
   ): Promise<[Key & LidoKey & T, boolean]> {
-    const possibleWC =
-      await this.wcExtractor.getPossibleWithdrawalCredentials();
+    const possibleWC = await this.wcExtractor.getPossibleWithdrawalCredentials(
+      lidoKey.moduleId,
+    );
 
     return (
       await this.validateLidoKeysForDifferentPossibleWC([lidoKey], possibleWC)
@@ -37,13 +38,34 @@ export class LidoKeyValidator implements LidoKeyValidatorInterface {
     if (lidoKeys.length === 0) {
       return [];
     }
-    const possibleWC =
-      await this.wcExtractor.getPossibleWithdrawalCredentials();
 
-    return await this.validateLidoKeysForDifferentPossibleWC(
-      lidoKeys,
-      possibleWC,
-    );
+    const keysByModule = this.groupKeysByModule(lidoKeys);
+    const results: [Key & LidoKey & T, boolean][] = [];
+
+    for (const [moduleId, moduleKeys] of keysByModule) {
+      const possibleWC =
+        await this.wcExtractor.getPossibleWithdrawalCredentials(moduleId);
+      const moduleResults = await this.validateLidoKeysForDifferentPossibleWC(
+        moduleKeys,
+        possibleWC,
+      );
+      results.push(...moduleResults);
+    }
+
+    return results;
+  }
+
+  protected groupKeysByModule<T>(
+    keys: (LidoKey & T)[],
+  ): Map<number | undefined, (LidoKey & T)[]> {
+    const map = new Map<number | undefined, (LidoKey & T)[]>();
+    for (const key of keys) {
+      const existing = map.get(key.moduleId) ?? [];
+      existing.push(key);
+      map.set(key.moduleId, existing);
+    }
+
+    return map;
   }
 
   protected async validateLidoKeysForDifferentPossibleWC<T>(
@@ -54,38 +76,29 @@ export class LidoKeyValidator implements LidoKeyValidatorInterface {
     const genesisForkVersion =
       await this.genesisForkVersionService.getGenesisForkVersion(chainId);
 
-    const unUsedKeys = lidoKeys
-      .filter((lidoKey) => !lidoKey.used)
-      .map((lidoKey) =>
-        this.lidoKeyToBasicKey<T>(
-          lidoKey,
-          possibleWC.currentWC[1],
-          genesisForkVersion,
-        ),
+    const unusedKeys = [];
+    const usedKeys = [];
+    for (const key of lidoKeys) {
+      const basicKey = this.lidoKeyToBasicKey<T>(
+        key,
+        possibleWC.currentWC[1],
+        genesisForkVersion,
       );
 
-    const usedKeys = lidoKeys
-      .filter((lidoKey) => lidoKey.used)
-      .map((lidoKey) =>
-        this.lidoKeyToBasicKey<T>(
-          lidoKey,
-          possibleWC.currentWC[1],
-          genesisForkVersion,
-        ),
-      );
+      if (key.used) {
+        usedKeys.push(basicKey);
+      } else {
+        unusedKeys.push(basicKey);
+      }
+    }
 
     // 1. first step of validation - unused keys with ONLY current WC
-    const unUsedKeysResults = await this.keyValidator.validateKeys<LidoKey & T>(
-      unUsedKeys.map((key) => ({
-        ...key,
-        withdrawalCredentials: possibleWC.currentWC[1],
-      })),
+    const unusedKeysResults = await this.keyValidator.validateKeys<LidoKey & T>(
+      unusedKeys,
     );
 
-    let usedKeysResults: typeof unUsedKeysResults = [];
-
+    let usedKeysResults: [Key & LidoKey & T, boolean][] = [];
     let remainingKeys = usedKeys;
-    let notValidKeys: typeof usedKeysResults = [];
 
     // TODO solve performance issues when there are many keys
     // 2. second step of validation - used keys with current and multiple previous WC
@@ -98,18 +111,22 @@ export class LidoKeyValidator implements LidoKeyValidatorInterface {
         })),
       );
 
-      const validKeys = resultsForWC.filter((res) => res[1]);
-
-      // Adding not valid keys for next iteration
-      notValidKeys = resultsForWC.filter((res) => !res[1]);
-      remainingKeys = notValidKeys.map((res) => res[0]);
-
-      usedKeysResults = usedKeysResults.concat(validKeys);
+      remainingKeys = [];
+      for (const res of resultsForWC) {
+        if (res[1]) {
+          usedKeysResults.push(res);
+        } else {
+          // Adding not valid keys for next iteration
+          remainingKeys.push(res[0]);
+        }
+      }
     }
 
-    usedKeysResults = usedKeysResults.concat(notValidKeys);
+    usedKeysResults = usedKeysResults.concat(
+      remainingKeys.map((key) => [key, false]),
+    );
 
-    return usedKeysResults.concat(unUsedKeysResults);
+    return usedKeysResults.concat(unusedKeysResults);
   }
 
   protected lidoKeyToBasicKey<T>(

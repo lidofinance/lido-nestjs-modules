@@ -49,6 +49,15 @@ export const invalidUsedKeyBadSignature = {
 };
 
 export const validUsedKey = {
+  moduleId: 1,
+  key: '0xaa509e465d947a8c7742e1bba82f3da99ca5e49a5dfb66b7d0c964b6dde2b60e07a12340568dae0b2fded2af494808d0',
+  depositSignature:
+    '0xac813e4f0138f56a0d6fe7a1cc681176d79125597cb9edda33a189a5b52a0b2cd0bcf41519dd5bb307ce3f64ed37b38d11faa31a32790564721aa5d572395a058ddd12031b55e3f81b3a5992291c68a36f063f24ee51a88915198ca96c276654',
+  used: true,
+};
+
+export const validUsedKeyCuratedV2 = {
+  moduleId: 4,
   key: '0xaa509e465d947a8c7742e1bba82f3da99ca5e49a5dfb66b7d0c964b6dde2b60e07a12340568dae0b2fded2af494808d0',
   depositSignature:
     '0xac813e4f0138f56a0d6fe7a1cc681176d79125597cb9edda33a189a5b52a0b2cd0bcf41519dd5bb307ce3f64ed37b38d11faa31a32790564721aa5d572395a058ddd12031b55e3f81b3a5992291c68a36f063f24ee51a88915198ca96c276654',
@@ -56,6 +65,14 @@ export const validUsedKey = {
 };
 
 export const invalidUsedKey = {
+  key: '0xaa509e465d947a8c7742e1bba82f3da99ca5e49a5dfb66b7d0c964b6dde2b60e07a12340568dae0b2fded2af494808d1',
+  depositSignature:
+    '0xac813e4f0138f56a0d6fe7a1cc681176d79125597cb9edda33a189a5b52a0b2cd0bcf41519dd5bb307ce3f64ed37b38d11faa31a32790564721aa5d572395a058ddd12031b55e3f81b3a5992291c68a36f063f24ee51a88915198ca96c276654',
+  used: true,
+};
+
+export const invalidUsedKeyCuratedV2 = {
+  moduleId: 4,
   key: '0xaa509e465d947a8c7742e1bba82f3da99ca5e49a5dfb66b7d0c964b6dde2b60e07a12340568dae0b2fded2af494808d1',
   depositSignature:
     '0xac813e4f0138f56a0d6fe7a1cc681176d79125597cb9edda33a189a5b52a0b2cd0bcf41519dd5bb307ce3f64ed37b38d11faa31a32790564721aa5d572395a058ddd12031b55e3f81b3a5992291c68a36f063f24ee51a88915198ca96c276654',

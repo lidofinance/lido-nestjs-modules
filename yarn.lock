@@ -3021,6 +3021,7 @@ __metadata:
   dependencies:
     "@chainsafe/blst": ^2.2.0
     "@chainsafe/ssz": ^0.18.0
+    "@ethersproject/bignumber": 5.8.0
     "@ethersproject/providers": 5.8.0
     "@lido-nestjs/constants": "workspace:*"
     "@lido-nestjs/contracts": "workspace:*"
