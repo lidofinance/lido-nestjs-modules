@@ -71,6 +71,13 @@ describe('Node endpoints', () => {
     expect(mockFetch).toBeCalledWith('/eth/v1/node/version', undefined);
   });
 
+  test('getNodeVersionV2', async () => {
+    await consensusService.getNodeVersionV2();
+
+    expect(mockFetch).toBeCalledTimes(1);
+    expect(mockFetch).toBeCalledWith('/eth/v2/node/version', undefined);
+  });
+
   test('getSyncingStatus', async () => {
     await consensusService.getSyncingStatus();
 
