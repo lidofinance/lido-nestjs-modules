@@ -37,14 +37,36 @@ describe('Validator endpoints', () => {
     );
   });
 
+  test('getProposerDutiesV2', async () => {
+    await consensusService.getProposerDutiesV2({ epoch: '7' });
+
+    expect(mockFetch).toBeCalledTimes(1);
+    expect(mockFetch).toBeCalledWith(
+      '/eth/v2/validator/duties/proposer/7',
+      undefined,
+    );
+  });
+
+  test('getPtcDuties', async () => {
+    await expect(consensusService.getPtcDuties()).rejects.toThrow();
+  });
+
   test('getSyncCommitteeDuties', async () => {
     await expect(consensusService.getSyncCommitteeDuties()).rejects.toThrow();
   });
 
   test('getAggregatedAttestationV2', async () => {
-    await expect(
-      consensusService.getAggregatedAttestationV2(),
-    ).rejects.toThrow();
+    await consensusService.getAggregatedAttestationV2({
+      slot: '1',
+      attestationDataRoot: '2',
+      committeeIndex: '3',
+    });
+
+    expect(mockFetch).toBeCalledTimes(1);
+    expect(mockFetch).toBeCalledWith(
+      '/eth/v2/validator/aggregate_attestation?slot=1&attestation_data_root=2&committee_index=3',
+      undefined,
+    );
   });
 
   test('produceBlockV3', async () => {
@@ -74,22 +96,32 @@ describe('Validator endpoints', () => {
     );
   });
 
-  test('getAggregatedAttestation', async () => {
-    await consensusService.getAggregatedAttestation({
-      slot: '1',
-      attestationDataRoot: '2',
-    });
+  test('producePayloadAttestationData', async () => {
+    await consensusService.producePayloadAttestationData({ slot: '12' });
 
     expect(mockFetch).toBeCalledTimes(1);
     expect(mockFetch).toBeCalledWith(
-      '/eth/v1/validator/aggregate_attestation?slot=1&attestation_data_root=2',
+      '/eth/v1/validator/payload_attestation_data/12',
       undefined,
     );
   });
 
-  test('publishAggregateAndProofs', async () => {
+  test('getExecutionPayloadBid', async () => {
+    await consensusService.getExecutionPayloadBid({
+      slot: '5',
+      builderIndex: '7',
+    });
+
+    expect(mockFetch).toBeCalledTimes(1);
+    expect(mockFetch).toBeCalledWith(
+      '/eth/v1/validator/execution_payload_bid/5/7',
+      undefined,
+    );
+  });
+
+  test('publishAggregateAndProofsV2', async () => {
     await expect(
-      consensusService.publishAggregateAndProofs(),
+      consensusService.publishAggregateAndProofsV2(),
     ).rejects.toThrow();
   });
 

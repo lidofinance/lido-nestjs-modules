@@ -102,6 +102,10 @@ export interface paths {
      */
     get: operations['getStateRandao'];
   };
+  '/eth/v1/beacon/states/{state_id}/pending_consolidations': {
+    /** Returns pending consolidations for state with given 'stateId'. Should return 400 if the state retrieved is prior to Electra. */
+    get: operations['getPendingConsolidations'];
+  };
   '/eth/v1/beacon/states/{state_id}/pending_deposits': {
     /** Returns pending deposits for state with given 'stateId'. Should return 400 if the state retrieved is prior to Electra. */
     get: operations['getPendingDeposits'];
@@ -110,6 +114,10 @@ export interface paths {
     /** Returns pending partial withdrawals for state with given 'stateId'. Should return 400 if the state retrieved is prior to Electra. */
     get: operations['getPendingPartialWithdrawals'];
   };
+  '/eth/v1/beacon/states/{state_id}/proposer_lookahead': {
+    /** Returns proposer lookahead for state with given 'stateId'. Should return 400 if the state retrieved is prior to Fulu. */
+    get: operations['getProposerLookahead'];
+  };
   '/eth/v1/beacon/headers': {
     /** Retrieves block headers matching given query. By default it will fetch current head slot blocks. */
     get: operations['getBlockHeaders'];
@@ -117,20 +125,6 @@ export interface paths {
   '/eth/v1/beacon/headers/{block_id}': {
     /** Retrieves block header for given block id. */
     get: operations['getBlockHeader'];
-  };
-  '/eth/v1/beacon/blinded_blocks': {
-    /**
-     * Instructs the beacon node to use the components of the `SignedBlindedBeaconBlock` to construct and publish a
-     * `SignedBeaconBlock` by swapping out the `transactions_root` for the corresponding full list of `transactions`.
-     * The beacon node should broadcast a newly constructed `SignedBeaconBlock` to the beacon network,
-     * to be included in the beacon chain. The beacon node is not required to validate the signed
-     * `BeaconBlock`, and a successful response (20X) only indicates that the broadcast has been
-     * successful. The beacon node is expected to integrate the new block into its state, and
-     * therefore validate the block internally, however blocks which fail the validation are still
-     * broadcast but a different status code is returned (202). Before Bellatrix, this endpoint will accept
-     * a `SignedBeaconBlock`.
-     */
-    post: operations['publishBlindedBlock'];
   };
   '/eth/v2/beacon/blinded_blocks': {
     /**
@@ -147,19 +141,6 @@ export interface paths {
      */
     post: operations['publishBlindedBlockV2'];
   };
-  '/eth/v1/beacon/blocks': {
-    /**
-     * Instructs the beacon node to broadcast a newly signed beacon block to the beacon network,
-     * to be included in the beacon chain. A success response (20x) indicates that the block
-     * passed gossip validation and was successfully broadcast onto the network.
-     * The beacon node is also expected to integrate the block into state, but may broadcast it
-     * before doing so, so as to aid timely delivery of the block. Should the block fail full
-     * validation, a separate success response code (202) is used to indicate that the block was
-     * successfully broadcast but failed integration. After Deneb, this additionally instructs
-     * the beacon node to broadcast all given blobs.
-     */
-    post: operations['publishBlock'];
-  };
   '/eth/v2/beacon/blocks': {
     /**
      * Instructs the beacon node to broadcast a newly signed beacon block to the beacon network,
@@ -168,11 +149,27 @@ export interface paths {
      * The beacon node is also expected to integrate the block into the state, but may broadcast it
      * before doing so, so as to aid timely delivery of the block. Should the block fail full
      * validation, a separate success response code (202) is used to indicate that the block was
-     * successfully broadcast but failed integration. After Deneb, this additionally instructs
-     * the beacon node to broadcast all given blobs. The broadcast behaviour may be adjusted via the
-     * `broadcast_validation` query parameter.
+     * successfully broadcast but failed integration. For Deneb/Electra/Fulu, this additionally instructs
+     * the beacon node to broadcast all given blobs. For Gloas and later, blobs are broadcast as part
+     * of the `ExecutionPayloadEnvelope` and are not submitted with the block. The broadcast behaviour
+     * may be adjusted via the `broadcast_validation` query parameter.
      */
     post: operations['publishBlockV2'];
+  };
+  '/eth/v1/beacon/execution_payload_bid': {
+    /**
+     * Instructs the beacon node to broadcast a signed execution payload bid to the network,
+     * to be gossiped for potential inclusion in block building. A success response (20x) indicates
+     * that the bid passed gossip validation and was successfully broadcast onto the network.
+     */
+    post: operations['publishExecutionPayloadBid'];
+  };
+  '/eth/v1/beacon/execution_payload_envelope/{block_id}': {
+    /**
+     * Retrieves signed execution payload envelope for a given block id.
+     * Depending on `Accept` header it can be returned either as json or as bytes serialized by SSZ.
+     */
+    get: operations['getSignedExecutionPayloadEnvelope'];
   };
   '/eth/v2/beacon/blocks/{block_id}': {
     /**
@@ -185,34 +182,36 @@ export interface paths {
     /** Retrieves hashTreeRoot of BeaconBlock/BeaconBlockHeader */
     get: operations['getBlockRoot'];
   };
-  '/eth/v1/beacon/blocks/{block_id}/attestations': {
-    /** Retrieves attestation included in requested block. */
-    get: operations['getBlockAttestations'];
-  };
   '/eth/v2/beacon/blocks/{block_id}/attestations': {
     /** Retrieves attestation included in requested block. */
     get: operations['getBlockAttestationsV2'];
   };
-  '/eth/v1/beacon/blob_sidecars/{block_id}': {
+  '/eth/v1/beacon/blobs/{block_id}': {
     /**
-     * Retrieves blob sidecars for a given block id.
+     * Retrieves blobs for a given block id.
      * Depending on `Accept` header it can be returned either as json or as bytes serialized by SSZ.
      *
-     * If the `indices` parameter is specified, only the blob sidecars with the specified indices will be returned. There are no guarantees
-     * for the returned blob sidecars in terms of ordering.
+     * If the `versioned_hashes` parameter is specified, only the blobs for the specified versioned hashes will be returned. Blobs are
+     * returned as an ordered list matching the order of their corresponding KZG commitments in the block.
+     *
+     * After the Fulu fork, only supernodes (which custody all data columns) are required to return blobs. Clients may implement
+     * blob reconstruction logic for non-super nodes.
      */
-    get: operations['getBlobSidecars'];
+    get: operations['getBlobs'];
+  };
+  '/eth/v1/debug/beacon/data_column_sidecars/{block_id}': {
+    /**
+     * Retrieves data column sidecars for a given block id.
+     * Depending on `Accept` header it can be returned either as json or as bytes serialized by SSZ.
+     *
+     * If the `indices` parameter is specified, only the data column sidecars with the specified indices will be returned. There are no guarantees
+     * for the returned data column sidecars in terms of ordering.
+     */
+    get: operations['getDebugDataColumnSidecars'];
   };
   '/eth/v1/beacon/rewards/sync_committee/{block_id}': {
     /** Retrieves rewards info for sync committee members specified by array of public keys or validator index. If no array is provided, return reward info for every committee member. */
     post: operations['getSyncCommitteeRewards'];
-  };
-  '/eth/v1/beacon/deposit_snapshot': {
-    /**
-     * Retrieve [EIP-4881](https://eips.ethereum.org/EIPS/eip-4881) Deposit Tree Snapshot.
-     * Depending on `Accept` header it can be returned either as json or as bytes serialized by SSZ
-     */
-    get: operations['getDepositSnapshot'];
   };
   '/eth/v1/beacon/rewards/blocks/{block_id}': {
     /**
@@ -269,18 +268,6 @@ export interface paths {
      */
     get: operations['getLightClientOptimisticUpdate'];
   };
-  '/eth/v1/beacon/pool/attestations': {
-    /** Retrieves attestations known by the node but not necessarily incorporated into any block */
-    get: operations['getPoolAttestations'];
-    /**
-     * Submits Attestation objects to the node.  Each attestation in the request body is processed individually.
-     *
-     * If an attestation is validated successfully the node MUST publish that attestation on the appropriate subnet.
-     *
-     * If one or more attestations fail validation the node MUST return a 400 error with details of which attestations have failed, and why.
-     */
-    post: operations['submitPoolAttestations'];
-  };
   '/eth/v2/beacon/pool/attestations': {
     /** Retrieves attestations known by the node but not necessarily incorporated into any block */
     get: operations['getPoolAttestationsV2'];
@@ -295,11 +282,21 @@ export interface paths {
      */
     post: operations['submitPoolAttestationsV2'];
   };
-  '/eth/v1/beacon/pool/attester_slashings': {
-    /** Retrieves attester slashings known by the node but not necessarily incorporated into any block */
-    get: operations['getPoolAttesterSlashings'];
-    /** Submits AttesterSlashing object to node's pool and if passes validation node MUST broadcast it to network. */
-    post: operations['submitPoolAttesterSlashings'];
+  '/eth/v1/beacon/pool/payload_attestations': {
+    /** Retrieves payload attestations known by the node but not necessarily incorporated into any block */
+    get: operations['getPoolPayloadAttestations'];
+    /**
+     * Submits payload attestation messages to the beacon node.
+     *
+     * The beacon node will validate each payload attestation message according to the gossip validation rules
+     * and, if valid, store it in the pool and broadcast it globally to the network.
+     *
+     * A success response indicates that the payload attestation message passed validation and was
+     * successfully stored and broadcast.
+     *
+     * If one or more payload attestation messages fail validation, the node MUST return a 400 error with details of which messages have failed, and why.
+     */
+    post: operations['submitPayloadAttestationMessages'];
   };
   '/eth/v2/beacon/pool/attester_slashings': {
     /** Retrieves attester slashings known by the node but not necessarily incorporated into any block */
@@ -337,13 +334,6 @@ export interface paths {
     /** Submits a list of SignedBLSToExecutionChange objects to node's pool. Any that pass validation MUST be broadcast to the network. */
     post: operations['submitPoolBLSToExecutionChange'];
   };
-  '/eth/v1/builder/states/{state_id}/expected_withdrawals': {
-    /**
-     * Get the withdrawals computed from the specified state, that will be included in the block
-     * that gets built on the specified state.
-     */
-    get: operations['getNextWithdrawals'];
-  };
   '/eth/v2/debug/beacon/states/{state_id}': {
     /**
      * Returns full BeaconState object for given stateId.
@@ -379,6 +369,20 @@ export interface paths {
     /** Requests that the beacon node identify information about its implementation in a format similar to a  [HTTP User-Agent](https://tools.ietf.org/html/rfc7231#section-5.5.3) field. */
     get: operations['getNodeVersion'];
   };
+  '/eth/v2/node/version': {
+    /**
+     * Retrieves structured information about the version of the beacon node
+     * and its attached execution client in the same format as used on the
+     * [Engine API](https://github.com/ethereum/execution-apis/blob/dc4dbca37ef8697d782f431af19120beaf5517f5/src/engine/identification.md).
+     *
+     * Version information about the execution client may not be available
+     * at all times and is therefore optional.
+     *
+     * If the beacon node receives multiple values from `engine_getClientVersionV1`, the
+     * first value should be returned on this endpoint.
+     */
+    get: operations['getNodeVersionV2'];
+  };
   '/eth/v1/node/syncing': {
     /** Requests the beacon node to describe if it's currently syncing or not, and if it is, what block it is up to. */
     get: operations['getSyncingStatus'];
@@ -401,6 +405,7 @@ export interface paths {
      * Values are returned with following format:
      *   - any value starting with 0x in the spec is returned as a hex string
      *   - numeric values are returned as a quoted integer
+     *   - array values are returned as a JSON array
      */
     get: operations['getSpec'];
   };
@@ -431,9 +436,40 @@ export interface paths {
      */
     get: operations['getProposerDuties'];
   };
+  '/eth/v2/validator/duties/proposer/{epoch}': {
+    /**
+     * Request beacon node to provide all validators that are scheduled to propose a block in the given epoch.
+     * Duties should only need to be checked once per epoch, however a chain reorganization could occur that results in a change of duties. For full safety, you should monitor head events and confirm the dependent root in this response matches. After Fulu, different checks need to be performed as the dependent root changes due to deterministic proposer lookahead.
+     *
+     * Before Fulu:
+     * - event.current_duty_dependent_root when `compute_epoch_at_slot(event.slot) == epoch`
+     * - event.block otherwise
+     * - dependent_root value is `get_block_root_at_slot(state, compute_start_slot_at_epoch(epoch) - 1)`
+     *
+     * After Fulu:
+     * - event.previous_duty_dependent_root when `compute_epoch_at_slot(event.slot) == epoch`
+     * - event.block otherwise
+     * - dependent_root value is `get_block_root_at_slot(state, compute_start_slot_at_epoch(epoch - 1) - 1)`
+     *
+     * The dependent_root value is the genesis block root in the case of underflow.
+     */
+    get: operations['getProposerDutiesV2'];
+  };
   '/eth/v1/validator/duties/sync/{epoch}': {
     /** Requests the beacon node to provide a set of sync committee duties for a particular epoch. */
     post: operations['getSyncCommitteeDuties'];
+  };
+  '/eth/v1/validator/duties/ptc/{epoch}': {
+    /**
+     * Requests the beacon node to provide a set of Payload Timeliness Committee (PTC) duties, which should be performed by validators, for a particular epoch.
+     * Duties should only need to be checked once per epoch, however a chain reorganization (of > MIN_SEED_LOOKAHEAD epochs) could occur, resulting in a change of duties. For full safety, you should monitor head events and confirm the dependent root in this response matches:
+     * - event.previous_duty_dependent_root when `compute_epoch_at_slot(event.slot) == epoch`
+     * - event.current_duty_dependent_root when `compute_epoch_at_slot(event.slot) + 1 == epoch`
+     * - event.block otherwise
+     *
+     * The dependent_root value is `get_block_root_at_slot(state, compute_start_slot_at_epoch(epoch - 1) - 1)` or the genesis block root in the case of underflow.
+     */
+    post: operations['getPtcDuties'];
   };
   '/eth/v3/validator/blocks/{slot}': {
     /**
@@ -446,13 +482,18 @@ export interface paths {
      * header from an MEV relay.
      *
      * Metadata in the response indicates the type of block produced, and the supported types of block
-     * will be added to as forks progress.
+     * are for all pre-Gloas forks.  This endpoint is not forwards compatible after the Gloas fork.
      */
     get: operations['produceBlockV3'];
   };
   '/eth/v1/validator/attestation_data': {
     /**
-     * Requests that the beacon node produce an AttestationData.
+     * Requests that the beacon node produce an `AttestationData`.
+     *
+     * For `slot`s in Electra and later, this `AttestationData` must have an `index` of `0`.
+     *
+     * For `slot`s in Gloas and later, the `index` in `AttestationData` is used to signal
+     * payload availability which is determined and set by the beacon node.
      *
      * A 503 error must be returned if the block identified by the response
      * `beacon_block_root` is optimistic (i.e. the attestation attests to a block
@@ -460,18 +501,16 @@ export interface paths {
      */
     get: operations['produceAttestationData'];
   };
-  '/eth/v1/validator/aggregate_attestation': {
+  '/eth/v1/validator/payload_attestation_data/{slot}': {
     /**
-     * Aggregates all attestations matching given attestation data root and slot.
+     * Requests that the beacon node produce a `PayloadAttestationData`.
      *
-     * A 503 error must be returned if the block identified by the response
-     * `beacon_block_root` is optimistic (i.e. the aggregated attestation attests
-     * to a block that has not been fully verified by an execution engine).
+     * This endpoint is used by PTC validators to obtain the data structure they need to attest to
+     * regarding payload presence and blob data availability for a specific slot.
      *
-     * A 404 error must be returned if no attestation is available for the requested
-     * `attestation_data_root`.
+     * A 503 error must be returned if the beacon node is currently syncing.
      */
-    get: operations['getAggregatedAttestation'];
+    get: operations['producePayloadAttestationData'];
   };
   '/eth/v2/validator/aggregate_attestation': {
     /**
@@ -485,10 +524,6 @@ export interface paths {
      * `attestation_data_root`.
      */
     get: operations['getAggregatedAttestationV2'];
-  };
-  '/eth/v1/validator/aggregate_and_proofs': {
-    /** Verifies given aggregate and proofs and publishes them on appropriate gossipsub topic. */
-    post: operations['publishAggregateAndProofs'];
   };
   '/eth/v2/validator/aggregate_and_proofs': {
     /** Verifies given aggregate and proofs and publishes them on appropriate gossipsub topic. */
@@ -521,9 +556,9 @@ export interface paths {
      * implemented by a distributed validator middleware client. This endpoint is used to exchange partial
      * selection proofs for combined/aggregated selection proofs to allow a validator client
      * to correctly determine if any of its validators has been selected to perform an attestation aggregation duty in a slot.
-     * Validator clients running in a distributed validator cluster must query this endpoint at the start of an epoch for the current and lookahead (next) epochs for
-     * all validators that have attester duties in the current and lookahead epochs. Consensus clients need not support this
-     * endpoint and may return a 501.
+     * Validator clients running in a distributed validator cluster must query this endpoint at the start of an epoch either for all slots of
+     * the current epoch or for all slots of the current and all slots of the next epoch in two separate requests. In both cases it should be for
+     * all validators that have attester duties in the respective epoch. Consensus clients need not support this endpoint and may return a 501.
      */
     post: operations['submitBeaconCommitteeSelections'];
   };
@@ -594,6 +629,10 @@ export interface paths {
     /** Requests the beacon node to indicate if a validator has been observed to be live in a given epoch. The beacon node might detect liveness by observing messages from the validator on the network, in the beacon chain, from its API or from any other source. A beacon node SHOULD support the current and previous epoch, however it MAY support earlier epoch. It is important to note that the values returned by the beacon node are not canonical; they are best-effort and based upon a subjective view of the network. A beacon node that was recently started or suffered a network partition may indicate that a validator is not live when it actually is. */
     post: operations['getLiveness'];
   };
+  '/eth/v1/validator/execution_payload_bid/{slot}/{builder_index}': {
+    /** Retrieves execution payload bid for a given slot and builder. Depending on `Accept` header, it can be returned either as json or as bytes serialized by SSZ. */
+    get: operations['getExecutionPayloadBid'];
+  };
   '/eth/v1/events': {
     /**
      * Provides endpoint to subscribe to beacon node Server-Sent-Events stream.
@@ -614,23 +653,6 @@ export interface components {
      * @enum {string}
      */
     BroadcastValidation: 'gossip' | 'consensus' | 'consensus_and_equivocation';
-    DepositSnapshotResponse: {
-      finalized: string[];
-      /**
-       * Format: hex
-       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-       */
-      deposit_root: string;
-      /** @example 1 */
-      deposit_count: string;
-      /**
-       * Format: hex
-       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-       */
-      execution_block_hash: string;
-      /** @example 1 */
-      execution_block_height: string;
-    };
     ValidatorResponse: {
       /**
        * @description Index of validator in validator registry.
@@ -840,6 +862,24 @@ export interface components {
        */
       slot: string;
     };
+    PtcDuty: {
+      /**
+       * Format: hex
+       * @description The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._
+       * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
+       */
+      pubkey: string;
+      /**
+       * @description Index of validator in validator registry.
+       * @example 1
+       */
+      validator_index: string;
+      /**
+       * @description The slot at which the validator must perform PTC duties.
+       * @example 1
+       */
+      slot: string;
+    };
     'Altair.SyncDuty': {
       /**
        * Format: hex
@@ -948,15 +988,20 @@ export interface components {
         /**
          * Format: hex
          * @description Bitvector representing the node's persistent attestation subnet subscriptions.
-         * @example 0x0000000000000000
+         * @example 0x01
          */
         attnets: string;
         /**
          * Format: hex
          * @description Bitvector representing the node's sync committee subnet subscriptions. This metadata is not present in phase0, but will be present in Altair.
-         * @example 0x0f
+         * @example 0x01
          */
         syncnets?: string;
+        /**
+         * @description Uint64 representing the node's custody group count. The metadata is present from the Fulu fork.
+         * @example 1
+         */
+        custody_group_count?: string;
       };
     };
     Peer: {
@@ -999,6 +1044,44 @@ export interface components {
      * @example Lighthouse/v0.1.5 (Linux x86_64)
      */
     Version: string;
+    /** @description A structure which uniquely identifies a client implementation and its version. Mirrors the client version specification in the [Engine API](https://github.com/ethereum/execution-apis/blob/dc4dbca37ef8697d782f431af19120beaf5517f5/src/engine/identification.md). */
+    ClientVersionV1: {
+      /**
+       * @description A two-character client code that uniquely maps to a client name as defined in the [Engine API](https://github.com/ethereum/execution-apis/blob/dc4dbca37ef8697d782f431af19120beaf5517f5/src/engine/identification.md#clientcode).
+       * @example LS
+       * @enum {string}
+       */
+      code:
+        | 'BU'
+        | 'EJ'
+        | 'EG'
+        | 'GE'
+        | 'GR'
+        | 'LH'
+        | 'LS'
+        | 'NM'
+        | 'NB'
+        | 'TE'
+        | 'TK'
+        | 'PM'
+        | 'RH';
+      /**
+       * @description Human-readable name of the client, e.g. `Lighthouse` or `go-ethereum`.
+       * @example Lodestar
+       */
+      name: string;
+      /**
+       * @description The version string of the current implementation e.g. `v4.6.0` or `1.0.0-alpha.1` or `1.0.0+20130313144700`.
+       * @example v1.23.4
+       */
+      version: string;
+      /**
+       * Format: hex
+       * @description 4 bytes - first four bytes of the latest commit hash of this build e.g. `0xfa4ff922`.
+       * @example 0xfa4ff922
+       */
+      commit: string;
+    };
     /**
      * Format: hex
      * @description a fork version number
@@ -3657,7 +3740,7 @@ export interface components {
         /**
          * Format: hex
          * @description A bit is set if a signature from the validator at the corresponding index in the subcommittee is present in the aggregate `signature`.
-         * @example 0xffffffffffffffffffffffffffffffff
+         * @example 0x01
          */
         aggregation_bits: string;
         /**
@@ -3700,7 +3783,7 @@ export interface components {
           /**
            * Format: hex
            * @description A bit is set if a signature from the validator at the corresponding index in the subcommittee is present in the aggregate `signature`.
-           * @example 0xffffffffffffffffffffffffffffffff
+           * @example 0x01
            */
           aggregation_bits: string;
           /**
@@ -3737,7 +3820,7 @@ export interface components {
       /**
        * Format: hex
        * @description A bit is set if a signature from the validator at the corresponding index in the subcommittee is present in the aggregate `signature`.
-       * @example 0xffffffffffffffffffffffffffffffff
+       * @example 0x01
        */
       aggregation_bits: string;
       /**
@@ -5662,7 +5745,7 @@ export interface components {
       signature: string;
     };
     /**
-     * @example electra
+     * @example gloas
      * @enum {string}
      */
     ConsensusVersion:
@@ -5671,7 +5754,9 @@ export interface components {
       | 'bellatrix'
       | 'capella'
       | 'deneb'
-      | 'electra';
+      | 'electra'
+      | 'fulu'
+      | 'gloas';
     /** @description The `SignedValidatorRegistration` object from the Builder API specification. */
     SignedValidatorRegistration: {
       /** @description The `ValidatorRegistration` object from the Builder API specification. */
@@ -8529,7 +8614,7 @@ export interface components {
        */
       amount: string;
     };
-    /** @description The [`BeaconState`](https://github.com/ethereum/consensus-specs/blob/master/specs/deneb/beacon-chain.md#beaconstate) object from the Eth2.0 Deneb spec. */
+    /** @description The [`BeaconState`](https://github.com/ethereum/consensus-specs/blob/v1.5.0/specs/deneb/beacon-chain.md#beaconstate) object from the Eth2.0 Deneb spec. */
     'Deneb.BeaconState': {
       /** @example 1 */
       genesis_time: string;
@@ -8746,7 +8831,7 @@ export interface components {
          */
         aggregate_pubkey: string;
       };
-      /** @description The [`ExecutionPayloadHeader`](https://github.com/ethereum/consensus-specs/blob/master/specs/deneb/beacon-chain.md#executionpayloadheader) object from the CL Deneb spec. */
+      /** @description The [`ExecutionPayloadHeader`](https://github.com/ethereum/consensus-specs/blob/v1.4.0/specs/deneb/beacon-chain.md#executionpayloadheader) object from the CL Deneb spec. */
       latest_execution_payload_header: {
         /**
          * Format: hex
@@ -8796,6 +8881,8 @@ export interface components {
         /** @example 1 */
         base_fee_per_gas: string;
         /** @example 1 */
+        blob_gas_used: string;
+        /** @example 1 */
         excess_blob_gas: string;
         /**
          * Format: hex
@@ -8832,7 +8919,7 @@ export interface components {
         state_summary_root: string;
       }[];
     };
-    /** @description The [`BeaconBlock`](https://github.com/ethereum/consensus-specs/blob/master/specs/phase0/beacon-chain.md#beaconblock) object from the CL Deneb spec. */
+    /** @description The [`BeaconBlock`](https://github.com/ethereum/consensus-specs/blob/v1.4.0/specs/phase0/beacon-chain.md#beaconblock) object from the CL Deneb spec. */
     'Deneb.BeaconBlock': {
       /**
        * @description The slot to which this block corresponds.
@@ -9245,6 +9332,8 @@ export interface components {
           /** @example 1 */
           base_fee_per_gas: string;
           /** @example 1 */
+          blob_gas_used: string;
+          /** @example 1 */
           excess_blob_gas: string;
           /**
            * Format: hex
@@ -9281,7 +9370,7 @@ export interface components {
     };
     /** @description The required object for block production according to the Deneb CL spec. */
     'Deneb.BlockContents': {
-      /** @description The [`BeaconBlock`](https://github.com/ethereum/consensus-specs/blob/master/specs/phase0/beacon-chain.md#beaconblock) object from the CL Deneb spec. */
+      /** @description The [`BeaconBlock`](https://github.com/ethereum/consensus-specs/blob/v1.4.0/specs/phase0/beacon-chain.md#beaconblock) object from the CL Deneb spec. */
       block: {
         /**
          * @description The slot to which this block corresponds.
@@ -9694,6 +9783,8 @@ export interface components {
             /** @example 1 */
             base_fee_per_gas: string;
             /** @example 1 */
+            blob_gas_used: string;
+            /** @example 1 */
             excess_blob_gas: string;
             /**
              * Format: hex
@@ -9731,9 +9822,9 @@ export interface components {
       kzg_proofs: string[];
       blobs: string[];
     };
-    /** @description The [`SignedBeaconBlock`](https://github.com/ethereum/consensus-specs/blob/master/specs/phase0/beacon-chain.md#signedbeaconblock) object envelope from the CL Deneb spec. */
+    /** @description The [`SignedBeaconBlock`](https://github.com/ethereum/consensus-specs/blob/v1.4.0/specs/phase0/beacon-chain.md#signedbeaconblock) object envelope from the CL Deneb spec. */
     'Deneb.SignedBeaconBlock': {
-      /** @description The [`BeaconBlock`](https://github.com/ethereum/consensus-specs/blob/master/specs/phase0/beacon-chain.md#beaconblock) object from the CL Deneb spec. */
+      /** @description The [`BeaconBlock`](https://github.com/ethereum/consensus-specs/blob/v1.4.0/specs/phase0/beacon-chain.md#beaconblock) object from the CL Deneb spec. */
       message: {
         /**
          * @description The slot to which this block corresponds.
@@ -10146,6 +10237,8 @@ export interface components {
             /** @example 1 */
             base_fee_per_gas: string;
             /** @example 1 */
+            blob_gas_used: string;
+            /** @example 1 */
             excess_blob_gas: string;
             /**
              * Format: hex
@@ -10188,9 +10281,9 @@ export interface components {
     };
     /** @description The required signed components of block production according to the Deneb CL spec. */
     'Deneb.SignedBlockContents': {
-      /** @description The [`SignedBeaconBlock`](https://github.com/ethereum/consensus-specs/blob/master/specs/phase0/beacon-chain.md#signedbeaconblock) object envelope from the CL Deneb spec. */
+      /** @description The [`SignedBeaconBlock`](https://github.com/ethereum/consensus-specs/blob/v1.4.0/specs/phase0/beacon-chain.md#signedbeaconblock) object envelope from the CL Deneb spec. */
       signed_block: {
-        /** @description The [`BeaconBlock`](https://github.com/ethereum/consensus-specs/blob/master/specs/phase0/beacon-chain.md#beaconblock) object from the CL Deneb spec. */
+        /** @description The [`BeaconBlock`](https://github.com/ethereum/consensus-specs/blob/v1.4.0/specs/phase0/beacon-chain.md#beaconblock) object from the CL Deneb spec. */
         message: {
           /**
            * @description The slot to which this block corresponds.
@@ -10603,6 +10696,8 @@ export interface components {
               /** @example 1 */
               base_fee_per_gas: string;
               /** @example 1 */
+              blob_gas_used: string;
+              /** @example 1 */
               excess_blob_gas: string;
               /**
                * Format: hex
@@ -10646,7 +10741,7 @@ export interface components {
       kzg_proofs: string[];
       blobs: string[];
     };
-    /** @description A variant of the [`BeaconBlock`](https://github.com/ethereum/consensus-specs/blob/master/specs/phase0/beacon-chain.md#beaconblock) object from the CL Deneb spec, which contains a `BlindedBeaconBlockBody` rather than a `BeaconBlockBody`. */
+    /** @description A variant of the [`BeaconBlock`](https://github.com/ethereum/consensus-specs/blob/v1.4.0/specs/phase0/beacon-chain.md#beaconblock) object from the CL Deneb spec, which contains a `BlindedBeaconBlockBody` rather than a `BeaconBlockBody`. */
     'Deneb.BlindedBeaconBlock': {
       /**
        * @description The slot to which this block corresponds.
@@ -10671,7 +10766,7 @@ export interface components {
        */
       state_root: string;
     } & {
-      /** @description A variant of the [`BeaconBlockBody`](https://github.com/ethereum/consensus-specs/blob/master/specs/deneb/beacon-chain.md#beaconblockbody) object from the CL Deneb spec, which contains a transactions root rather than a full transactions list. */
+      /** @description A variant of the [`BeaconBlockBody`](https://github.com/ethereum/consensus-specs/blob/v1.4.0/specs/deneb/beacon-chain.md#beaconblockbody) object from the CL Deneb spec, which contains a transactions root rather than a full transactions list. */
       body: {
         randao_reveal: string & unknown;
         /** @description The [`Eth1Data`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#eth1data) object from the CL spec. */
@@ -11011,7 +11106,7 @@ export interface components {
         }[];
         blob_kzg_commitments: string[];
       } & {
-        /** @description The [`ExecutionPayloadHeader`](https://github.com/ethereum/consensus-specs/blob/master/specs/deneb/beacon-chain.md#executionpayloadheader) object from the CL Deneb spec. */
+        /** @description The [`ExecutionPayloadHeader`](https://github.com/ethereum/consensus-specs/blob/v1.4.0/specs/deneb/beacon-chain.md#executionpayloadheader) object from the CL Deneb spec. */
         execution_payload_header: {
           /**
            * Format: hex
@@ -11061,6 +11156,8 @@ export interface components {
           /** @example 1 */
           base_fee_per_gas: string;
           /** @example 1 */
+          blob_gas_used: string;
+          /** @example 1 */
           excess_blob_gas: string;
           /**
            * Format: hex
@@ -11081,9 +11178,9 @@ export interface components {
         };
       };
     };
-    /** @description A variant of the [`SignedBeaconBlock`](https://github.com/ethereum/consensus-specs/blob/master/specs/phase0/beacon-chain.md#signedbeaconblock) object envelope from the CL Deneb spec, which contains a `BlindedBeaconBlock` rather than a `BeaconBlock`. */
+    /** @description A variant of the [`SignedBeaconBlock`](https://github.com/ethereum/consensus-specs/blob/v1.4.0/specs/phase0/beacon-chain.md#signedbeaconblock) object envelope from the CL Deneb spec, which contains a `BlindedBeaconBlock` rather than a `BeaconBlock`. */
     'Deneb.SignedBlindedBeaconBlock': {
-      /** @description A variant of the [`BeaconBlock`](https://github.com/ethereum/consensus-specs/blob/master/specs/phase0/beacon-chain.md#beaconblock) object from the CL Deneb spec, which contains a `BlindedBeaconBlockBody` rather than a `BeaconBlockBody`. */
+      /** @description A variant of the [`BeaconBlock`](https://github.com/ethereum/consensus-specs/blob/v1.4.0/specs/phase0/beacon-chain.md#beaconblock) object from the CL Deneb spec, which contains a `BlindedBeaconBlockBody` rather than a `BeaconBlockBody`. */
       message: {
         /**
          * @description The slot to which this block corresponds.
@@ -11108,7 +11205,7 @@ export interface components {
          */
         state_root: string;
       } & {
-        /** @description A variant of the [`BeaconBlockBody`](https://github.com/ethereum/consensus-specs/blob/master/specs/deneb/beacon-chain.md#beaconblockbody) object from the CL Deneb spec, which contains a transactions root rather than a full transactions list. */
+        /** @description A variant of the [`BeaconBlockBody`](https://github.com/ethereum/consensus-specs/blob/v1.4.0/specs/deneb/beacon-chain.md#beaconblockbody) object from the CL Deneb spec, which contains a transactions root rather than a full transactions list. */
         body: {
           randao_reveal: string & unknown;
           /** @description The [`Eth1Data`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#eth1data) object from the CL spec. */
@@ -11448,7 +11545,7 @@ export interface components {
           }[];
           blob_kzg_commitments: string[];
         } & {
-          /** @description The [`ExecutionPayloadHeader`](https://github.com/ethereum/consensus-specs/blob/master/specs/deneb/beacon-chain.md#executionpayloadheader) object from the CL Deneb spec. */
+          /** @description The [`ExecutionPayloadHeader`](https://github.com/ethereum/consensus-specs/blob/v1.4.0/specs/deneb/beacon-chain.md#executionpayloadheader) object from the CL Deneb spec. */
           execution_payload_header: {
             /**
              * Format: hex
@@ -11497,6 +11594,8 @@ export interface components {
             extra_data: string;
             /** @example 1 */
             base_fee_per_gas: string;
+            /** @example 1 */
+            blob_gas_used: string;
             /** @example 1 */
             excess_blob_gas: string;
             /**
@@ -11558,7 +11657,7 @@ export interface components {
            */
           body_root: string;
         };
-        /** @description The [`ExecutionPayloadHeader`](https://github.com/ethereum/consensus-specs/blob/master/specs/deneb/beacon-chain.md#executionpayloadheader) object from the CL Deneb spec. */
+        /** @description The [`ExecutionPayloadHeader`](https://github.com/ethereum/consensus-specs/blob/v1.4.0/specs/deneb/beacon-chain.md#executionpayloadheader) object from the CL Deneb spec. */
         execution: {
           /**
            * Format: hex
@@ -11607,6 +11706,8 @@ export interface components {
           extra_data: string;
           /** @example 1 */
           base_fee_per_gas: string;
+          /** @example 1 */
+          blob_gas_used: string;
           /** @example 1 */
           excess_blob_gas: string;
           /**
@@ -11673,7 +11774,7 @@ export interface components {
            */
           body_root: string;
         };
-        /** @description The [`ExecutionPayloadHeader`](https://github.com/ethereum/consensus-specs/blob/master/specs/deneb/beacon-chain.md#executionpayloadheader) object from the CL Deneb spec. */
+        /** @description The [`ExecutionPayloadHeader`](https://github.com/ethereum/consensus-specs/blob/v1.4.0/specs/deneb/beacon-chain.md#executionpayloadheader) object from the CL Deneb spec. */
         execution: {
           /**
            * Format: hex
@@ -11722,6 +11823,8 @@ export interface components {
           extra_data: string;
           /** @example 1 */
           base_fee_per_gas: string;
+          /** @example 1 */
+          blob_gas_used: string;
           /** @example 1 */
           excess_blob_gas: string;
           /**
@@ -11786,7 +11889,7 @@ export interface components {
            */
           body_root: string;
         };
-        /** @description The [`ExecutionPayloadHeader`](https://github.com/ethereum/consensus-specs/blob/master/specs/deneb/beacon-chain.md#executionpayloadheader) object from the CL Deneb spec. */
+        /** @description The [`ExecutionPayloadHeader`](https://github.com/ethereum/consensus-specs/blob/v1.4.0/specs/deneb/beacon-chain.md#executionpayloadheader) object from the CL Deneb spec. */
         execution: {
           /**
            * Format: hex
@@ -11835,6 +11938,8 @@ export interface components {
           extra_data: string;
           /** @example 1 */
           base_fee_per_gas: string;
+          /** @example 1 */
+          blob_gas_used: string;
           /** @example 1 */
           excess_blob_gas: string;
           /**
@@ -11908,7 +12013,7 @@ export interface components {
            */
           body_root: string;
         };
-        /** @description The [`ExecutionPayloadHeader`](https://github.com/ethereum/consensus-specs/blob/master/specs/deneb/beacon-chain.md#executionpayloadheader) object from the CL Deneb spec. */
+        /** @description The [`ExecutionPayloadHeader`](https://github.com/ethereum/consensus-specs/blob/v1.4.0/specs/deneb/beacon-chain.md#executionpayloadheader) object from the CL Deneb spec. */
         execution: {
           /**
            * Format: hex
@@ -11957,6 +12062,8 @@ export interface components {
           extra_data: string;
           /** @example 1 */
           base_fee_per_gas: string;
+          /** @example 1 */
+          blob_gas_used: string;
           /** @example 1 */
           excess_blob_gas: string;
           /**
@@ -12011,7 +12118,7 @@ export interface components {
            */
           body_root: string;
         };
-        /** @description The [`ExecutionPayloadHeader`](https://github.com/ethereum/consensus-specs/blob/master/specs/deneb/beacon-chain.md#executionpayloadheader) object from the CL Deneb spec. */
+        /** @description The [`ExecutionPayloadHeader`](https://github.com/ethereum/consensus-specs/blob/v1.4.0/specs/deneb/beacon-chain.md#executionpayloadheader) object from the CL Deneb spec. */
         execution: {
           /**
            * Format: hex
@@ -12060,6 +12167,8 @@ export interface components {
           extra_data: string;
           /** @example 1 */
           base_fee_per_gas: string;
+          /** @example 1 */
+          blob_gas_used: string;
           /** @example 1 */
           excess_blob_gas: string;
           /**
@@ -12133,7 +12242,7 @@ export interface components {
            */
           body_root: string;
         };
-        /** @description The [`ExecutionPayloadHeader`](https://github.com/ethereum/consensus-specs/blob/master/specs/deneb/beacon-chain.md#executionpayloadheader) object from the CL Deneb spec. */
+        /** @description The [`ExecutionPayloadHeader`](https://github.com/ethereum/consensus-specs/blob/v1.4.0/specs/deneb/beacon-chain.md#executionpayloadheader) object from the CL Deneb spec. */
         execution: {
           /**
            * Format: hex
@@ -12183,6 +12292,8 @@ export interface components {
           /** @example 1 */
           base_fee_per_gas: string;
           /** @example 1 */
+          blob_gas_used: string;
+          /** @example 1 */
           excess_blob_gas: string;
           /**
            * Format: hex
@@ -12225,68 +12336,14 @@ export interface components {
      * @description A blob is `FIELD_ELEMENTS_PER_BLOB * size_of(BLSFieldElement) = 4096 * 32 = 131072` bytes (`DATA`) representing a Blob as defined in Deneb
      */
     Blob: string;
-    'Deneb.BlobSidecars': {
-      /** @example 1 */
-      index: string;
-      /**
-       * Format: hex
-       * @description A blob is `FIELD_ELEMENTS_PER_BLOB * size_of(BLSFieldElement) = 4096 * 32 = 131072` bytes (`DATA`) representing a Blob as defined in Deneb
-       */
-      blob: string;
-      /**
-       * Format: hex
-       * @description A G1 curve point. Same as BLS standard "is valid pubkey" check but also allows `0x00..00` for point-at-infinity
-       * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
-       */
-      kzg_commitment: string;
-      /**
-       * Format: hex
-       * @description A G1 curve point. Used for verifying that the `KZGCommitment` for a given `Blob` is correct.
-       */
-      kzg_proof: string;
-      /** @description The [`SignedBeaconBlockHeader`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#signedbeaconblockheader) object envelope from the CL spec. */
-      signed_block_header: {
-        /** @description The [`BeaconBlockHeader`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#beaconblockheader) object from the CL spec. */
-        message: {
-          /**
-           * @description The slot to which this block corresponds.
-           * @example 1
-           */
-          slot: string;
-          /**
-           * @description Index of validator in validator registry.
-           * @example 1
-           */
-          proposer_index: string;
-          /**
-           * Format: hex
-           * @description The signing merkle root of the parent `BeaconBlock`.
-           * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-           */
-          parent_root: string;
-          /**
-           * Format: hex
-           * @description The tree hash merkle root of the `BeaconState` for the `BeaconBlock`.
-           * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-           */
-          state_root: string;
-        } & {
-          /**
-           * Format: hex
-           * @description The tree hash merkle root of the `BeaconBlockBody` for the `BeaconBlock`
-           * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-           */
-          body_root: string;
-        };
-        /**
-         * Format: hex
-         * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-         */
-        signature: string;
-      };
-      kzg_commitment_inclusion_proof: string[];
-    }[];
-    /** @description The [`BeaconState`](https://github.com/ethereum/consensus-specs/blob/v1.5.0-beta.2/specs/electra/beacon-chain.md#beaconstate) object from the CL Electra spec. */
+    Blobs: string[];
+    /**
+     * Format: hex
+     * @description A versioned hash used to identify a Blob.
+     * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+     */
+    VersionedHash: string;
+    /** @description The [`BeaconState`](https://github.com/ethereum/consensus-specs/blob/v1.5.0/specs/electra/beacon-chain.md#beaconstate) object from the CL Electra spec. */
     'Electra.BeaconState': {
       /** @example 1 */
       genesis_time: string;
@@ -12503,7 +12560,7 @@ export interface components {
          */
         aggregate_pubkey: string;
       };
-      /** @description The [`ExecutionPayloadHeader`](https://github.com/ethereum/consensus-specs/blob/master/specs/deneb/beacon-chain.md#executionpayloadheader) object from the CL Deneb spec. */
+      /** @description The [`ExecutionPayloadHeader`](https://github.com/ethereum/consensus-specs/blob/v1.4.0/specs/deneb/beacon-chain.md#executionpayloadheader) object from the CL Deneb spec. */
       latest_execution_payload_header: {
         /**
          * Format: hex
@@ -12552,6 +12609,8 @@ export interface components {
         extra_data: string;
         /** @example 1 */
         base_fee_per_gas: string;
+        /** @example 1 */
+        blob_gas_used: string;
         /** @example 1 */
         excess_blob_gas: string;
         /**
@@ -12661,7 +12720,7 @@ export interface components {
     };
     /** @description The required object for block production according to the Electra CL spec. */
     'Electra.BlockContents': {
-      /** @description The [`BeaconBlock`](https://github.com/ethereum/consensus-specs/blob/v1.5.0-beta.2/specs/phase0/beacon-chain.md#beaconblock) object from the CL Electra spec. */
+      /** @description The [`BeaconBlock`](https://github.com/ethereum/consensus-specs/blob/v1.5.0/specs/phase0/beacon-chain.md#beaconblock) object from the CL Electra spec. */
       block: {
         /**
          * @description The slot to which this block corresponds.
@@ -12796,7 +12855,7 @@ export interface components {
             };
           }[];
           attester_slashings: {
-            /** @description The [`IndexedAttestation`](https://github.com/ethereum/consensus-specs/blob/v1.5.0-beta.2/specs/electra/beacon-chain.md#indexedattestation) object from the CL spec. */
+            /** @description The [`IndexedAttestation`](https://github.com/ethereum/consensus-specs/blob/v1.5.0/specs/electra/beacon-chain.md#indexedattestation) object from the CL spec. */
             attestation_1: {
               /** @description Attesting validator indices */
               attesting_indices: string[];
@@ -12840,7 +12899,7 @@ export interface components {
                */
               signature: string;
             };
-            /** @description The [`IndexedAttestation`](https://github.com/ethereum/consensus-specs/blob/v1.5.0-beta.2/specs/electra/beacon-chain.md#indexedattestation) object from the CL spec. */
+            /** @description The [`IndexedAttestation`](https://github.com/ethereum/consensus-specs/blob/v1.5.0/specs/electra/beacon-chain.md#indexedattestation) object from the CL spec. */
             attestation_2: {
               /** @description Attesting validator indices */
               attesting_indices: string[];
@@ -13080,6 +13139,8 @@ export interface components {
             /** @example 1 */
             base_fee_per_gas: string;
             /** @example 1 */
+            blob_gas_used: string;
+            /** @example 1 */
             excess_blob_gas: string;
             /**
              * Format: hex
@@ -13112,7 +13173,7 @@ export interface components {
               amount: string;
             }[];
           };
-          /** @description The [`ExecutionRequests`](https://github.com/ethereum/consensus-specs/blob/v1.5.0-beta.2/specs/electra/beacon-chain.md#executionrequests) object from the CL Electra spec. */
+          /** @description The [`ExecutionRequests`](https://github.com/ethereum/consensus-specs/blob/v1.5.0/specs/electra/beacon-chain.md#executionrequests) object from the CL Electra spec. */
           execution_requests: {
             deposits: {
               /**
@@ -13188,9 +13249,9 @@ export interface components {
       kzg_proofs: string[];
       blobs: string[];
     };
-    /** @description The [`SignedBeaconBlock`](https://github.com/ethereum/consensus-specs/blob/v1.5.0-beta.2/specs/phase0/beacon-chain.md#signedbeaconblock) object envelope from the CL Electra spec. */
+    /** @description The [`SignedBeaconBlock`](https://github.com/ethereum/consensus-specs/blob/v1.5.0/specs/phase0/beacon-chain.md#signedbeaconblock) object envelope from the CL Electra spec. */
     'Electra.SignedBeaconBlock': {
-      /** @description The [`BeaconBlock`](https://github.com/ethereum/consensus-specs/blob/v1.5.0-beta.2/specs/phase0/beacon-chain.md#beaconblock) object from the CL Electra spec. */
+      /** @description The [`BeaconBlock`](https://github.com/ethereum/consensus-specs/blob/v1.5.0/specs/phase0/beacon-chain.md#beaconblock) object from the CL Electra spec. */
       message: {
         /**
          * @description The slot to which this block corresponds.
@@ -13325,7 +13386,7 @@ export interface components {
             };
           }[];
           attester_slashings: {
-            /** @description The [`IndexedAttestation`](https://github.com/ethereum/consensus-specs/blob/v1.5.0-beta.2/specs/electra/beacon-chain.md#indexedattestation) object from the CL spec. */
+            /** @description The [`IndexedAttestation`](https://github.com/ethereum/consensus-specs/blob/v1.5.0/specs/electra/beacon-chain.md#indexedattestation) object from the CL spec. */
             attestation_1: {
               /** @description Attesting validator indices */
               attesting_indices: string[];
@@ -13369,7 +13430,7 @@ export interface components {
                */
               signature: string;
             };
-            /** @description The [`IndexedAttestation`](https://github.com/ethereum/consensus-specs/blob/v1.5.0-beta.2/specs/electra/beacon-chain.md#indexedattestation) object from the CL spec. */
+            /** @description The [`IndexedAttestation`](https://github.com/ethereum/consensus-specs/blob/v1.5.0/specs/electra/beacon-chain.md#indexedattestation) object from the CL spec. */
             attestation_2: {
               /** @description Attesting validator indices */
               attesting_indices: string[];
@@ -13609,6 +13670,8 @@ export interface components {
             /** @example 1 */
             base_fee_per_gas: string;
             /** @example 1 */
+            blob_gas_used: string;
+            /** @example 1 */
             excess_blob_gas: string;
             /**
              * Format: hex
@@ -13641,7 +13704,7 @@ export interface components {
               amount: string;
             }[];
           };
-          /** @description The [`ExecutionRequests`](https://github.com/ethereum/consensus-specs/blob/v1.5.0-beta.2/specs/electra/beacon-chain.md#executionrequests) object from the CL Electra spec. */
+          /** @description The [`ExecutionRequests`](https://github.com/ethereum/consensus-specs/blob/v1.5.0/specs/electra/beacon-chain.md#executionrequests) object from the CL Electra spec. */
           execution_requests: {
             deposits: {
               /**
@@ -13722,9 +13785,9 @@ export interface components {
     };
     /** @description The required signed components of block production according to the Electra CL spec. */
     'Electra.SignedBlockContents': {
-      /** @description The [`SignedBeaconBlock`](https://github.com/ethereum/consensus-specs/blob/v1.5.0-beta.2/specs/phase0/beacon-chain.md#signedbeaconblock) object envelope from the CL Electra spec. */
+      /** @description The [`SignedBeaconBlock`](https://github.com/ethereum/consensus-specs/blob/v1.5.0/specs/phase0/beacon-chain.md#signedbeaconblock) object envelope from the CL Electra spec. */
       signed_block: {
-        /** @description The [`BeaconBlock`](https://github.com/ethereum/consensus-specs/blob/v1.5.0-beta.2/specs/phase0/beacon-chain.md#beaconblock) object from the CL Electra spec. */
+        /** @description The [`BeaconBlock`](https://github.com/ethereum/consensus-specs/blob/v1.5.0/specs/phase0/beacon-chain.md#beaconblock) object from the CL Electra spec. */
         message: {
           /**
            * @description The slot to which this block corresponds.
@@ -13859,7 +13922,7 @@ export interface components {
               };
             }[];
             attester_slashings: {
-              /** @description The [`IndexedAttestation`](https://github.com/ethereum/consensus-specs/blob/v1.5.0-beta.2/specs/electra/beacon-chain.md#indexedattestation) object from the CL spec. */
+              /** @description The [`IndexedAttestation`](https://github.com/ethereum/consensus-specs/blob/v1.5.0/specs/electra/beacon-chain.md#indexedattestation) object from the CL spec. */
               attestation_1: {
                 /** @description Attesting validator indices */
                 attesting_indices: string[];
@@ -13903,7 +13966,7 @@ export interface components {
                  */
                 signature: string;
               };
-              /** @description The [`IndexedAttestation`](https://github.com/ethereum/consensus-specs/blob/v1.5.0-beta.2/specs/electra/beacon-chain.md#indexedattestation) object from the CL spec. */
+              /** @description The [`IndexedAttestation`](https://github.com/ethereum/consensus-specs/blob/v1.5.0/specs/electra/beacon-chain.md#indexedattestation) object from the CL spec. */
               attestation_2: {
                 /** @description Attesting validator indices */
                 attesting_indices: string[];
@@ -14143,6 +14206,8 @@ export interface components {
               /** @example 1 */
               base_fee_per_gas: string;
               /** @example 1 */
+              blob_gas_used: string;
+              /** @example 1 */
               excess_blob_gas: string;
               /**
                * Format: hex
@@ -14175,7 +14240,7 @@ export interface components {
                 amount: string;
               }[];
             };
-            /** @description The [`ExecutionRequests`](https://github.com/ethereum/consensus-specs/blob/v1.5.0-beta.2/specs/electra/beacon-chain.md#executionrequests) object from the CL Electra spec. */
+            /** @description The [`ExecutionRequests`](https://github.com/ethereum/consensus-specs/blob/v1.5.0/specs/electra/beacon-chain.md#executionrequests) object from the CL Electra spec. */
             execution_requests: {
               deposits: {
                 /**
@@ -14257,7 +14322,7 @@ export interface components {
       kzg_proofs: string[];
       blobs: string[];
     };
-    /** @description A variant of the [`BeaconBlock`](https://github.com/ethereum/consensus-specs/blob/v1.5.0-beta.2/specs/phase0/beacon-chain.md#beaconblock) object from the CL Electra spec, which contains a `BlindedBeaconBlockBody` rather than a `BeaconBlockBody`. */
+    /** @description A variant of the [`BeaconBlock`](https://github.com/ethereum/consensus-specs/blob/v1.5.0/specs/phase0/beacon-chain.md#beaconblock) object from the CL Electra spec, which contains a `BlindedBeaconBlockBody` rather than a `BeaconBlockBody`. */
     'Electra.BlindedBeaconBlock': {
       /**
        * @description The slot to which this block corresponds.
@@ -14282,7 +14347,7 @@ export interface components {
        */
       state_root: string;
     } & {
-      /** @description A variant of the [`BeaconBlockBody`](https://github.com/ethereum/consensus-specs/blob/v1.5.0-beta.2/specs/electra/beacon-chain.md#beaconblockbody) object from the CL Electra spec, which contains a transactions root rather than a full transactions list. */
+      /** @description A variant of the [`BeaconBlockBody`](https://github.com/ethereum/consensus-specs/blob/v1.5.0/specs/electra/beacon-chain.md#beaconblockbody) object from the CL Electra spec, which contains a transactions root rather than a full transactions list. */
       body: {
         randao_reveal: string & unknown;
         /** @description The [`Eth1Data`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#eth1data) object from the CL spec. */
@@ -14393,7 +14458,7 @@ export interface components {
           };
         }[];
         attester_slashings: {
-          /** @description The [`IndexedAttestation`](https://github.com/ethereum/consensus-specs/blob/v1.5.0-beta.2/specs/electra/beacon-chain.md#indexedattestation) object from the CL spec. */
+          /** @description The [`IndexedAttestation`](https://github.com/ethereum/consensus-specs/blob/v1.5.0/specs/electra/beacon-chain.md#indexedattestation) object from the CL spec. */
           attestation_1: {
             /** @description Attesting validator indices */
             attesting_indices: string[];
@@ -14437,7 +14502,7 @@ export interface components {
              */
             signature: string;
           };
-          /** @description The [`IndexedAttestation`](https://github.com/ethereum/consensus-specs/blob/v1.5.0-beta.2/specs/electra/beacon-chain.md#indexedattestation) object from the CL spec. */
+          /** @description The [`IndexedAttestation`](https://github.com/ethereum/consensus-specs/blob/v1.5.0/specs/electra/beacon-chain.md#indexedattestation) object from the CL spec. */
           attestation_2: {
             /** @description Attesting validator indices */
             attesting_indices: string[];
@@ -14628,7 +14693,7 @@ export interface components {
         }[];
         blob_kzg_commitments: string[];
       } & {
-        /** @description The [`ExecutionPayloadHeader`](https://github.com/ethereum/consensus-specs/blob/master/specs/deneb/beacon-chain.md#executionpayloadheader) object from the CL Deneb spec. */
+        /** @description The [`ExecutionPayloadHeader`](https://github.com/ethereum/consensus-specs/blob/v1.4.0/specs/deneb/beacon-chain.md#executionpayloadheader) object from the CL Deneb spec. */
         execution_payload_header: {
           /**
            * Format: hex
@@ -14678,6 +14743,8 @@ export interface components {
           /** @example 1 */
           base_fee_per_gas: string;
           /** @example 1 */
+          blob_gas_used: string;
+          /** @example 1 */
           excess_blob_gas: string;
           /**
            * Format: hex
@@ -14696,7 +14763,7 @@ export interface components {
            */
           withdrawals_root: string;
         };
-        /** @description The [`ExecutionRequests`](https://github.com/ethereum/consensus-specs/blob/v1.5.0-beta.2/specs/electra/beacon-chain.md#executionrequests) object from the CL Electra spec. */
+        /** @description The [`ExecutionRequests`](https://github.com/ethereum/consensus-specs/blob/v1.5.0/specs/electra/beacon-chain.md#executionrequests) object from the CL Electra spec. */
         execution_requests: {
           deposits: {
             /**
@@ -14769,9 +14836,9 @@ export interface components {
         };
       };
     };
-    /** @description A variant of the [`SignedBeaconBlock`](https://github.com/ethereum/consensus-specs/blob/v1.5.0-beta.2/specs/phase0/beacon-chain.md#signedbeaconblock) object envelope from the CL Electra spec, which contains a `BlindedBeaconBlock` rather than a `BeaconBlock`. */
+    /** @description A variant of the [`SignedBeaconBlock`](https://github.com/ethereum/consensus-specs/blob/v1.5.0/specs/phase0/beacon-chain.md#signedbeaconblock) object envelope from the CL Electra spec, which contains a `BlindedBeaconBlock` rather than a `BeaconBlock`. */
     'Electra.SignedBlindedBeaconBlock': {
-      /** @description A variant of the [`BeaconBlock`](https://github.com/ethereum/consensus-specs/blob/v1.5.0-beta.2/specs/phase0/beacon-chain.md#beaconblock) object from the CL Electra spec, which contains a `BlindedBeaconBlockBody` rather than a `BeaconBlockBody`. */
+      /** @description A variant of the [`BeaconBlock`](https://github.com/ethereum/consensus-specs/blob/v1.5.0/specs/phase0/beacon-chain.md#beaconblock) object from the CL Electra spec, which contains a `BlindedBeaconBlockBody` rather than a `BeaconBlockBody`. */
       message: {
         /**
          * @description The slot to which this block corresponds.
@@ -14796,7 +14863,7 @@ export interface components {
          */
         state_root: string;
       } & {
-        /** @description A variant of the [`BeaconBlockBody`](https://github.com/ethereum/consensus-specs/blob/v1.5.0-beta.2/specs/electra/beacon-chain.md#beaconblockbody) object from the CL Electra spec, which contains a transactions root rather than a full transactions list. */
+        /** @description A variant of the [`BeaconBlockBody`](https://github.com/ethereum/consensus-specs/blob/v1.5.0/specs/electra/beacon-chain.md#beaconblockbody) object from the CL Electra spec, which contains a transactions root rather than a full transactions list. */
         body: {
           randao_reveal: string & unknown;
           /** @description The [`Eth1Data`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#eth1data) object from the CL spec. */
@@ -14907,7 +14974,7 @@ export interface components {
             };
           }[];
           attester_slashings: {
-            /** @description The [`IndexedAttestation`](https://github.com/ethereum/consensus-specs/blob/v1.5.0-beta.2/specs/electra/beacon-chain.md#indexedattestation) object from the CL spec. */
+            /** @description The [`IndexedAttestation`](https://github.com/ethereum/consensus-specs/blob/v1.5.0/specs/electra/beacon-chain.md#indexedattestation) object from the CL spec. */
             attestation_1: {
               /** @description Attesting validator indices */
               attesting_indices: string[];
@@ -14951,7 +15018,7 @@ export interface components {
                */
               signature: string;
             };
-            /** @description The [`IndexedAttestation`](https://github.com/ethereum/consensus-specs/blob/v1.5.0-beta.2/specs/electra/beacon-chain.md#indexedattestation) object from the CL spec. */
+            /** @description The [`IndexedAttestation`](https://github.com/ethereum/consensus-specs/blob/v1.5.0/specs/electra/beacon-chain.md#indexedattestation) object from the CL spec. */
             attestation_2: {
               /** @description Attesting validator indices */
               attesting_indices: string[];
@@ -15142,7 +15209,7 @@ export interface components {
           }[];
           blob_kzg_commitments: string[];
         } & {
-          /** @description The [`ExecutionPayloadHeader`](https://github.com/ethereum/consensus-specs/blob/master/specs/deneb/beacon-chain.md#executionpayloadheader) object from the CL Deneb spec. */
+          /** @description The [`ExecutionPayloadHeader`](https://github.com/ethereum/consensus-specs/blob/v1.4.0/specs/deneb/beacon-chain.md#executionpayloadheader) object from the CL Deneb spec. */
           execution_payload_header: {
             /**
              * Format: hex
@@ -15192,6 +15259,8 @@ export interface components {
             /** @example 1 */
             base_fee_per_gas: string;
             /** @example 1 */
+            blob_gas_used: string;
+            /** @example 1 */
             excess_blob_gas: string;
             /**
              * Format: hex
@@ -15210,7 +15279,7 @@ export interface components {
              */
             withdrawals_root: string;
           };
-          /** @description The [`ExecutionRequests`](https://github.com/ethereum/consensus-specs/blob/v1.5.0-beta.2/specs/electra/beacon-chain.md#executionrequests) object from the CL Electra spec. */
+          /** @description The [`ExecutionRequests`](https://github.com/ethereum/consensus-specs/blob/v1.5.0/specs/electra/beacon-chain.md#executionrequests) object from the CL Electra spec. */
           execution_requests: {
             deposits: {
               /**
@@ -15289,7 +15358,7 @@ export interface components {
        */
       signature: string;
     };
-    /** @description The [`Attestation`](https://github.com/ethereum/consensus-specs/blob/v1.5.0-beta.2/specs/electra/beacon-chain.md#attestation) object from the CL spec. */
+    /** @description The [`Attestation`](https://github.com/ethereum/consensus-specs/blob/v1.5.0/specs/electra/beacon-chain.md#attestation) object from the CL spec. */
     'Electra.Attestation': {
       /**
        * Format: hex
@@ -15343,7 +15412,7 @@ export interface components {
        */
       committee_bits: string;
     };
-    /** @description The [`SingleAttestation`](https://github.com/ethereum/consensus-specs/blob/v1.5.0-beta.2/specs/electra/beacon-chain.md#singleattestation) object from the CL spec. */
+    /** @description The [`SingleAttestation`](https://github.com/ethereum/consensus-specs/blob/v1.5.0/specs/electra/beacon-chain.md#singleattestation) object from the CL spec. */
     'Electra.SingleAttestation': {
       /**
        * @description The attestations committee index.
@@ -15395,9 +15464,9 @@ export interface components {
        */
       signature: string;
     };
-    /** @description The [`AttesterSlashing`](https://github.com/ethereum/consensus-specs/blob/v1.5.0-beta.2/specs/electra/beacon-chain.md#attesterslashing) object from the CL spec. */
+    /** @description The [`AttesterSlashing`](https://github.com/ethereum/consensus-specs/blob/v1.5.0/specs/electra/beacon-chain.md#attesterslashing) object from the CL spec. */
     'Electra.AttesterSlashing': {
-      /** @description The [`IndexedAttestation`](https://github.com/ethereum/consensus-specs/blob/v1.5.0-beta.2/specs/electra/beacon-chain.md#indexedattestation) object from the CL spec. */
+      /** @description The [`IndexedAttestation`](https://github.com/ethereum/consensus-specs/blob/v1.5.0/specs/electra/beacon-chain.md#indexedattestation) object from the CL spec. */
       attestation_1: {
         /** @description Attesting validator indices */
         attesting_indices: string[];
@@ -15441,7 +15510,7 @@ export interface components {
          */
         signature: string;
       };
-      /** @description The [`IndexedAttestation`](https://github.com/ethereum/consensus-specs/blob/v1.5.0-beta.2/specs/electra/beacon-chain.md#indexedattestation) object from the CL spec. */
+      /** @description The [`IndexedAttestation`](https://github.com/ethereum/consensus-specs/blob/v1.5.0/specs/electra/beacon-chain.md#indexedattestation) object from the CL spec. */
       attestation_2: {
         /** @description Attesting validator indices */
         attesting_indices: string[];
@@ -15486,12 +15555,12 @@ export interface components {
         signature: string;
       };
     };
-    /** @description The [`SignedAggregateAndProof`](https://github.com/ethereum/consensus-specs/blob/v1.5.0-beta.2/specs/electra/validator.md#signedaggregateandproof) object */
+    /** @description The [`SignedAggregateAndProof`](https://github.com/ethereum/consensus-specs/blob/v1.5.0/specs/electra/validator.md#signedaggregateandproof) object */
     'Electra.SignedAggregateAndProof': {
       message: {
         /** @example 1 */
         aggregator_index: string;
-        /** @description The [`Attestation`](https://github.com/ethereum/consensus-specs/blob/v1.5.0-beta.2/specs/electra/beacon-chain.md#attestation) object from the CL spec. */
+        /** @description The [`Attestation`](https://github.com/ethereum/consensus-specs/blob/v1.5.0/specs/electra/beacon-chain.md#attestation) object from the CL spec. */
         aggregate: {
           /**
            * Format: hex
@@ -15592,7 +15661,7 @@ export interface components {
            */
           body_root: string;
         };
-        /** @description The [`ExecutionPayloadHeader`](https://github.com/ethereum/consensus-specs/blob/master/specs/deneb/beacon-chain.md#executionpayloadheader) object from the CL Deneb spec. */
+        /** @description The [`ExecutionPayloadHeader`](https://github.com/ethereum/consensus-specs/blob/v1.4.0/specs/deneb/beacon-chain.md#executionpayloadheader) object from the CL Deneb spec. */
         execution: {
           /**
            * Format: hex
@@ -15641,6 +15710,8 @@ export interface components {
           extra_data: string;
           /** @example 1 */
           base_fee_per_gas: string;
+          /** @example 1 */
+          blob_gas_used: string;
           /** @example 1 */
           excess_blob_gas: string;
           /**
@@ -15707,7 +15778,7 @@ export interface components {
            */
           body_root: string;
         };
-        /** @description The [`ExecutionPayloadHeader`](https://github.com/ethereum/consensus-specs/blob/master/specs/deneb/beacon-chain.md#executionpayloadheader) object from the CL Deneb spec. */
+        /** @description The [`ExecutionPayloadHeader`](https://github.com/ethereum/consensus-specs/blob/v1.4.0/specs/deneb/beacon-chain.md#executionpayloadheader) object from the CL Deneb spec. */
         execution: {
           /**
            * Format: hex
@@ -15756,6 +15827,8 @@ export interface components {
           extra_data: string;
           /** @example 1 */
           base_fee_per_gas: string;
+          /** @example 1 */
+          blob_gas_used: string;
           /** @example 1 */
           excess_blob_gas: string;
           /**
@@ -15820,7 +15893,7 @@ export interface components {
            */
           body_root: string;
         };
-        /** @description The [`ExecutionPayloadHeader`](https://github.com/ethereum/consensus-specs/blob/master/specs/deneb/beacon-chain.md#executionpayloadheader) object from the CL Deneb spec. */
+        /** @description The [`ExecutionPayloadHeader`](https://github.com/ethereum/consensus-specs/blob/v1.4.0/specs/deneb/beacon-chain.md#executionpayloadheader) object from the CL Deneb spec. */
         execution: {
           /**
            * Format: hex
@@ -15869,6 +15942,8 @@ export interface components {
           extra_data: string;
           /** @example 1 */
           base_fee_per_gas: string;
+          /** @example 1 */
+          blob_gas_used: string;
           /** @example 1 */
           excess_blob_gas: string;
           /**
@@ -15942,7 +16017,7 @@ export interface components {
            */
           body_root: string;
         };
-        /** @description The [`ExecutionPayloadHeader`](https://github.com/ethereum/consensus-specs/blob/master/specs/deneb/beacon-chain.md#executionpayloadheader) object from the CL Deneb spec. */
+        /** @description The [`ExecutionPayloadHeader`](https://github.com/ethereum/consensus-specs/blob/v1.4.0/specs/deneb/beacon-chain.md#executionpayloadheader) object from the CL Deneb spec. */
         execution: {
           /**
            * Format: hex
@@ -15991,6 +16066,8 @@ export interface components {
           extra_data: string;
           /** @example 1 */
           base_fee_per_gas: string;
+          /** @example 1 */
+          blob_gas_used: string;
           /** @example 1 */
           excess_blob_gas: string;
           /**
@@ -16045,7 +16122,7 @@ export interface components {
            */
           body_root: string;
         };
-        /** @description The [`ExecutionPayloadHeader`](https://github.com/ethereum/consensus-specs/blob/master/specs/deneb/beacon-chain.md#executionpayloadheader) object from the CL Deneb spec. */
+        /** @description The [`ExecutionPayloadHeader`](https://github.com/ethereum/consensus-specs/blob/v1.4.0/specs/deneb/beacon-chain.md#executionpayloadheader) object from the CL Deneb spec. */
         execution: {
           /**
            * Format: hex
@@ -16094,6 +16171,8 @@ export interface components {
           extra_data: string;
           /** @example 1 */
           base_fee_per_gas: string;
+          /** @example 1 */
+          blob_gas_used: string;
           /** @example 1 */
           excess_blob_gas: string;
           /**
@@ -16167,7 +16246,7 @@ export interface components {
            */
           body_root: string;
         };
-        /** @description The [`ExecutionPayloadHeader`](https://github.com/ethereum/consensus-specs/blob/master/specs/deneb/beacon-chain.md#executionpayloadheader) object from the CL Deneb spec. */
+        /** @description The [`ExecutionPayloadHeader`](https://github.com/ethereum/consensus-specs/blob/v1.4.0/specs/deneb/beacon-chain.md#executionpayloadheader) object from the CL Deneb spec. */
         execution: {
           /**
            * Format: hex
@@ -16217,6 +16296,8 @@ export interface components {
           /** @example 1 */
           base_fee_per_gas: string;
           /** @example 1 */
+          blob_gas_used: string;
+          /** @example 1 */
           excess_blob_gas: string;
           /**
            * Format: hex
@@ -16254,25 +16335,2975 @@ export interface components {
       /** @example 1 */
       signature_slot: string;
     };
-    'Electra.BlobSidecars': {
-      /** @example 1 */
-      index: string;
+    /** @description The [`PendingDeposit`](https://github.com/ethereum/consensus-specs/blob/v1.5.0/specs/electra/beacon-chain.md#pendingdeposit) object from the CL Electra spec. */
+    'Electra.PendingDeposit': {
       /**
        * Format: hex
-       * @description A blob is `FIELD_ELEMENTS_PER_BLOB * size_of(BLSFieldElement) = 4096 * 32 = 131072` bytes (`DATA`) representing a Blob as defined in Deneb
-       */
-      blob: string;
-      /**
-       * Format: hex
-       * @description A G1 curve point. Same as BLS standard "is valid pubkey" check but also allows `0x00..00` for point-at-infinity
+       * @description The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._
        * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
        */
-      kzg_commitment: string;
+      pubkey: string;
       /**
        * Format: hex
-       * @description A G1 curve point. Used for verifying that the `KZGCommitment` for a given `Blob` is correct.
+       * @description The withdrawal credentials.
+       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
        */
-      kzg_proof: string;
+      withdrawal_credentials: string;
+      /**
+       * @description The value to be deposited (gwei).
+       * @example 1
+       */
+      amount: string;
+      /**
+       * Format: hex
+       * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+       */
+      signature: string;
+      /**
+       * @description The slot at which the deposit request was processed.
+       * @example 1
+       */
+      slot: string;
+    };
+    /** @description The [`PendingConsolidation`](https://github.com/ethereum/consensus-specs/blob/v1.5.0/specs/electra/beacon-chain.md#pendingconsolidation) object from the CL Electra spec. */
+    'Electra.PendingConsolidation': {
+      /**
+       * @description Index of validator to consolidate from.
+       * @example 1
+       */
+      source_index: string;
+      /**
+       * @description Index of validator to consolidate to.
+       * @example 1
+       */
+      target_index: string;
+    };
+    /** @description The [`PendingPartialWithdrawal`](https://github.com/ethereum/consensus-specs/blob/v1.5.0/specs/electra/beacon-chain.md#pendingpartialwithdrawal) object from the CL Electra spec. */
+    'Electra.PendingPartialWithdrawal': {
+      /**
+       * @description Index of validator in validator registry.
+       * @example 1
+       */
+      validator_index: string;
+      /**
+       * @description The value to be withdrawn (gwei).
+       * @example 1
+       */
+      amount: string;
+      /**
+       * @description The epoch when the amount is withdrawable.
+       * @example 1
+       */
+      withdrawable_epoch: string;
+    };
+    /** @description The [`BeaconState`](https://github.com/ethereum/consensus-specs/blob/v1.6.0/specs/fulu/beacon-chain.md#beaconstate) object from the CL Fulu spec. */
+    'Fulu.BeaconState': {
+      /** @example 1 */
+      genesis_time: string;
+      /**
+       * Format: hex
+       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+       */
+      genesis_validators_root: string;
+      /** @example 1 */
+      slot: string;
+      /** @description The [`Fork`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#fork) object from the CL spec. */
+      fork: {
+        /**
+         * Format: hex
+         * @description a fork version number
+         * @example 0x00000000
+         */
+        previous_version: string;
+        /**
+         * Format: hex
+         * @description a fork version number
+         * @example 0x00000000
+         */
+        current_version: string;
+        /** @example 1 */
+        epoch: string;
+      };
+      /** @description The [`BeaconBlockHeader`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#beaconblockheader) object from the CL spec. */
+      latest_block_header: {
+        /**
+         * @description The slot to which this block corresponds.
+         * @example 1
+         */
+        slot: string;
+        /**
+         * @description Index of validator in validator registry.
+         * @example 1
+         */
+        proposer_index: string;
+        /**
+         * Format: hex
+         * @description The signing merkle root of the parent `BeaconBlock`.
+         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+         */
+        parent_root: string;
+        /**
+         * Format: hex
+         * @description The tree hash merkle root of the `BeaconState` for the `BeaconBlock`.
+         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+         */
+        state_root: string;
+      } & {
+        /**
+         * Format: hex
+         * @description The tree hash merkle root of the `BeaconBlockBody` for the `BeaconBlock`
+         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+         */
+        body_root: string;
+      };
+      /** @description Fixed length of 8192 items */
+      block_roots: string[];
+      /** @description Fixed length of 8192 items */
+      state_roots: string[];
+      /** @description Variable length list, maximum 16777216 items. Frozen in Capella, replaced by historical_summaries. */
+      historical_roots: string[];
+      /** @description The [`Eth1Data`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#eth1data) object from the CL spec. */
+      eth1_data: {
+        /**
+         * Format: hex
+         * @description Root of the deposit tree.
+         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+         */
+        deposit_root: string;
+        /**
+         * @description Total number of deposits.
+         * @example 1
+         */
+        deposit_count: string;
+        /**
+         * Format: hex
+         * @description Ethereum 1.x block hash.
+         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+         */
+        block_hash: string;
+      };
+      /** @description Fixed length of 1024 items */
+      eth1_data_votes: {
+        /**
+         * Format: hex
+         * @description Root of the deposit tree.
+         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+         */
+        deposit_root: string;
+        /**
+         * @description Total number of deposits.
+         * @example 1
+         */
+        deposit_count: string;
+        /**
+         * Format: hex
+         * @description Ethereum 1.x block hash.
+         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+         */
+        block_hash: string;
+      }[];
+      /** @example 1 */
+      eth1_deposit_index: string;
+      /** @description Variable length list, maximum 1099511627776 items */
+      validators: {
+        /**
+         * Format: hex
+         * @description The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._
+         * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
+         */
+        pubkey: string;
+        /**
+         * Format: hex
+         * @description Root of withdrawal credentials
+         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+         */
+        withdrawal_credentials: string;
+        /**
+         * @description Balance at stake in Gwei.
+         * @example 1
+         */
+        effective_balance: string;
+        /**
+         * @description Was validator slashed (not longer active).
+         * @example false
+         */
+        slashed: boolean;
+        /**
+         * @description When criteria for activation were met.
+         * @example 1
+         */
+        activation_eligibility_epoch: string;
+        /**
+         * @description Epoch when validator activated. 'FAR_FUTURE_EPOCH' if not activated
+         * @example 1
+         */
+        activation_epoch: string;
+        /**
+         * @description Epoch when validator exited. 'FAR_FUTURE_EPOCH' if not exited.
+         * @example 1
+         */
+        exit_epoch: string;
+        /**
+         * @description When validator can withdraw or transfer funds. 'FAR_FUTURE_EPOCH' if not defined
+         * @example 1
+         */
+        withdrawable_epoch: string;
+      }[];
+      /** @description Validator balances in gwei. Variable length list, maximum 1099511627776 items */
+      balances: string[];
+      /** @description Fixed length of 65536 items */
+      randao_mixes: string[];
+      /** @description Per-epoch sums of slashed effective balances. Fixed length of 8192 items */
+      slashings: string[];
+      previous_epoch_participation: string[];
+      current_epoch_participation: string[];
+      /**
+       * Format: hex
+       * @description Bit set for every recent justified epoch
+       * @example 0x01
+       */
+      justification_bits: string;
+      /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
+      previous_justified_checkpoint: {
+        /** @example 1 */
+        epoch: string;
+        /**
+         * Format: hex
+         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+         */
+        root: string;
+      };
+      /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
+      current_justified_checkpoint: {
+        /** @example 1 */
+        epoch: string;
+        /**
+         * Format: hex
+         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+         */
+        root: string;
+      };
+      /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
+      finalized_checkpoint: {
+        /** @example 1 */
+        epoch: string;
+        /**
+         * Format: hex
+         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+         */
+        root: string;
+      };
+      /** @description Per-validator inactivity scores. Introduced in Altair. Variable length list, maximum 1099511627776 items */
+      inactivity_scores: string[];
+      current_sync_committee: {
+        pubkeys: string[];
+        /**
+         * Format: hex
+         * @description The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._
+         * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
+         */
+        aggregate_pubkey: string;
+      };
+      next_sync_committee: {
+        pubkeys: string[];
+        /**
+         * Format: hex
+         * @description The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._
+         * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
+         */
+        aggregate_pubkey: string;
+      };
+      /** @description The [`ExecutionPayloadHeader`](https://github.com/ethereum/consensus-specs/blob/v1.4.0/specs/deneb/beacon-chain.md#executionpayloadheader) object from the CL Deneb spec. */
+      latest_execution_payload_header: {
+        /**
+         * Format: hex
+         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+         */
+        parent_hash: string;
+        /**
+         * Format: hex
+         * @description An address on the execution (Ethereum 1) network.
+         * @example 0xAbcF8e0d4e9587369b2301D0790347320302cc09
+         */
+        fee_recipient: string;
+        /**
+         * Format: hex
+         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+         */
+        state_root: string;
+        /**
+         * Format: hex
+         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+         */
+        receipts_root: string;
+        /**
+         * Format: hex
+         * @example 0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+         */
+        logs_bloom: string;
+        /**
+         * Format: hex
+         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+         */
+        prev_randao: string;
+        /** @example 1 */
+        block_number: string;
+        /** @example 1 */
+        gas_limit: string;
+        /** @example 1 */
+        gas_used: string;
+        /** @example 1 */
+        timestamp: string;
+        /**
+         * Format: hex
+         * @description Extra data on the execution (Ethereum 1) network.
+         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+         */
+        extra_data: string;
+        /** @example 1 */
+        base_fee_per_gas: string;
+        /** @example 1 */
+        blob_gas_used: string;
+        /** @example 1 */
+        excess_blob_gas: string;
+        /**
+         * Format: hex
+         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+         */
+        block_hash: string;
+      } & {
+        /**
+         * Format: hex
+         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+         */
+        transactions_root: string;
+        /**
+         * Format: hex
+         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+         */
+        withdrawals_root: string;
+      };
+      /** @example 1 */
+      next_withdrawal_index: string;
+      /** @example 1 */
+      next_withdrawal_validator_index: string;
+      /** @description Variable length list, maximum 16777216 items */
+      historical_summaries: {
+        /**
+         * Format: hex
+         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+         */
+        block_summary_root: string;
+        /**
+         * Format: hex
+         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+         */
+        state_summary_root: string;
+      }[];
+      /** @example 1 */
+      deposit_requests_start_index: string;
+      /** @example 1 */
+      deposit_balance_to_consume: string;
+      /** @example 1 */
+      exit_balance_to_consume: string;
+      /** @example 1 */
+      earliest_exit_epoch: string;
+      /** @example 1 */
+      consolidation_balance_to_consume: string;
+      /** @example 1 */
+      earliest_consolidation_epoch: string;
+      pending_deposits: {
+        /**
+         * Format: hex
+         * @description The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._
+         * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
+         */
+        pubkey: string;
+        /**
+         * Format: hex
+         * @description The withdrawal credentials.
+         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+         */
+        withdrawal_credentials: string;
+        /**
+         * @description The value to be deposited (gwei).
+         * @example 1
+         */
+        amount: string;
+        /**
+         * Format: hex
+         * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+         */
+        signature: string;
+        /**
+         * @description The slot at which the deposit request was processed.
+         * @example 1
+         */
+        slot: string;
+      }[];
+      pending_partial_withdrawals: {
+        /**
+         * @description Index of validator in validator registry.
+         * @example 1
+         */
+        validator_index: string;
+        /**
+         * @description The value to be withdrawn (gwei).
+         * @example 1
+         */
+        amount: string;
+        /**
+         * @description The epoch when the amount is withdrawable.
+         * @example 1
+         */
+        withdrawable_epoch: string;
+      }[];
+      pending_consolidations: {
+        /**
+         * @description Index of validator to consolidate from.
+         * @example 1
+         */
+        source_index: string;
+        /**
+         * @description Index of validator to consolidate to.
+         * @example 1
+         */
+        target_index: string;
+      }[];
+      proposer_lookahead: string[];
+    };
+    /** @description The [`BeaconBlock`](https://github.com/ethereum/consensus-specs/blob/v1.5.0/specs/phase0/beacon-chain.md#beaconblock) object from the CL Gloas spec. */
+    'Gloas.BeaconBlock': {
+      /**
+       * @description The slot to which this block corresponds.
+       * @example 1
+       */
+      slot: string;
+      /**
+       * @description Index of validator in validator registry.
+       * @example 1
+       */
+      proposer_index: string;
+      /**
+       * Format: hex
+       * @description The signing Merkle root of the parent `BeaconBlock`.
+       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+       */
+      parent_root: string;
+      /**
+       * Format: hex
+       * @description The tree hash Merkle root of the `BeaconState` for the `BeaconBlock`.
+       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+       */
+      state_root: string;
+    } & {
+      /** @description The [`BeaconBlockBody`](https://github.com/ethereum/consensus-specs/blob/v1.7.0-alpha.2/specs/gloas/beacon-chain.md#beaconblockbody) object from the CL Gloas spec. */
+      body: {
+        /**
+         * Format: hex
+         * @description The RANDAO reveal value provided by the validator.
+         * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+         */
+        randao_reveal: string;
+        /** @description The [`Eth1Data`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#eth1data) object from the CL spec. */
+        eth1_data: {
+          /**
+           * Format: hex
+           * @description Root of the deposit tree.
+           * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+           */
+          deposit_root: string;
+          /**
+           * @description Total number of deposits.
+           * @example 1
+           */
+          deposit_count: string;
+          /**
+           * Format: hex
+           * @description Ethereum 1.x block hash.
+           * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+           */
+          block_hash: string;
+        };
+        /**
+         * Format: hex
+         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+         */
+        graffiti: string;
+        proposer_slashings: {
+          /** @description The [`SignedBeaconBlockHeader`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#signedbeaconblockheader) object envelope from the CL spec. */
+          signed_header_1: {
+            /** @description The [`BeaconBlockHeader`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#beaconblockheader) object from the CL spec. */
+            message: {
+              /**
+               * @description The slot to which this block corresponds.
+               * @example 1
+               */
+              slot: string;
+              /**
+               * @description Index of validator in validator registry.
+               * @example 1
+               */
+              proposer_index: string;
+              /**
+               * Format: hex
+               * @description The signing merkle root of the parent `BeaconBlock`.
+               * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+               */
+              parent_root: string;
+              /**
+               * Format: hex
+               * @description The tree hash merkle root of the `BeaconState` for the `BeaconBlock`.
+               * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+               */
+              state_root: string;
+            } & {
+              /**
+               * Format: hex
+               * @description The tree hash merkle root of the `BeaconBlockBody` for the `BeaconBlock`
+               * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+               */
+              body_root: string;
+            };
+            /**
+             * Format: hex
+             * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+             */
+            signature: string;
+          };
+          /** @description The [`SignedBeaconBlockHeader`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#signedbeaconblockheader) object envelope from the CL spec. */
+          signed_header_2: {
+            /** @description The [`BeaconBlockHeader`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#beaconblockheader) object from the CL spec. */
+            message: {
+              /**
+               * @description The slot to which this block corresponds.
+               * @example 1
+               */
+              slot: string;
+              /**
+               * @description Index of validator in validator registry.
+               * @example 1
+               */
+              proposer_index: string;
+              /**
+               * Format: hex
+               * @description The signing merkle root of the parent `BeaconBlock`.
+               * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+               */
+              parent_root: string;
+              /**
+               * Format: hex
+               * @description The tree hash merkle root of the `BeaconState` for the `BeaconBlock`.
+               * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+               */
+              state_root: string;
+            } & {
+              /**
+               * Format: hex
+               * @description The tree hash merkle root of the `BeaconBlockBody` for the `BeaconBlock`
+               * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+               */
+              body_root: string;
+            };
+            /**
+             * Format: hex
+             * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+             */
+            signature: string;
+          };
+        }[];
+        attester_slashings: {
+          /** @description The [`IndexedAttestation`](https://github.com/ethereum/consensus-specs/blob/v1.5.0/specs/electra/beacon-chain.md#indexedattestation) object from the CL spec. */
+          attestation_1: {
+            /** @description Attesting validator indices */
+            attesting_indices: string[];
+            /** @description The [`AttestationData`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#attestationdata) object from the CL spec. */
+            data: {
+              /** @example 1 */
+              slot: string;
+              /** @example 1 */
+              index: string;
+              /**
+               * Format: hex
+               * @description LMD GHOST vote.
+               * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+               */
+              beacon_block_root: string;
+              /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
+              source: {
+                /** @example 1 */
+                epoch: string;
+                /**
+                 * Format: hex
+                 * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                 */
+                root: string;
+              };
+              /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
+              target: {
+                /** @example 1 */
+                epoch: string;
+                /**
+                 * Format: hex
+                 * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                 */
+                root: string;
+              };
+            };
+            /**
+             * Format: hex
+             * @description The BLS signature of the `IndexedAttestation`, created by the validator of the attestation.
+             * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+             */
+            signature: string;
+          };
+          /** @description The [`IndexedAttestation`](https://github.com/ethereum/consensus-specs/blob/v1.5.0/specs/electra/beacon-chain.md#indexedattestation) object from the CL spec. */
+          attestation_2: {
+            /** @description Attesting validator indices */
+            attesting_indices: string[];
+            /** @description The [`AttestationData`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#attestationdata) object from the CL spec. */
+            data: {
+              /** @example 1 */
+              slot: string;
+              /** @example 1 */
+              index: string;
+              /**
+               * Format: hex
+               * @description LMD GHOST vote.
+               * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+               */
+              beacon_block_root: string;
+              /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
+              source: {
+                /** @example 1 */
+                epoch: string;
+                /**
+                 * Format: hex
+                 * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                 */
+                root: string;
+              };
+              /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
+              target: {
+                /** @example 1 */
+                epoch: string;
+                /**
+                 * Format: hex
+                 * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                 */
+                root: string;
+              };
+            };
+            /**
+             * Format: hex
+             * @description The BLS signature of the `IndexedAttestation`, created by the validator of the attestation.
+             * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+             */
+            signature: string;
+          };
+        }[];
+        attestations: {
+          /**
+           * Format: hex
+           * @description Attester aggregation bits.
+           * @example 0x01
+           */
+          aggregation_bits: string;
+          /** @description The [`AttestationData`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#attestationdata) object from the CL spec. */
+          data: {
+            /** @example 1 */
+            slot: string;
+            /** @example 1 */
+            index: string;
+            /**
+             * Format: hex
+             * @description LMD GHOST vote.
+             * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+             */
+            beacon_block_root: string;
+            /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
+            source: {
+              /** @example 1 */
+              epoch: string;
+              /**
+               * Format: hex
+               * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+               */
+              root: string;
+            };
+            /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
+            target: {
+              /** @example 1 */
+              epoch: string;
+              /**
+               * Format: hex
+               * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+               */
+              root: string;
+            };
+          };
+          /**
+           * Format: hex
+           * @description BLS aggregate signature.
+           * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+           */
+          signature: string;
+          /**
+           * Format: hex
+           * @description Committee bits.
+           * @example 0x0000000000000001
+           */
+          committee_bits: string;
+        }[];
+        deposits: {
+          /** @description Branch in the deposit tree. */
+          proof: string[];
+          /** @description The [`DepositData`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#depositdata) object from the CL spec. */
+          data: {
+            /**
+             * Format: hex
+             * @description The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._
+             * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
+             */
+            pubkey: string;
+            /**
+             * Format: hex
+             * @description The withdrawal credentials.
+             * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+             */
+            withdrawal_credentials: string;
+            /**
+             * @description Amount in Gwei.
+             * @example 1
+             */
+            amount: string;
+            /**
+             * Format: hex
+             * @description Container self-signature.
+             * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+             */
+            signature: string;
+          };
+        }[];
+        voluntary_exits: {
+          /** @description The [`VoluntaryExit`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#voluntaryexit) object from the CL spec. */
+          message: {
+            /**
+             * @description Minimum epoch for processing exit.
+             * @example 1
+             */
+            epoch: string;
+            /**
+             * @description Index of the exiting validator.
+             * @example 1
+             */
+            validator_index: string;
+          };
+          /**
+           * Format: hex
+           * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+           */
+          signature: string;
+        }[];
+        /** @description The [`SyncAggregate`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/altair/beacon-chain.md#syncaggregate) object from the CL Altair spec. */
+        sync_aggregate: {
+          /**
+           * Format: hex
+           * @description Aggregation bits of sync
+           * @example 0x01
+           */
+          sync_committee_bits: string;
+          /**
+           * Format: hex
+           * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+           */
+          sync_committee_signature: string;
+        };
+        bls_to_execution_changes: {
+          /** @description The [`BLSToExecutionChange`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/capella/beacon-chain.md#blstoexecutionchange) object from the CL spec. */
+          message: {
+            /**
+             * @description Index of the validator for which credentials will be changed.
+             * @example 1
+             */
+            validator_index: string;
+            /**
+             * Format: hex
+             * @description The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._
+             * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
+             */
+            from_bls_pubkey: string;
+            /**
+             * Format: hex
+             * @description Execution address to which the credentials will be changed.
+             * @example 0xAbcF8e0d4e9587369b2301D0790347320302cc09
+             */
+            to_execution_address: string;
+          };
+          /**
+           * Format: hex
+           * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+           */
+          signature: string;
+        }[];
+        /** @description The [`SignedExecutionPayloadBid`](https://github.com/ethereum/consensus-specs/blob/v1.7.0-alpha.2/specs/gloas/beacon-chain.md#signedexecutionpayloadbid) object from the CL Gloas spec. */
+        signed_execution_payload_bid: {
+          /** @description The [`ExecutionPayloadBid`](https://github.com/ethereum/consensus-specs/blob/v1.7.0-alpha.2/specs/gloas/beacon-chain.md#executionpayloadbid) object from the CL Gloas spec. */
+          message: {
+            /**
+             * Format: hex
+             * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+             */
+            parent_block_hash: string;
+            /**
+             * Format: hex
+             * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+             */
+            parent_block_root: string;
+            /**
+             * Format: hex
+             * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+             */
+            block_hash: string;
+            /**
+             * Format: hex
+             * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+             */
+            prev_randao: string;
+            /**
+             * Format: hex
+             * @description An address on the execution (Ethereum 1) network.
+             * @example 0xAbcF8e0d4e9587369b2301D0790347320302cc09
+             */
+            fee_recipient: string;
+            /** @example 1 */
+            gas_limit: string;
+            /** @example 1 */
+            builder_index: string;
+            /** @example 1 */
+            slot: string;
+            /** @example 1 */
+            value: string;
+            /** @example 1 */
+            execution_payment: string;
+            blob_kzg_commitments: string[];
+          };
+          /**
+           * Format: hex
+           * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+           */
+          signature: string;
+        };
+        /** @description Array of payload attestations from gloas. */
+        payload_attestations: {
+          /**
+           * Format: hex
+           * @example 0x01
+           */
+          aggregation_bits: string;
+          /** @description The [`PayloadAttestationData`](https://github.com/ethereum/consensus-specs/blob/v1.7.0-alpha.2/specs/gloas/beacon-chain.md#payloadattestationdata) object from the CL Gloas spec. */
+          data: {
+            /**
+             * Format: hex
+             * @description Hash tree root of the beacon block associated with this PTC attestation
+             * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+             */
+            beacon_block_root: string;
+            /**
+             * @description The slot for which the payload attestation is being made
+             * @example 1
+             */
+            slot: string;
+            /** @description True if a `SignedExecutionPayloadEnvelope` has been seen referencing this block */
+            payload_present: boolean;
+            /** @description True if blob data is available for this block */
+            blob_data_available: boolean;
+          };
+          /**
+           * Format: hex
+           * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+           */
+          signature: string;
+        }[];
+      };
+    };
+    /** @description The [`SignedBeaconBlock`](https://github.com/ethereum/consensus-specs/blob/v1.5.0/specs/phase0/beacon-chain.md#signedbeaconblock) object envelope from the CL Gloas spec. */
+    'Gloas.SignedBeaconBlock': {
+      /** @description The [`BeaconBlock`](https://github.com/ethereum/consensus-specs/blob/v1.5.0/specs/phase0/beacon-chain.md#beaconblock) object from the CL Gloas spec. */
+      message: {
+        /**
+         * @description The slot to which this block corresponds.
+         * @example 1
+         */
+        slot: string;
+        /**
+         * @description Index of validator in validator registry.
+         * @example 1
+         */
+        proposer_index: string;
+        /**
+         * Format: hex
+         * @description The signing Merkle root of the parent `BeaconBlock`.
+         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+         */
+        parent_root: string;
+        /**
+         * Format: hex
+         * @description The tree hash Merkle root of the `BeaconState` for the `BeaconBlock`.
+         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+         */
+        state_root: string;
+      } & {
+        /** @description The [`BeaconBlockBody`](https://github.com/ethereum/consensus-specs/blob/v1.7.0-alpha.2/specs/gloas/beacon-chain.md#beaconblockbody) object from the CL Gloas spec. */
+        body: {
+          /**
+           * Format: hex
+           * @description The RANDAO reveal value provided by the validator.
+           * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+           */
+          randao_reveal: string;
+          /** @description The [`Eth1Data`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#eth1data) object from the CL spec. */
+          eth1_data: {
+            /**
+             * Format: hex
+             * @description Root of the deposit tree.
+             * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+             */
+            deposit_root: string;
+            /**
+             * @description Total number of deposits.
+             * @example 1
+             */
+            deposit_count: string;
+            /**
+             * Format: hex
+             * @description Ethereum 1.x block hash.
+             * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+             */
+            block_hash: string;
+          };
+          /**
+           * Format: hex
+           * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+           */
+          graffiti: string;
+          proposer_slashings: {
+            /** @description The [`SignedBeaconBlockHeader`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#signedbeaconblockheader) object envelope from the CL spec. */
+            signed_header_1: {
+              /** @description The [`BeaconBlockHeader`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#beaconblockheader) object from the CL spec. */
+              message: {
+                /**
+                 * @description The slot to which this block corresponds.
+                 * @example 1
+                 */
+                slot: string;
+                /**
+                 * @description Index of validator in validator registry.
+                 * @example 1
+                 */
+                proposer_index: string;
+                /**
+                 * Format: hex
+                 * @description The signing merkle root of the parent `BeaconBlock`.
+                 * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                 */
+                parent_root: string;
+                /**
+                 * Format: hex
+                 * @description The tree hash merkle root of the `BeaconState` for the `BeaconBlock`.
+                 * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                 */
+                state_root: string;
+              } & {
+                /**
+                 * Format: hex
+                 * @description The tree hash merkle root of the `BeaconBlockBody` for the `BeaconBlock`
+                 * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                 */
+                body_root: string;
+              };
+              /**
+               * Format: hex
+               * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+               */
+              signature: string;
+            };
+            /** @description The [`SignedBeaconBlockHeader`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#signedbeaconblockheader) object envelope from the CL spec. */
+            signed_header_2: {
+              /** @description The [`BeaconBlockHeader`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#beaconblockheader) object from the CL spec. */
+              message: {
+                /**
+                 * @description The slot to which this block corresponds.
+                 * @example 1
+                 */
+                slot: string;
+                /**
+                 * @description Index of validator in validator registry.
+                 * @example 1
+                 */
+                proposer_index: string;
+                /**
+                 * Format: hex
+                 * @description The signing merkle root of the parent `BeaconBlock`.
+                 * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                 */
+                parent_root: string;
+                /**
+                 * Format: hex
+                 * @description The tree hash merkle root of the `BeaconState` for the `BeaconBlock`.
+                 * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                 */
+                state_root: string;
+              } & {
+                /**
+                 * Format: hex
+                 * @description The tree hash merkle root of the `BeaconBlockBody` for the `BeaconBlock`
+                 * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                 */
+                body_root: string;
+              };
+              /**
+               * Format: hex
+               * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+               */
+              signature: string;
+            };
+          }[];
+          attester_slashings: {
+            /** @description The [`IndexedAttestation`](https://github.com/ethereum/consensus-specs/blob/v1.5.0/specs/electra/beacon-chain.md#indexedattestation) object from the CL spec. */
+            attestation_1: {
+              /** @description Attesting validator indices */
+              attesting_indices: string[];
+              /** @description The [`AttestationData`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#attestationdata) object from the CL spec. */
+              data: {
+                /** @example 1 */
+                slot: string;
+                /** @example 1 */
+                index: string;
+                /**
+                 * Format: hex
+                 * @description LMD GHOST vote.
+                 * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                 */
+                beacon_block_root: string;
+                /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
+                source: {
+                  /** @example 1 */
+                  epoch: string;
+                  /**
+                   * Format: hex
+                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                   */
+                  root: string;
+                };
+                /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
+                target: {
+                  /** @example 1 */
+                  epoch: string;
+                  /**
+                   * Format: hex
+                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                   */
+                  root: string;
+                };
+              };
+              /**
+               * Format: hex
+               * @description The BLS signature of the `IndexedAttestation`, created by the validator of the attestation.
+               * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+               */
+              signature: string;
+            };
+            /** @description The [`IndexedAttestation`](https://github.com/ethereum/consensus-specs/blob/v1.5.0/specs/electra/beacon-chain.md#indexedattestation) object from the CL spec. */
+            attestation_2: {
+              /** @description Attesting validator indices */
+              attesting_indices: string[];
+              /** @description The [`AttestationData`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#attestationdata) object from the CL spec. */
+              data: {
+                /** @example 1 */
+                slot: string;
+                /** @example 1 */
+                index: string;
+                /**
+                 * Format: hex
+                 * @description LMD GHOST vote.
+                 * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                 */
+                beacon_block_root: string;
+                /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
+                source: {
+                  /** @example 1 */
+                  epoch: string;
+                  /**
+                   * Format: hex
+                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                   */
+                  root: string;
+                };
+                /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
+                target: {
+                  /** @example 1 */
+                  epoch: string;
+                  /**
+                   * Format: hex
+                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                   */
+                  root: string;
+                };
+              };
+              /**
+               * Format: hex
+               * @description The BLS signature of the `IndexedAttestation`, created by the validator of the attestation.
+               * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+               */
+              signature: string;
+            };
+          }[];
+          attestations: {
+            /**
+             * Format: hex
+             * @description Attester aggregation bits.
+             * @example 0x01
+             */
+            aggregation_bits: string;
+            /** @description The [`AttestationData`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#attestationdata) object from the CL spec. */
+            data: {
+              /** @example 1 */
+              slot: string;
+              /** @example 1 */
+              index: string;
+              /**
+               * Format: hex
+               * @description LMD GHOST vote.
+               * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+               */
+              beacon_block_root: string;
+              /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
+              source: {
+                /** @example 1 */
+                epoch: string;
+                /**
+                 * Format: hex
+                 * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                 */
+                root: string;
+              };
+              /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
+              target: {
+                /** @example 1 */
+                epoch: string;
+                /**
+                 * Format: hex
+                 * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                 */
+                root: string;
+              };
+            };
+            /**
+             * Format: hex
+             * @description BLS aggregate signature.
+             * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+             */
+            signature: string;
+            /**
+             * Format: hex
+             * @description Committee bits.
+             * @example 0x0000000000000001
+             */
+            committee_bits: string;
+          }[];
+          deposits: {
+            /** @description Branch in the deposit tree. */
+            proof: string[];
+            /** @description The [`DepositData`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#depositdata) object from the CL spec. */
+            data: {
+              /**
+               * Format: hex
+               * @description The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._
+               * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
+               */
+              pubkey: string;
+              /**
+               * Format: hex
+               * @description The withdrawal credentials.
+               * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+               */
+              withdrawal_credentials: string;
+              /**
+               * @description Amount in Gwei.
+               * @example 1
+               */
+              amount: string;
+              /**
+               * Format: hex
+               * @description Container self-signature.
+               * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+               */
+              signature: string;
+            };
+          }[];
+          voluntary_exits: {
+            /** @description The [`VoluntaryExit`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#voluntaryexit) object from the CL spec. */
+            message: {
+              /**
+               * @description Minimum epoch for processing exit.
+               * @example 1
+               */
+              epoch: string;
+              /**
+               * @description Index of the exiting validator.
+               * @example 1
+               */
+              validator_index: string;
+            };
+            /**
+             * Format: hex
+             * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+             */
+            signature: string;
+          }[];
+          /** @description The [`SyncAggregate`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/altair/beacon-chain.md#syncaggregate) object from the CL Altair spec. */
+          sync_aggregate: {
+            /**
+             * Format: hex
+             * @description Aggregation bits of sync
+             * @example 0x01
+             */
+            sync_committee_bits: string;
+            /**
+             * Format: hex
+             * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+             */
+            sync_committee_signature: string;
+          };
+          bls_to_execution_changes: {
+            /** @description The [`BLSToExecutionChange`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/capella/beacon-chain.md#blstoexecutionchange) object from the CL spec. */
+            message: {
+              /**
+               * @description Index of the validator for which credentials will be changed.
+               * @example 1
+               */
+              validator_index: string;
+              /**
+               * Format: hex
+               * @description The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._
+               * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
+               */
+              from_bls_pubkey: string;
+              /**
+               * Format: hex
+               * @description Execution address to which the credentials will be changed.
+               * @example 0xAbcF8e0d4e9587369b2301D0790347320302cc09
+               */
+              to_execution_address: string;
+            };
+            /**
+             * Format: hex
+             * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+             */
+            signature: string;
+          }[];
+          /** @description The [`SignedExecutionPayloadBid`](https://github.com/ethereum/consensus-specs/blob/v1.7.0-alpha.2/specs/gloas/beacon-chain.md#signedexecutionpayloadbid) object from the CL Gloas spec. */
+          signed_execution_payload_bid: {
+            /** @description The [`ExecutionPayloadBid`](https://github.com/ethereum/consensus-specs/blob/v1.7.0-alpha.2/specs/gloas/beacon-chain.md#executionpayloadbid) object from the CL Gloas spec. */
+            message: {
+              /**
+               * Format: hex
+               * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+               */
+              parent_block_hash: string;
+              /**
+               * Format: hex
+               * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+               */
+              parent_block_root: string;
+              /**
+               * Format: hex
+               * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+               */
+              block_hash: string;
+              /**
+               * Format: hex
+               * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+               */
+              prev_randao: string;
+              /**
+               * Format: hex
+               * @description An address on the execution (Ethereum 1) network.
+               * @example 0xAbcF8e0d4e9587369b2301D0790347320302cc09
+               */
+              fee_recipient: string;
+              /** @example 1 */
+              gas_limit: string;
+              /** @example 1 */
+              builder_index: string;
+              /** @example 1 */
+              slot: string;
+              /** @example 1 */
+              value: string;
+              /** @example 1 */
+              execution_payment: string;
+              blob_kzg_commitments: string[];
+            };
+            /**
+             * Format: hex
+             * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+             */
+            signature: string;
+          };
+          /** @description Array of payload attestations from gloas. */
+          payload_attestations: {
+            /**
+             * Format: hex
+             * @example 0x01
+             */
+            aggregation_bits: string;
+            /** @description The [`PayloadAttestationData`](https://github.com/ethereum/consensus-specs/blob/v1.7.0-alpha.2/specs/gloas/beacon-chain.md#payloadattestationdata) object from the CL Gloas spec. */
+            data: {
+              /**
+               * Format: hex
+               * @description Hash tree root of the beacon block associated with this PTC attestation
+               * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+               */
+              beacon_block_root: string;
+              /**
+               * @description The slot for which the payload attestation is being made
+               * @example 1
+               */
+              slot: string;
+              /** @description True if a `SignedExecutionPayloadEnvelope` has been seen referencing this block */
+              payload_present: boolean;
+              /** @description True if blob data is available for this block */
+              blob_data_available: boolean;
+            };
+            /**
+             * Format: hex
+             * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+             */
+            signature: string;
+          }[];
+        };
+      };
+      /**
+       * Format: hex
+       * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+       */
+      signature: string;
+    };
+    /** @description The [`ExecutionPayloadBid`](https://github.com/ethereum/consensus-specs/blob/v1.7.0-alpha.2/specs/gloas/beacon-chain.md#executionpayloadbid) object from the CL Gloas spec. */
+    'Gloas.ExecutionPayloadBid': {
+      /**
+       * Format: hex
+       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+       */
+      parent_block_hash: string;
+      /**
+       * Format: hex
+       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+       */
+      parent_block_root: string;
+      /**
+       * Format: hex
+       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+       */
+      block_hash: string;
+      /**
+       * Format: hex
+       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+       */
+      prev_randao: string;
+      /**
+       * Format: hex
+       * @description An address on the execution (Ethereum 1) network.
+       * @example 0xAbcF8e0d4e9587369b2301D0790347320302cc09
+       */
+      fee_recipient: string;
+      /** @example 1 */
+      gas_limit: string;
+      /** @example 1 */
+      builder_index: string;
+      /** @example 1 */
+      slot: string;
+      /** @example 1 */
+      value: string;
+      /** @example 1 */
+      execution_payment: string;
+      blob_kzg_commitments: string[];
+    };
+    /** @description The [`SignedExecutionPayloadBid`](https://github.com/ethereum/consensus-specs/blob/v1.7.0-alpha.2/specs/gloas/beacon-chain.md#signedexecutionpayloadbid) object from the CL Gloas spec. */
+    'Gloas.SignedExecutionPayloadBid': {
+      /** @description The [`ExecutionPayloadBid`](https://github.com/ethereum/consensus-specs/blob/v1.7.0-alpha.2/specs/gloas/beacon-chain.md#executionpayloadbid) object from the CL Gloas spec. */
+      message: {
+        /**
+         * Format: hex
+         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+         */
+        parent_block_hash: string;
+        /**
+         * Format: hex
+         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+         */
+        parent_block_root: string;
+        /**
+         * Format: hex
+         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+         */
+        block_hash: string;
+        /**
+         * Format: hex
+         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+         */
+        prev_randao: string;
+        /**
+         * Format: hex
+         * @description An address on the execution (Ethereum 1) network.
+         * @example 0xAbcF8e0d4e9587369b2301D0790347320302cc09
+         */
+        fee_recipient: string;
+        /** @example 1 */
+        gas_limit: string;
+        /** @example 1 */
+        builder_index: string;
+        /** @example 1 */
+        slot: string;
+        /** @example 1 */
+        value: string;
+        /** @example 1 */
+        execution_payment: string;
+        blob_kzg_commitments: string[];
+      };
+      /**
+       * Format: hex
+       * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+       */
+      signature: string;
+    };
+    /** @description The [`ExecutionPayloadEnvelope`](https://github.com/ethereum/consensus-specs/blob/v1.7.0-alpha.2/specs/gloas/beacon-chain.md#executionpayloadenvelope) object from the CL Gloas spec. */
+    'Gloas.ExecutionPayloadEnvelope': {
+      payload: {
+        /**
+         * Format: hex
+         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+         */
+        parent_hash: string;
+        /**
+         * Format: hex
+         * @description An address on the execution (Ethereum 1) network.
+         * @example 0xAbcF8e0d4e9587369b2301D0790347320302cc09
+         */
+        fee_recipient: string;
+        /**
+         * Format: hex
+         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+         */
+        state_root: string;
+        /**
+         * Format: hex
+         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+         */
+        receipts_root: string;
+        /**
+         * Format: hex
+         * @example 0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+         */
+        logs_bloom: string;
+        /**
+         * Format: hex
+         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+         */
+        prev_randao: string;
+        /** @example 1 */
+        block_number: string;
+        /** @example 1 */
+        gas_limit: string;
+        /** @example 1 */
+        gas_used: string;
+        /** @example 1 */
+        timestamp: string;
+        /**
+         * Format: hex
+         * @description Extra data on the execution (Ethereum 1) network.
+         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+         */
+        extra_data: string;
+        /** @example 1 */
+        base_fee_per_gas: string;
+        /** @example 1 */
+        blob_gas_used: string;
+        /** @example 1 */
+        excess_blob_gas: string;
+        /**
+         * Format: hex
+         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+         */
+        block_hash: string;
+      } & {
+        transactions: string[];
+        withdrawals: {
+          /**
+           * @description The index of the withdrawal.
+           * @example 1
+           */
+          index: string;
+          /**
+           * @description The index of the withdrawing validator.
+           * @example 1
+           */
+          validator_index: string;
+          /**
+           * Format: hex
+           * @description An address on the execution (Ethereum 1) network.
+           * @example 0xAbcF8e0d4e9587369b2301D0790347320302cc09
+           */
+          address: string;
+          /**
+           * @description The value withdrawn (gwei).
+           * @example 1
+           */
+          amount: string;
+        }[];
+      };
+      /** @description The [`ExecutionRequests`](https://github.com/ethereum/consensus-specs/blob/v1.5.0/specs/electra/beacon-chain.md#executionrequests) object from the CL Electra spec. */
+      execution_requests: {
+        deposits: {
+          /**
+           * Format: hex
+           * @description The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._
+           * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
+           */
+          pubkey: string;
+          /**
+           * Format: hex
+           * @description The withdrawal credentials.
+           * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+           */
+          withdrawal_credentials: string;
+          /**
+           * @description The value to be deposited (gwei).
+           * @example 1
+           */
+          amount: string;
+          /**
+           * Format: hex
+           * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+           */
+          signature: string;
+          /**
+           * @description The index of the deposit request.
+           * @example 1
+           */
+          index: string;
+        }[];
+        withdrawals: {
+          /**
+           * Format: hex
+           * @description An address on the execution (Ethereum 1) network.
+           * @example 0xAbcF8e0d4e9587369b2301D0790347320302cc09
+           */
+          source_address: string;
+          /**
+           * Format: hex
+           * @description The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._
+           * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
+           */
+          validator_pubkey: string;
+          /**
+           * @description The value to be withdrawn (gwei).
+           * @example 1
+           */
+          amount: string;
+        }[];
+        consolidations: {
+          /**
+           * Format: hex
+           * @description An address on the execution (Ethereum 1) network.
+           * @example 0xAbcF8e0d4e9587369b2301D0790347320302cc09
+           */
+          source_address: string;
+          /**
+           * Format: hex
+           * @description The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._
+           * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
+           */
+          source_pubkey: string;
+          /**
+           * Format: hex
+           * @description The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._
+           * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
+           */
+          target_pubkey: string;
+        }[];
+      };
+      /**
+       * @description Index of the builder that created this execution payload
+       * @example 1
+       */
+      builder_index: string;
+      /**
+       * Format: hex
+       * @description Root of the beacon block for this payload
+       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+       */
+      beacon_block_root: string;
+      /**
+       * @description Slot number for this execution payload
+       * @example 1
+       */
+      slot: string;
+      /**
+       * Format: hex
+       * @description Beacon state root after executing this payload
+       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+       */
+      state_root: string;
+    };
+    /** @description The [`SignedExecutionPayloadEnvelope`](https://github.com/ethereum/consensus-specs/blob/v1.7.0-alpha.2/specs/gloas/beacon-chain.md#signedexecutionpayloadenvelope) object from the CL Gloas spec. */
+    'Gloas.SignedExecutionPayloadEnvelope': {
+      /** @description The [`ExecutionPayloadEnvelope`](https://github.com/ethereum/consensus-specs/blob/v1.7.0-alpha.2/specs/gloas/beacon-chain.md#executionpayloadenvelope) object from the CL Gloas spec. */
+      message: {
+        payload: {
+          /**
+           * Format: hex
+           * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+           */
+          parent_hash: string;
+          /**
+           * Format: hex
+           * @description An address on the execution (Ethereum 1) network.
+           * @example 0xAbcF8e0d4e9587369b2301D0790347320302cc09
+           */
+          fee_recipient: string;
+          /**
+           * Format: hex
+           * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+           */
+          state_root: string;
+          /**
+           * Format: hex
+           * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+           */
+          receipts_root: string;
+          /**
+           * Format: hex
+           * @example 0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+           */
+          logs_bloom: string;
+          /**
+           * Format: hex
+           * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+           */
+          prev_randao: string;
+          /** @example 1 */
+          block_number: string;
+          /** @example 1 */
+          gas_limit: string;
+          /** @example 1 */
+          gas_used: string;
+          /** @example 1 */
+          timestamp: string;
+          /**
+           * Format: hex
+           * @description Extra data on the execution (Ethereum 1) network.
+           * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+           */
+          extra_data: string;
+          /** @example 1 */
+          base_fee_per_gas: string;
+          /** @example 1 */
+          blob_gas_used: string;
+          /** @example 1 */
+          excess_blob_gas: string;
+          /**
+           * Format: hex
+           * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+           */
+          block_hash: string;
+        } & {
+          transactions: string[];
+          withdrawals: {
+            /**
+             * @description The index of the withdrawal.
+             * @example 1
+             */
+            index: string;
+            /**
+             * @description The index of the withdrawing validator.
+             * @example 1
+             */
+            validator_index: string;
+            /**
+             * Format: hex
+             * @description An address on the execution (Ethereum 1) network.
+             * @example 0xAbcF8e0d4e9587369b2301D0790347320302cc09
+             */
+            address: string;
+            /**
+             * @description The value withdrawn (gwei).
+             * @example 1
+             */
+            amount: string;
+          }[];
+        };
+        /** @description The [`ExecutionRequests`](https://github.com/ethereum/consensus-specs/blob/v1.5.0/specs/electra/beacon-chain.md#executionrequests) object from the CL Electra spec. */
+        execution_requests: {
+          deposits: {
+            /**
+             * Format: hex
+             * @description The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._
+             * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
+             */
+            pubkey: string;
+            /**
+             * Format: hex
+             * @description The withdrawal credentials.
+             * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+             */
+            withdrawal_credentials: string;
+            /**
+             * @description The value to be deposited (gwei).
+             * @example 1
+             */
+            amount: string;
+            /**
+             * Format: hex
+             * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+             */
+            signature: string;
+            /**
+             * @description The index of the deposit request.
+             * @example 1
+             */
+            index: string;
+          }[];
+          withdrawals: {
+            /**
+             * Format: hex
+             * @description An address on the execution (Ethereum 1) network.
+             * @example 0xAbcF8e0d4e9587369b2301D0790347320302cc09
+             */
+            source_address: string;
+            /**
+             * Format: hex
+             * @description The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._
+             * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
+             */
+            validator_pubkey: string;
+            /**
+             * @description The value to be withdrawn (gwei).
+             * @example 1
+             */
+            amount: string;
+          }[];
+          consolidations: {
+            /**
+             * Format: hex
+             * @description An address on the execution (Ethereum 1) network.
+             * @example 0xAbcF8e0d4e9587369b2301D0790347320302cc09
+             */
+            source_address: string;
+            /**
+             * Format: hex
+             * @description The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._
+             * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
+             */
+            source_pubkey: string;
+            /**
+             * Format: hex
+             * @description The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._
+             * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
+             */
+            target_pubkey: string;
+          }[];
+        };
+        /**
+         * @description Index of the builder that created this execution payload
+         * @example 1
+         */
+        builder_index: string;
+        /**
+         * Format: hex
+         * @description Root of the beacon block for this payload
+         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+         */
+        beacon_block_root: string;
+        /**
+         * @description Slot number for this execution payload
+         * @example 1
+         */
+        slot: string;
+        /**
+         * Format: hex
+         * @description Beacon state root after executing this payload
+         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+         */
+        state_root: string;
+      };
+      /**
+       * Format: hex
+       * @description BLS signature of the execution payload envelope
+       * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+       */
+      signature: string;
+    };
+    /** @description The [`PayloadAttestationData`](https://github.com/ethereum/consensus-specs/blob/v1.7.0-alpha.2/specs/gloas/beacon-chain.md#payloadattestationdata) object from the CL Gloas spec. */
+    'Gloas.PayloadAttestationData': {
+      /**
+       * Format: hex
+       * @description Hash tree root of the beacon block associated with this PTC attestation
+       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+       */
+      beacon_block_root: string;
+      /**
+       * @description The slot for which the payload attestation is being made
+       * @example 1
+       */
+      slot: string;
+      /** @description True if a `SignedExecutionPayloadEnvelope` has been seen referencing this block */
+      payload_present: boolean;
+      /** @description True if blob data is available for this block */
+      blob_data_available: boolean;
+    };
+    /** @description The [`PayloadAttestation`](https://github.com/ethereum/consensus-specs/blob/v1.7.0-alpha.2/specs/gloas/beacon-chain.md#payloadattestation) object from the CL Gloas spec. */
+    'Gloas.PayloadAttestation': {
+      /**
+       * Format: hex
+       * @example 0x01
+       */
+      aggregation_bits: string;
+      /** @description The [`PayloadAttestationData`](https://github.com/ethereum/consensus-specs/blob/v1.7.0-alpha.2/specs/gloas/beacon-chain.md#payloadattestationdata) object from the CL Gloas spec. */
+      data: {
+        /**
+         * Format: hex
+         * @description Hash tree root of the beacon block associated with this PTC attestation
+         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+         */
+        beacon_block_root: string;
+        /**
+         * @description The slot for which the payload attestation is being made
+         * @example 1
+         */
+        slot: string;
+        /** @description True if a `SignedExecutionPayloadEnvelope` has been seen referencing this block */
+        payload_present: boolean;
+        /** @description True if blob data is available for this block */
+        blob_data_available: boolean;
+      };
+      /**
+       * Format: hex
+       * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+       */
+      signature: string;
+    };
+    /** @description The [`PayloadAttestationMessage`](https://github.com/ethereum/consensus-specs/blob/v1.7.0-alpha.2/specs/gloas/beacon-chain.md#payloadattestationmessage) object from the CL Gloas spec. */
+    'Gloas.PayloadAttestationMessage': {
+      /**
+       * @description Index of the validator submitting the payload attestation
+       * @example 1
+       */
+      validator_index: string;
+      /** @description The [`PayloadAttestationData`](https://github.com/ethereum/consensus-specs/blob/v1.7.0-alpha.2/specs/gloas/beacon-chain.md#payloadattestationdata) object from the CL Gloas spec. */
+      data: {
+        /**
+         * Format: hex
+         * @description Hash tree root of the beacon block associated with this PTC attestation
+         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+         */
+        beacon_block_root: string;
+        /**
+         * @description The slot for which the payload attestation is being made
+         * @example 1
+         */
+        slot: string;
+        /** @description True if a `SignedExecutionPayloadEnvelope` has been seen referencing this block */
+        payload_present: boolean;
+        /** @description True if blob data is available for this block */
+        blob_data_available: boolean;
+      };
+      /**
+       * Format: hex
+       * @description BLS signature of the payload attestation data
+       * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+       */
+      signature: string;
+    };
+    /** @description The required object for block production according to the Fulu CL spec. */
+    'Fulu.BlockContents': {
+      /** @description The [`BeaconBlock`](https://github.com/ethereum/consensus-specs/blob/v1.5.0/specs/phase0/beacon-chain.md#beaconblock) object from the CL Electra spec. */
+      block: {
+        /**
+         * @description The slot to which this block corresponds.
+         * @example 1
+         */
+        slot: string;
+        /**
+         * @description Index of validator in validator registry.
+         * @example 1
+         */
+        proposer_index: string;
+        /**
+         * Format: hex
+         * @description The signing Merkle root of the parent `BeaconBlock`.
+         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+         */
+        parent_root: string;
+        /**
+         * Format: hex
+         * @description The tree hash Merkle root of the `BeaconState` for the `BeaconBlock`.
+         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+         */
+        state_root: string;
+      } & {
+        body: {
+          randao_reveal: string & unknown;
+          /** @description The [`Eth1Data`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#eth1data) object from the CL spec. */
+          eth1_data: {
+            /**
+             * Format: hex
+             * @description Root of the deposit tree.
+             * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+             */
+            deposit_root: string;
+            /**
+             * @description Total number of deposits.
+             * @example 1
+             */
+            deposit_count: string;
+            /**
+             * Format: hex
+             * @description Ethereum 1.x block hash.
+             * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+             */
+            block_hash: string;
+          };
+          /**
+           * Format: hex
+           * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+           */
+          graffiti: string;
+          proposer_slashings: {
+            /** @description The [`SignedBeaconBlockHeader`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#signedbeaconblockheader) object envelope from the CL spec. */
+            signed_header_1: {
+              /** @description The [`BeaconBlockHeader`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#beaconblockheader) object from the CL spec. */
+              message: {
+                /**
+                 * @description The slot to which this block corresponds.
+                 * @example 1
+                 */
+                slot: string;
+                /**
+                 * @description Index of validator in validator registry.
+                 * @example 1
+                 */
+                proposer_index: string;
+                /**
+                 * Format: hex
+                 * @description The signing merkle root of the parent `BeaconBlock`.
+                 * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                 */
+                parent_root: string;
+                /**
+                 * Format: hex
+                 * @description The tree hash merkle root of the `BeaconState` for the `BeaconBlock`.
+                 * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                 */
+                state_root: string;
+              } & {
+                /**
+                 * Format: hex
+                 * @description The tree hash merkle root of the `BeaconBlockBody` for the `BeaconBlock`
+                 * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                 */
+                body_root: string;
+              };
+              /**
+               * Format: hex
+               * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+               */
+              signature: string;
+            };
+            /** @description The [`SignedBeaconBlockHeader`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#signedbeaconblockheader) object envelope from the CL spec. */
+            signed_header_2: {
+              /** @description The [`BeaconBlockHeader`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#beaconblockheader) object from the CL spec. */
+              message: {
+                /**
+                 * @description The slot to which this block corresponds.
+                 * @example 1
+                 */
+                slot: string;
+                /**
+                 * @description Index of validator in validator registry.
+                 * @example 1
+                 */
+                proposer_index: string;
+                /**
+                 * Format: hex
+                 * @description The signing merkle root of the parent `BeaconBlock`.
+                 * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                 */
+                parent_root: string;
+                /**
+                 * Format: hex
+                 * @description The tree hash merkle root of the `BeaconState` for the `BeaconBlock`.
+                 * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                 */
+                state_root: string;
+              } & {
+                /**
+                 * Format: hex
+                 * @description The tree hash merkle root of the `BeaconBlockBody` for the `BeaconBlock`
+                 * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                 */
+                body_root: string;
+              };
+              /**
+               * Format: hex
+               * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+               */
+              signature: string;
+            };
+          }[];
+          attester_slashings: {
+            /** @description The [`IndexedAttestation`](https://github.com/ethereum/consensus-specs/blob/v1.5.0/specs/electra/beacon-chain.md#indexedattestation) object from the CL spec. */
+            attestation_1: {
+              /** @description Attesting validator indices */
+              attesting_indices: string[];
+              /** @description The [`AttestationData`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#attestationdata) object from the CL spec. */
+              data: {
+                /** @example 1 */
+                slot: string;
+                /** @example 1 */
+                index: string;
+                /**
+                 * Format: hex
+                 * @description LMD GHOST vote.
+                 * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                 */
+                beacon_block_root: string;
+                /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
+                source: {
+                  /** @example 1 */
+                  epoch: string;
+                  /**
+                   * Format: hex
+                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                   */
+                  root: string;
+                };
+                /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
+                target: {
+                  /** @example 1 */
+                  epoch: string;
+                  /**
+                   * Format: hex
+                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                   */
+                  root: string;
+                };
+              };
+              /**
+               * Format: hex
+               * @description The BLS signature of the `IndexedAttestation`, created by the validator of the attestation.
+               * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+               */
+              signature: string;
+            };
+            /** @description The [`IndexedAttestation`](https://github.com/ethereum/consensus-specs/blob/v1.5.0/specs/electra/beacon-chain.md#indexedattestation) object from the CL spec. */
+            attestation_2: {
+              /** @description Attesting validator indices */
+              attesting_indices: string[];
+              /** @description The [`AttestationData`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#attestationdata) object from the CL spec. */
+              data: {
+                /** @example 1 */
+                slot: string;
+                /** @example 1 */
+                index: string;
+                /**
+                 * Format: hex
+                 * @description LMD GHOST vote.
+                 * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                 */
+                beacon_block_root: string;
+                /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
+                source: {
+                  /** @example 1 */
+                  epoch: string;
+                  /**
+                   * Format: hex
+                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                   */
+                  root: string;
+                };
+                /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
+                target: {
+                  /** @example 1 */
+                  epoch: string;
+                  /**
+                   * Format: hex
+                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                   */
+                  root: string;
+                };
+              };
+              /**
+               * Format: hex
+               * @description The BLS signature of the `IndexedAttestation`, created by the validator of the attestation.
+               * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+               */
+              signature: string;
+            };
+          }[];
+          attestations: {
+            /**
+             * Format: hex
+             * @description Attester aggregation bits.
+             * @example 0x01
+             */
+            aggregation_bits: string;
+            /** @description The [`AttestationData`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#attestationdata) object from the CL spec. */
+            data: {
+              /** @example 1 */
+              slot: string;
+              /** @example 1 */
+              index: string;
+              /**
+               * Format: hex
+               * @description LMD GHOST vote.
+               * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+               */
+              beacon_block_root: string;
+              /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
+              source: {
+                /** @example 1 */
+                epoch: string;
+                /**
+                 * Format: hex
+                 * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                 */
+                root: string;
+              };
+              /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
+              target: {
+                /** @example 1 */
+                epoch: string;
+                /**
+                 * Format: hex
+                 * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                 */
+                root: string;
+              };
+            };
+            /**
+             * Format: hex
+             * @description BLS aggregate signature.
+             * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+             */
+            signature: string;
+            /**
+             * Format: hex
+             * @description Committee bits.
+             * @example 0x0000000000000001
+             */
+            committee_bits: string;
+          }[];
+          deposits: {
+            /** @description Branch in the deposit tree. */
+            proof: string[];
+            /** @description The [`DepositData`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#depositdata) object from the CL spec. */
+            data: {
+              /**
+               * Format: hex
+               * @description The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._
+               * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
+               */
+              pubkey: string;
+              /**
+               * Format: hex
+               * @description The withdrawal credentials.
+               * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+               */
+              withdrawal_credentials: string;
+              /**
+               * @description Amount in Gwei.
+               * @example 1
+               */
+              amount: string;
+              /**
+               * Format: hex
+               * @description Container self-signature.
+               * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+               */
+              signature: string;
+            };
+          }[];
+          voluntary_exits: {
+            /** @description The [`VoluntaryExit`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#voluntaryexit) object from the CL spec. */
+            message: {
+              /**
+               * @description Minimum epoch for processing exit.
+               * @example 1
+               */
+              epoch: string;
+              /**
+               * @description Index of the exiting validator.
+               * @example 1
+               */
+              validator_index: string;
+            };
+            /**
+             * Format: hex
+             * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+             */
+            signature: string;
+          }[];
+          /** @description The [`SyncAggregate`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/altair/beacon-chain.md#syncaggregate) object from the CL Altair spec. */
+          sync_aggregate: {
+            /**
+             * Format: hex
+             * @description Aggregation bits of sync
+             * @example 0x01
+             */
+            sync_committee_bits: string;
+            /**
+             * Format: hex
+             * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+             */
+            sync_committee_signature: string;
+          };
+          bls_to_execution_changes: {
+            /** @description The [`BLSToExecutionChange`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/capella/beacon-chain.md#blstoexecutionchange) object from the CL spec. */
+            message: {
+              /**
+               * @description Index of the validator for which credentials will be changed.
+               * @example 1
+               */
+              validator_index: string;
+              /**
+               * Format: hex
+               * @description The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._
+               * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
+               */
+              from_bls_pubkey: string;
+              /**
+               * Format: hex
+               * @description Execution address to which the credentials will be changed.
+               * @example 0xAbcF8e0d4e9587369b2301D0790347320302cc09
+               */
+              to_execution_address: string;
+            };
+            /**
+             * Format: hex
+             * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+             */
+            signature: string;
+          }[];
+          blob_kzg_commitments: string[];
+        } & {
+          execution_payload: {
+            /**
+             * Format: hex
+             * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+             */
+            parent_hash: string;
+            /**
+             * Format: hex
+             * @description An address on the execution (Ethereum 1) network.
+             * @example 0xAbcF8e0d4e9587369b2301D0790347320302cc09
+             */
+            fee_recipient: string;
+            /**
+             * Format: hex
+             * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+             */
+            state_root: string;
+            /**
+             * Format: hex
+             * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+             */
+            receipts_root: string;
+            /**
+             * Format: hex
+             * @example 0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+             */
+            logs_bloom: string;
+            /**
+             * Format: hex
+             * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+             */
+            prev_randao: string;
+            /** @example 1 */
+            block_number: string;
+            /** @example 1 */
+            gas_limit: string;
+            /** @example 1 */
+            gas_used: string;
+            /** @example 1 */
+            timestamp: string;
+            /**
+             * Format: hex
+             * @description Extra data on the execution (Ethereum 1) network.
+             * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+             */
+            extra_data: string;
+            /** @example 1 */
+            base_fee_per_gas: string;
+            /** @example 1 */
+            blob_gas_used: string;
+            /** @example 1 */
+            excess_blob_gas: string;
+            /**
+             * Format: hex
+             * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+             */
+            block_hash: string;
+          } & {
+            transactions: string[];
+            withdrawals: {
+              /**
+               * @description The index of the withdrawal.
+               * @example 1
+               */
+              index: string;
+              /**
+               * @description The index of the withdrawing validator.
+               * @example 1
+               */
+              validator_index: string;
+              /**
+               * Format: hex
+               * @description An address on the execution (Ethereum 1) network.
+               * @example 0xAbcF8e0d4e9587369b2301D0790347320302cc09
+               */
+              address: string;
+              /**
+               * @description The value withdrawn (gwei).
+               * @example 1
+               */
+              amount: string;
+            }[];
+          };
+          /** @description The [`ExecutionRequests`](https://github.com/ethereum/consensus-specs/blob/v1.5.0/specs/electra/beacon-chain.md#executionrequests) object from the CL Electra spec. */
+          execution_requests: {
+            deposits: {
+              /**
+               * Format: hex
+               * @description The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._
+               * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
+               */
+              pubkey: string;
+              /**
+               * Format: hex
+               * @description The withdrawal credentials.
+               * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+               */
+              withdrawal_credentials: string;
+              /**
+               * @description The value to be deposited (gwei).
+               * @example 1
+               */
+              amount: string;
+              /**
+               * Format: hex
+               * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+               */
+              signature: string;
+              /**
+               * @description The index of the deposit request.
+               * @example 1
+               */
+              index: string;
+            }[];
+            withdrawals: {
+              /**
+               * Format: hex
+               * @description An address on the execution (Ethereum 1) network.
+               * @example 0xAbcF8e0d4e9587369b2301D0790347320302cc09
+               */
+              source_address: string;
+              /**
+               * Format: hex
+               * @description The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._
+               * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
+               */
+              validator_pubkey: string;
+              /**
+               * @description The value to be withdrawn (gwei).
+               * @example 1
+               */
+              amount: string;
+            }[];
+            consolidations: {
+              /**
+               * Format: hex
+               * @description An address on the execution (Ethereum 1) network.
+               * @example 0xAbcF8e0d4e9587369b2301D0790347320302cc09
+               */
+              source_address: string;
+              /**
+               * Format: hex
+               * @description The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._
+               * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
+               */
+              source_pubkey: string;
+              /**
+               * Format: hex
+               * @description The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._
+               * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
+               */
+              target_pubkey: string;
+            }[];
+          };
+        };
+      };
+      /** @description Cell proofs of the blobs as defined in EIP-7594 */
+      kzg_proofs: string[];
+      blobs: string[];
+    };
+    /** @description The required signed components of block production according to the Fulu CL spec. */
+    'Fulu.SignedBlockContents': {
+      /** @description The [`SignedBeaconBlock`](https://github.com/ethereum/consensus-specs/blob/v1.5.0/specs/phase0/beacon-chain.md#signedbeaconblock) object envelope from the CL Electra spec. */
+      signed_block: {
+        /** @description The [`BeaconBlock`](https://github.com/ethereum/consensus-specs/blob/v1.5.0/specs/phase0/beacon-chain.md#beaconblock) object from the CL Electra spec. */
+        message: {
+          /**
+           * @description The slot to which this block corresponds.
+           * @example 1
+           */
+          slot: string;
+          /**
+           * @description Index of validator in validator registry.
+           * @example 1
+           */
+          proposer_index: string;
+          /**
+           * Format: hex
+           * @description The signing Merkle root of the parent `BeaconBlock`.
+           * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+           */
+          parent_root: string;
+          /**
+           * Format: hex
+           * @description The tree hash Merkle root of the `BeaconState` for the `BeaconBlock`.
+           * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+           */
+          state_root: string;
+        } & {
+          body: {
+            randao_reveal: string & unknown;
+            /** @description The [`Eth1Data`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#eth1data) object from the CL spec. */
+            eth1_data: {
+              /**
+               * Format: hex
+               * @description Root of the deposit tree.
+               * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+               */
+              deposit_root: string;
+              /**
+               * @description Total number of deposits.
+               * @example 1
+               */
+              deposit_count: string;
+              /**
+               * Format: hex
+               * @description Ethereum 1.x block hash.
+               * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+               */
+              block_hash: string;
+            };
+            /**
+             * Format: hex
+             * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+             */
+            graffiti: string;
+            proposer_slashings: {
+              /** @description The [`SignedBeaconBlockHeader`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#signedbeaconblockheader) object envelope from the CL spec. */
+              signed_header_1: {
+                /** @description The [`BeaconBlockHeader`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#beaconblockheader) object from the CL spec. */
+                message: {
+                  /**
+                   * @description The slot to which this block corresponds.
+                   * @example 1
+                   */
+                  slot: string;
+                  /**
+                   * @description Index of validator in validator registry.
+                   * @example 1
+                   */
+                  proposer_index: string;
+                  /**
+                   * Format: hex
+                   * @description The signing merkle root of the parent `BeaconBlock`.
+                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                   */
+                  parent_root: string;
+                  /**
+                   * Format: hex
+                   * @description The tree hash merkle root of the `BeaconState` for the `BeaconBlock`.
+                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                   */
+                  state_root: string;
+                } & {
+                  /**
+                   * Format: hex
+                   * @description The tree hash merkle root of the `BeaconBlockBody` for the `BeaconBlock`
+                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                   */
+                  body_root: string;
+                };
+                /**
+                 * Format: hex
+                 * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+                 */
+                signature: string;
+              };
+              /** @description The [`SignedBeaconBlockHeader`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#signedbeaconblockheader) object envelope from the CL spec. */
+              signed_header_2: {
+                /** @description The [`BeaconBlockHeader`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#beaconblockheader) object from the CL spec. */
+                message: {
+                  /**
+                   * @description The slot to which this block corresponds.
+                   * @example 1
+                   */
+                  slot: string;
+                  /**
+                   * @description Index of validator in validator registry.
+                   * @example 1
+                   */
+                  proposer_index: string;
+                  /**
+                   * Format: hex
+                   * @description The signing merkle root of the parent `BeaconBlock`.
+                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                   */
+                  parent_root: string;
+                  /**
+                   * Format: hex
+                   * @description The tree hash merkle root of the `BeaconState` for the `BeaconBlock`.
+                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                   */
+                  state_root: string;
+                } & {
+                  /**
+                   * Format: hex
+                   * @description The tree hash merkle root of the `BeaconBlockBody` for the `BeaconBlock`
+                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                   */
+                  body_root: string;
+                };
+                /**
+                 * Format: hex
+                 * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+                 */
+                signature: string;
+              };
+            }[];
+            attester_slashings: {
+              /** @description The [`IndexedAttestation`](https://github.com/ethereum/consensus-specs/blob/v1.5.0/specs/electra/beacon-chain.md#indexedattestation) object from the CL spec. */
+              attestation_1: {
+                /** @description Attesting validator indices */
+                attesting_indices: string[];
+                /** @description The [`AttestationData`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#attestationdata) object from the CL spec. */
+                data: {
+                  /** @example 1 */
+                  slot: string;
+                  /** @example 1 */
+                  index: string;
+                  /**
+                   * Format: hex
+                   * @description LMD GHOST vote.
+                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                   */
+                  beacon_block_root: string;
+                  /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
+                  source: {
+                    /** @example 1 */
+                    epoch: string;
+                    /**
+                     * Format: hex
+                     * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                     */
+                    root: string;
+                  };
+                  /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
+                  target: {
+                    /** @example 1 */
+                    epoch: string;
+                    /**
+                     * Format: hex
+                     * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                     */
+                    root: string;
+                  };
+                };
+                /**
+                 * Format: hex
+                 * @description The BLS signature of the `IndexedAttestation`, created by the validator of the attestation.
+                 * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+                 */
+                signature: string;
+              };
+              /** @description The [`IndexedAttestation`](https://github.com/ethereum/consensus-specs/blob/v1.5.0/specs/electra/beacon-chain.md#indexedattestation) object from the CL spec. */
+              attestation_2: {
+                /** @description Attesting validator indices */
+                attesting_indices: string[];
+                /** @description The [`AttestationData`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#attestationdata) object from the CL spec. */
+                data: {
+                  /** @example 1 */
+                  slot: string;
+                  /** @example 1 */
+                  index: string;
+                  /**
+                   * Format: hex
+                   * @description LMD GHOST vote.
+                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                   */
+                  beacon_block_root: string;
+                  /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
+                  source: {
+                    /** @example 1 */
+                    epoch: string;
+                    /**
+                     * Format: hex
+                     * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                     */
+                    root: string;
+                  };
+                  /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
+                  target: {
+                    /** @example 1 */
+                    epoch: string;
+                    /**
+                     * Format: hex
+                     * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                     */
+                    root: string;
+                  };
+                };
+                /**
+                 * Format: hex
+                 * @description The BLS signature of the `IndexedAttestation`, created by the validator of the attestation.
+                 * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+                 */
+                signature: string;
+              };
+            }[];
+            attestations: {
+              /**
+               * Format: hex
+               * @description Attester aggregation bits.
+               * @example 0x01
+               */
+              aggregation_bits: string;
+              /** @description The [`AttestationData`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#attestationdata) object from the CL spec. */
+              data: {
+                /** @example 1 */
+                slot: string;
+                /** @example 1 */
+                index: string;
+                /**
+                 * Format: hex
+                 * @description LMD GHOST vote.
+                 * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                 */
+                beacon_block_root: string;
+                /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
+                source: {
+                  /** @example 1 */
+                  epoch: string;
+                  /**
+                   * Format: hex
+                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                   */
+                  root: string;
+                };
+                /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
+                target: {
+                  /** @example 1 */
+                  epoch: string;
+                  /**
+                   * Format: hex
+                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                   */
+                  root: string;
+                };
+              };
+              /**
+               * Format: hex
+               * @description BLS aggregate signature.
+               * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+               */
+              signature: string;
+              /**
+               * Format: hex
+               * @description Committee bits.
+               * @example 0x0000000000000001
+               */
+              committee_bits: string;
+            }[];
+            deposits: {
+              /** @description Branch in the deposit tree. */
+              proof: string[];
+              /** @description The [`DepositData`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#depositdata) object from the CL spec. */
+              data: {
+                /**
+                 * Format: hex
+                 * @description The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._
+                 * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
+                 */
+                pubkey: string;
+                /**
+                 * Format: hex
+                 * @description The withdrawal credentials.
+                 * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                 */
+                withdrawal_credentials: string;
+                /**
+                 * @description Amount in Gwei.
+                 * @example 1
+                 */
+                amount: string;
+                /**
+                 * Format: hex
+                 * @description Container self-signature.
+                 * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+                 */
+                signature: string;
+              };
+            }[];
+            voluntary_exits: {
+              /** @description The [`VoluntaryExit`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#voluntaryexit) object from the CL spec. */
+              message: {
+                /**
+                 * @description Minimum epoch for processing exit.
+                 * @example 1
+                 */
+                epoch: string;
+                /**
+                 * @description Index of the exiting validator.
+                 * @example 1
+                 */
+                validator_index: string;
+              };
+              /**
+               * Format: hex
+               * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+               */
+              signature: string;
+            }[];
+            /** @description The [`SyncAggregate`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/altair/beacon-chain.md#syncaggregate) object from the CL Altair spec. */
+            sync_aggregate: {
+              /**
+               * Format: hex
+               * @description Aggregation bits of sync
+               * @example 0x01
+               */
+              sync_committee_bits: string;
+              /**
+               * Format: hex
+               * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+               */
+              sync_committee_signature: string;
+            };
+            bls_to_execution_changes: {
+              /** @description The [`BLSToExecutionChange`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/capella/beacon-chain.md#blstoexecutionchange) object from the CL spec. */
+              message: {
+                /**
+                 * @description Index of the validator for which credentials will be changed.
+                 * @example 1
+                 */
+                validator_index: string;
+                /**
+                 * Format: hex
+                 * @description The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._
+                 * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
+                 */
+                from_bls_pubkey: string;
+                /**
+                 * Format: hex
+                 * @description Execution address to which the credentials will be changed.
+                 * @example 0xAbcF8e0d4e9587369b2301D0790347320302cc09
+                 */
+                to_execution_address: string;
+              };
+              /**
+               * Format: hex
+               * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+               */
+              signature: string;
+            }[];
+            blob_kzg_commitments: string[];
+          } & {
+            execution_payload: {
+              /**
+               * Format: hex
+               * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+               */
+              parent_hash: string;
+              /**
+               * Format: hex
+               * @description An address on the execution (Ethereum 1) network.
+               * @example 0xAbcF8e0d4e9587369b2301D0790347320302cc09
+               */
+              fee_recipient: string;
+              /**
+               * Format: hex
+               * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+               */
+              state_root: string;
+              /**
+               * Format: hex
+               * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+               */
+              receipts_root: string;
+              /**
+               * Format: hex
+               * @example 0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+               */
+              logs_bloom: string;
+              /**
+               * Format: hex
+               * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+               */
+              prev_randao: string;
+              /** @example 1 */
+              block_number: string;
+              /** @example 1 */
+              gas_limit: string;
+              /** @example 1 */
+              gas_used: string;
+              /** @example 1 */
+              timestamp: string;
+              /**
+               * Format: hex
+               * @description Extra data on the execution (Ethereum 1) network.
+               * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+               */
+              extra_data: string;
+              /** @example 1 */
+              base_fee_per_gas: string;
+              /** @example 1 */
+              blob_gas_used: string;
+              /** @example 1 */
+              excess_blob_gas: string;
+              /**
+               * Format: hex
+               * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+               */
+              block_hash: string;
+            } & {
+              transactions: string[];
+              withdrawals: {
+                /**
+                 * @description The index of the withdrawal.
+                 * @example 1
+                 */
+                index: string;
+                /**
+                 * @description The index of the withdrawing validator.
+                 * @example 1
+                 */
+                validator_index: string;
+                /**
+                 * Format: hex
+                 * @description An address on the execution (Ethereum 1) network.
+                 * @example 0xAbcF8e0d4e9587369b2301D0790347320302cc09
+                 */
+                address: string;
+                /**
+                 * @description The value withdrawn (gwei).
+                 * @example 1
+                 */
+                amount: string;
+              }[];
+            };
+            /** @description The [`ExecutionRequests`](https://github.com/ethereum/consensus-specs/blob/v1.5.0/specs/electra/beacon-chain.md#executionrequests) object from the CL Electra spec. */
+            execution_requests: {
+              deposits: {
+                /**
+                 * Format: hex
+                 * @description The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._
+                 * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
+                 */
+                pubkey: string;
+                /**
+                 * Format: hex
+                 * @description The withdrawal credentials.
+                 * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                 */
+                withdrawal_credentials: string;
+                /**
+                 * @description The value to be deposited (gwei).
+                 * @example 1
+                 */
+                amount: string;
+                /**
+                 * Format: hex
+                 * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+                 */
+                signature: string;
+                /**
+                 * @description The index of the deposit request.
+                 * @example 1
+                 */
+                index: string;
+              }[];
+              withdrawals: {
+                /**
+                 * Format: hex
+                 * @description An address on the execution (Ethereum 1) network.
+                 * @example 0xAbcF8e0d4e9587369b2301D0790347320302cc09
+                 */
+                source_address: string;
+                /**
+                 * Format: hex
+                 * @description The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._
+                 * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
+                 */
+                validator_pubkey: string;
+                /**
+                 * @description The value to be withdrawn (gwei).
+                 * @example 1
+                 */
+                amount: string;
+              }[];
+              consolidations: {
+                /**
+                 * Format: hex
+                 * @description An address on the execution (Ethereum 1) network.
+                 * @example 0xAbcF8e0d4e9587369b2301D0790347320302cc09
+                 */
+                source_address: string;
+                /**
+                 * Format: hex
+                 * @description The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._
+                 * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
+                 */
+                source_pubkey: string;
+                /**
+                 * Format: hex
+                 * @description The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._
+                 * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
+                 */
+                target_pubkey: string;
+              }[];
+            };
+          };
+        };
+        /**
+         * Format: hex
+         * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+         */
+        signature: string;
+      };
+      /** @description Cell proofs of the blobs as defined in EIP-7594 */
+      kzg_proofs: string[];
+      blobs: string[];
+    };
+    'Fulu.DataColumnSidecars': {
+      /** @example 1 */
+      index: string;
+      column: string[];
+      kzg_commitments: string[];
+      kzg_proofs: string[];
       /** @description The [`SignedBeaconBlockHeader`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#signedbeaconblockheader) object envelope from the CL spec. */
       signed_block_header: {
         /** @description The [`BeaconBlockHeader`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#beaconblockheader) object from the CL spec. */
@@ -16313,56 +19344,21 @@ export interface components {
          */
         signature: string;
       };
-      kzg_commitment_inclusion_proof: string[];
+      kzg_commitments_inclusion_proof: string[];
     }[];
-    /** @description The [`PendingDeposit`](https://github.com/ethereum/consensus-specs/blob/v1.5.0-beta.2/specs/electra/beacon-chain.md#pendingdeposit) object from the CL Electra spec. */
-    'Electra.PendingDeposit': {
+    'Gloas.DataColumnSidecars': {
+      /** @example 1 */
+      index: string;
+      column: string[];
+      kzg_proofs: string[];
+      /** @example 1 */
+      slot: string;
       /**
        * Format: hex
-       * @description The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._
-       * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
-       */
-      pubkey: string;
-      /**
-       * Format: hex
-       * @description The withdrawal credentials.
        * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
        */
-      withdrawal_credentials: string;
-      /**
-       * @description The value to be deposited (gwei).
-       * @example 1
-       */
-      amount: string;
-      /**
-       * Format: hex
-       * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-       */
-      signature: string;
-      /**
-       * @description The slot at which the deposit request was processed.
-       * @example 1
-       */
-      slot: string;
-    };
-    /** @description The [`PendingPartialWithdrawal`](https://github.com/ethereum/consensus-specs/blob/v1.5.0-beta.2/specs/electra/beacon-chain.md#pendingpartialwithdrawal) object from the CL Electra spec. */
-    'Electra.PendingPartialWithdrawal': {
-      /**
-       * @description Index of validator in validator registry.
-       * @example 1
-       */
-      validator_index: string;
-      /**
-       * @description The value to be withdrawn (gwei).
-       * @example 1
-       */
-      amount: string;
-      /**
-       * @description The epoch when the amount is withdrawable.
-       * @example 1
-       */
-      withdrawable_epoch: string;
-    };
+      beacon_block_root: string;
+    }[];
     /** @description fork choice node attributes */
     Node: {
       /**
@@ -16666,7 +19662,9 @@ export interface components {
       | 'bellatrix'
       | 'capella'
       | 'deneb'
-      | 'electra';
+      | 'electra'
+      | 'fulu'
+      | 'gloas';
     /** Required in response so client can deserialize returned json or ssz data to the correct object. */
     'Eth-Execution-Payload-Blinded': boolean;
     /**
@@ -17426,7 +20424,17 @@ export interface operations {
     requestBody: {
       content: {
         'application/json': {
+          /**
+           * @description An array of values, with each value either a hex encoded public key (any bytes48 with 0x prefix) or a validator index.
+           *
+           * If the supplied list is empty (i.e. the value is `[]`) or the property is omitted then all validators will be returned.
+           */
           ids?: string[];
+          /**
+           * @description An array of validator statuses to filter on.
+           *
+           * If the supplied list is empty (i.e. the value is `[]`) or the property is omitted then validators with all statuses will be returned.
+           */
           statuses?: (
             | (
                 | 'pending_initialized'
@@ -17957,7 +20965,11 @@ export interface operations {
         };
       };
     };
-    /** An array of values, with each value either a hex encoded public key (any bytes48 with 0x prefix) or a validator index. */
+    /**
+     * An array of values, with each value either a hex encoded public key (any bytes48 with 0x prefix) or a validator index.
+     *
+     * If the supplied list is empty (i.e. the body is `[]`) or no body is supplied then all validators will be returned.
+     */
     requestBody: {
       content: {
         'application/json': string[];
@@ -18249,6 +21261,139 @@ export interface operations {
       };
     };
   };
+  /** Returns pending consolidations for state with given 'stateId'. Should return 400 if the state retrieved is prior to Electra. */
+  getPendingConsolidations: {
+    parameters: {
+      path: {
+        /**
+         * State identifier.
+         * Can be one of: "head" (canonical head in node's view), "genesis", "finalized", "justified", \<slot\>, \<hex encoded stateRoot with 0x prefix\>.
+         */
+        state_id: string;
+      };
+    };
+    responses: {
+      /** Success */
+      200: {
+        headers: {
+          /** The active consensus version to which the pending consolidations belong. */
+          'Eth-Consensus-Version':
+            | 'phase0'
+            | 'altair'
+            | 'bellatrix'
+            | 'capella'
+            | 'deneb'
+            | 'electra'
+            | 'fulu'
+            | 'gloas';
+        };
+        content: {
+          'application/json': {
+            /**
+             * @example gloas
+             * @enum {string}
+             */
+            version:
+              | 'phase0'
+              | 'altair'
+              | 'bellatrix'
+              | 'capella'
+              | 'deneb'
+              | 'electra'
+              | 'fulu'
+              | 'gloas';
+            /**
+             * @description True if the response references an unverified execution payload. Optimistic information may be invalidated at a later time. If the field is not present, assume the False value.
+             * @example false
+             */
+            execution_optimistic: boolean;
+            /**
+             * @description True if the response references the finalized history of the chain, as determined by fork choice. If the field is not present, additional calls are necessary to compare the epoch of the requested information with the finalized checkpoint.
+             * @example false
+             */
+            finalized: boolean;
+            data: {
+              /**
+               * @description Index of validator to consolidate from.
+               * @example 1
+               */
+              source_index: string;
+              /**
+               * @description Index of validator to consolidate to.
+               * @example 1
+               */
+              target_index: string;
+            }[];
+          };
+          'application/octet-stream': unknown;
+        };
+      };
+      /** Invalid request syntax. */
+      400: {
+        content: {
+          'application/json': {
+            /**
+             * @description Either specific error code in case of invalid request or http status code
+             * @example 400
+             */
+            code: number;
+            /** @description Message describing error */
+            message: string;
+            /** @description Optional stacktraces, sent when node is in debug mode */
+            stacktraces?: string[];
+          };
+        };
+      };
+      /** Not found */
+      404: {
+        content: {
+          'application/json': {
+            /**
+             * @description Either specific error code in case of invalid request or http status code
+             * @example 404
+             */
+            code: number;
+            /** @description Message describing error */
+            message: string;
+            /** @description Optional stacktraces, sent when node is in debug mode */
+            stacktraces?: string[];
+          };
+        };
+      };
+      /** Accepted media type is not supported. */
+      406: {
+        content: {
+          'application/json': {
+            /**
+             * @description The media type in "Accept" header is unsupported, and the request has been rejected. This occurs when the server cannot produce a response in the format accepted by the client.
+             * @example 406
+             */
+            code: number;
+            /** @description Message describing error */
+            message: string;
+            /** @description Optional stacktraces, sent when node is in debug mode */
+            stacktraces?: string[];
+          };
+        };
+      };
+      /** Beacon node internal error. */
+      500: {
+        content: {
+          'application/json': {
+            /**
+             * @description Either specific error code in case of invalid request or http status code
+             * @example 404
+             */
+            code: number;
+            /** @description Message describing error */
+            message: string;
+            /** @description Optional stacktraces, sent when node is in debug mode */
+            stacktraces?: string[];
+          };
+        };
+      };
+    };
+  };
   /** Returns pending deposits for state with given 'stateId'. Should return 400 if the state retrieved is prior to Electra. */
   getPendingDeposits: {
     parameters: {
@@ -18271,12 +21416,14 @@ export interface operations {
             | 'bellatrix'
             | 'capella'
             | 'deneb'
-            | 'electra';
+            | 'electra'
+            | 'fulu'
+            | 'gloas';
         };
         content: {
           'application/json': {
             /**
-             * @example electra
+             * @example gloas
              * @enum {string}
              */
             version:
@@ -18285,7 +21432,9 @@ export interface operations {
               | 'bellatrix'
               | 'capella'
               | 'deneb'
-              | 'electra';
+              | 'electra'
+              | 'fulu'
+              | 'gloas';
             /**
              * @description True if the response references an unverified execution payload. Optimistic information may be invalidated at a later time. If the field is not present, assume the False value.
              * @example false
@@ -18361,13 +21510,13 @@ export interface operations {
           };
         };
       };
-      /** Supplied content-type is not supported. */
-      415: {
+      /** Accepted media type is not supported. */
+      406: {
         content: {
           'application/json': {
             /**
-             * @description The media type in "Content-Type" header is unsupported, and the request has been rejected. This occurs when a HTTP request supplies a payload in a content-type that the server is not able to handle.
-             * @example 415
+             * @description The media type in "Accept" header is unsupported, and the request has been rejected. This occurs when the server cannot produce a response in the format accepted by the client.
+             * @example 406
              */
             code: number;
             /** @description Message describing error */
@@ -18417,12 +21566,14 @@ export interface operations {
             | 'bellatrix'
             | 'capella'
             | 'deneb'
-            | 'electra';
+            | 'electra'
+            | 'fulu'
+            | 'gloas';
         };
         content: {
           'application/json': {
             /**
-             * @example electra
+             * @example gloas
              * @enum {string}
              */
             version:
@@ -18431,7 +21582,9 @@ export interface operations {
               | 'bellatrix'
               | 'capella'
               | 'deneb'
-              | 'electra';
+              | 'electra'
+              | 'fulu'
+              | 'gloas';
             /**
              * @description True if the response references an unverified execution payload. Optimistic information may be invalidated at a later time. If the field is not present, assume the False value.
              * @example false
@@ -18495,13 +21648,135 @@ export interface operations {
           };
         };
       };
-      /** Supplied content-type is not supported. */
-      415: {
+      /** Accepted media type is not supported. */
+      406: {
         content: {
           'application/json': {
             /**
-             * @description The media type in "Content-Type" header is unsupported, and the request has been rejected. This occurs when a HTTP request supplies a payload in a content-type that the server is not able to handle.
-             * @example 415
+             * @description The media type in "Accept" header is unsupported, and the request has been rejected. This occurs when the server cannot produce a response in the format accepted by the client.
+             * @example 406
+             */
+            code: number;
+            /** @description Message describing error */
+            message: string;
+            /** @description Optional stacktraces, sent when node is in debug mode */
+            stacktraces?: string[];
+          };
+        };
+      };
+      /** Beacon node internal error. */
+      500: {
+        content: {
+          'application/json': {
+            /**
+             * @description Either specific error code in case of invalid request or http status code
+             * @example 404
+             */
+            code: number;
+            /** @description Message describing error */
+            message: string;
+            /** @description Optional stacktraces, sent when node is in debug mode */
+            stacktraces?: string[];
+          };
+        };
+      };
+    };
+  };
+  /** Returns proposer lookahead for state with given 'stateId'. Should return 400 if the state retrieved is prior to Fulu. */
+  getProposerLookahead: {
+    parameters: {
+      path: {
+        /**
+         * State identifier.
+         * Can be one of: "head" (canonical head in node's view), "genesis", "finalized", "justified", \<slot\>, \<hex encoded stateRoot with 0x prefix\>.
+         */
+        state_id: string;
+      };
+    };
+    responses: {
+      /** Success */
+      200: {
+        headers: {
+          /** The active consensus version to which the proposer lookahead data belongs. */
+          'Eth-Consensus-Version':
+            | 'phase0'
+            | 'altair'
+            | 'bellatrix'
+            | 'capella'
+            | 'deneb'
+            | 'electra'
+            | 'fulu'
+            | 'gloas';
+        };
+        content: {
+          'application/json': {
+            /**
+             * @example gloas
+             * @enum {string}
+             */
+            version:
+              | 'phase0'
+              | 'altair'
+              | 'bellatrix'
+              | 'capella'
+              | 'deneb'
+              | 'electra'
+              | 'fulu'
+              | 'gloas';
+            /**
+             * @description True if the response references an unverified execution payload. Optimistic information may be invalidated at a later time. If the field is not present, assume the False value.
+             * @example false
+             */
+            execution_optimistic: boolean;
+            /**
+             * @description True if the response references the finalized history of the chain, as determined by fork choice. If the field is not present, additional calls are necessary to compare the epoch of the requested information with the finalized checkpoint.
+             * @example false
+             */
+            finalized: boolean;
+            data: string[];
+          };
+          'application/octet-stream': unknown;
+        };
+      };
+      /** Invalid request syntax. */
+      400: {
+        content: {
+          'application/json': {
+            /**
+             * @description Either specific error code in case of invalid request or http status code
+             * @example 400
+             */
+            code: number;
+            /** @description Message describing error */
+            message: string;
+            /** @description Optional stacktraces, sent when node is in debug mode */
+            stacktraces?: string[];
+          };
+        };
+      };
+      /** Not found */
+      404: {
+        content: {
+          'application/json': {
+            /**
+             * @description Either specific error code in case of invalid request or http status code
+             * @example 404
+             */
+            code: number;
+            /** @description Message describing error */
+            message: string;
+            /** @description Optional stacktraces, sent when node is in debug mode */
+            stacktraces?: string[];
+          };
+        };
+      };
+      /** Accepted media type is not supported. */
+      406: {
+        content: {
+          'application/json': {
+            /**
+             * @description The media type in "Accept" header is unsupported, and the request has been rejected. This occurs when the server cannot produce a response in the format accepted by the client.
+             * @example 406
              */
             code: number;
             /** @description Message describing error */
@@ -18773,2610 +22048,6 @@ export interface operations {
    * successful. The beacon node is expected to integrate the new block into its state, and
    * therefore validate the block internally, however blocks which fail the validation are still
    * broadcast but a different status code is returned (202). Before Bellatrix, this endpoint will accept
-   * a `SignedBeaconBlock`.
-   */
-  publishBlindedBlock: {
-    parameters: {
-      header: {
-        /** The active consensus version to which the block being submitted belongs. */
-        'Eth-Consensus-Version'?:
-          | 'phase0'
-          | 'altair'
-          | 'bellatrix'
-          | 'capella'
-          | 'deneb'
-          | 'electra';
-      };
-    };
-    responses: {
-      /** The block was validated successfully and has been broadcast. It has also been integrated into the beacon node's database. */
-      200: unknown;
-      /** The block failed validation, but was successfully broadcast anyway. It was not integrated into the beacon node's database. */
-      202: unknown;
-      /** The `SignedBlindedBeaconBlock` object is invalid */
-      400: {
-        content: {
-          'application/json': {
-            /**
-             * @description Either specific error code in case of invalid request or http status code
-             * @example 404
-             */
-            code: number;
-            /** @description Message describing error */
-            message: string;
-            /** @description Optional stacktraces, sent when node is in debug mode */
-            stacktraces?: string[];
-          };
-        };
-      };
-      /** Supplied content-type is not supported. */
-      415: {
-        content: {
-          'application/json': {
-            /**
-             * @description The media type in "Content-Type" header is unsupported, and the request has been rejected. This occurs when a HTTP request supplies a payload in a content-type that the server is not able to handle.
-             * @example 415
-             */
-            code: number;
-            /** @description Message describing error */
-            message: string;
-            /** @description Optional stacktraces, sent when node is in debug mode */
-            stacktraces?: string[];
-          };
-        };
-      };
-      /** Beacon node internal error. */
-      500: {
-        content: {
-          'application/json': {
-            /**
-             * @description Either specific error code in case of invalid request or http status code
-             * @example 404
-             */
-            code: number;
-            /** @description Message describing error */
-            message: string;
-            /** @description Optional stacktraces, sent when node is in debug mode */
-            stacktraces?: string[];
-          };
-        };
-      };
-      /** Beacon node is currently syncing, try again later. */
-      503: {
-        content: {
-          'application/json': {
-            /**
-             * @description Either specific error code in case of invalid request or http status code
-             * @example 404
-             */
-            code: number;
-            /** @description Message describing error */
-            message: string;
-            /** @description Optional stacktraces, sent when node is in debug mode */
-            stacktraces?: string[];
-          };
-        };
-      };
-    };
-    /** The `SignedBlindedBeaconBlock` object composed of `BlindedBeaconBlock` object (produced by beacon node) and validator signature. */
-    requestBody: {
-      content: {
-        'application/json': Partial<{
-          /** @description A variant of the [`BeaconBlock`](https://github.com/ethereum/consensus-specs/blob/v1.5.0-beta.2/specs/phase0/beacon-chain.md#beaconblock) object from the CL Electra spec, which contains a `BlindedBeaconBlockBody` rather than a `BeaconBlockBody`. */
-          message: {
-            /**
-             * @description The slot to which this block corresponds.
-             * @example 1
-             */
-            slot: string;
-            /**
-             * @description Index of validator in validator registry.
-             * @example 1
-             */
-            proposer_index: string;
-            /**
-             * Format: hex
-             * @description The signing Merkle root of the parent `BeaconBlock`.
-             * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-             */
-            parent_root: string;
-            /**
-             * Format: hex
-             * @description The tree hash Merkle root of the `BeaconState` for the `BeaconBlock`.
-             * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-             */
-            state_root: string;
-          } & {
-            /** @description A variant of the [`BeaconBlockBody`](https://github.com/ethereum/consensus-specs/blob/v1.5.0-beta.2/specs/electra/beacon-chain.md#beaconblockbody) object from the CL Electra spec, which contains a transactions root rather than a full transactions list. */
-            body: {
-              randao_reveal: string & unknown;
-              /** @description The [`Eth1Data`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#eth1data) object from the CL spec. */
-              eth1_data: {
-                /**
-                 * Format: hex
-                 * @description Root of the deposit tree.
-                 * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                 */
-                deposit_root: string;
-                /**
-                 * @description Total number of deposits.
-                 * @example 1
-                 */
-                deposit_count: string;
-                /**
-                 * Format: hex
-                 * @description Ethereum 1.x block hash.
-                 * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                 */
-                block_hash: string;
-              };
-              /**
-               * Format: hex
-               * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-               */
-              graffiti: string;
-              proposer_slashings: {
-                /** @description The [`SignedBeaconBlockHeader`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#signedbeaconblockheader) object envelope from the CL spec. */
-                signed_header_1: {
-                  /** @description The [`BeaconBlockHeader`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#beaconblockheader) object from the CL spec. */
-                  message: {
-                    /**
-                     * @description The slot to which this block corresponds.
-                     * @example 1
-                     */
-                    slot: string;
-                    /**
-                     * @description Index of validator in validator registry.
-                     * @example 1
-                     */
-                    proposer_index: string;
-                    /**
-                     * Format: hex
-                     * @description The signing merkle root of the parent `BeaconBlock`.
-                     * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                     */
-                    parent_root: string;
-                    /**
-                     * Format: hex
-                     * @description The tree hash merkle root of the `BeaconState` for the `BeaconBlock`.
-                     * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                     */
-                    state_root: string;
-                  } & {
-                    /**
-                     * Format: hex
-                     * @description The tree hash merkle root of the `BeaconBlockBody` for the `BeaconBlock`
-                     * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                     */
-                    body_root: string;
-                  };
-                  /**
-                   * Format: hex
-                   * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-                   */
-                  signature: string;
-                };
-                /** @description The [`SignedBeaconBlockHeader`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#signedbeaconblockheader) object envelope from the CL spec. */
-                signed_header_2: {
-                  /** @description The [`BeaconBlockHeader`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#beaconblockheader) object from the CL spec. */
-                  message: {
-                    /**
-                     * @description The slot to which this block corresponds.
-                     * @example 1
-                     */
-                    slot: string;
-                    /**
-                     * @description Index of validator in validator registry.
-                     * @example 1
-                     */
-                    proposer_index: string;
-                    /**
-                     * Format: hex
-                     * @description The signing merkle root of the parent `BeaconBlock`.
-                     * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                     */
-                    parent_root: string;
-                    /**
-                     * Format: hex
-                     * @description The tree hash merkle root of the `BeaconState` for the `BeaconBlock`.
-                     * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                     */
-                    state_root: string;
-                  } & {
-                    /**
-                     * Format: hex
-                     * @description The tree hash merkle root of the `BeaconBlockBody` for the `BeaconBlock`
-                     * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                     */
-                    body_root: string;
-                  };
-                  /**
-                   * Format: hex
-                   * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-                   */
-                  signature: string;
-                };
-              }[];
-              attester_slashings: {
-                /** @description The [`IndexedAttestation`](https://github.com/ethereum/consensus-specs/blob/v1.5.0-beta.2/specs/electra/beacon-chain.md#indexedattestation) object from the CL spec. */
-                attestation_1: {
-                  /** @description Attesting validator indices */
-                  attesting_indices: string[];
-                  /** @description The [`AttestationData`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#attestationdata) object from the CL spec. */
-                  data: {
-                    /** @example 1 */
-                    slot: string;
-                    /** @example 1 */
-                    index: string;
-                    /**
-                     * Format: hex
-                     * @description LMD GHOST vote.
-                     * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                     */
-                    beacon_block_root: string;
-                    /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
-                    source: {
-                      /** @example 1 */
-                      epoch: string;
-                      /**
-                       * Format: hex
-                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                       */
-                      root: string;
-                    };
-                    /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
-                    target: {
-                      /** @example 1 */
-                      epoch: string;
-                      /**
-                       * Format: hex
-                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                       */
-                      root: string;
-                    };
-                  };
-                  /**
-                   * Format: hex
-                   * @description The BLS signature of the `IndexedAttestation`, created by the validator of the attestation.
-                   * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-                   */
-                  signature: string;
-                };
-                /** @description The [`IndexedAttestation`](https://github.com/ethereum/consensus-specs/blob/v1.5.0-beta.2/specs/electra/beacon-chain.md#indexedattestation) object from the CL spec. */
-                attestation_2: {
-                  /** @description Attesting validator indices */
-                  attesting_indices: string[];
-                  /** @description The [`AttestationData`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#attestationdata) object from the CL spec. */
-                  data: {
-                    /** @example 1 */
-                    slot: string;
-                    /** @example 1 */
-                    index: string;
-                    /**
-                     * Format: hex
-                     * @description LMD GHOST vote.
-                     * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                     */
-                    beacon_block_root: string;
-                    /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
-                    source: {
-                      /** @example 1 */
-                      epoch: string;
-                      /**
-                       * Format: hex
-                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                       */
-                      root: string;
-                    };
-                    /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
-                    target: {
-                      /** @example 1 */
-                      epoch: string;
-                      /**
-                       * Format: hex
-                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                       */
-                      root: string;
-                    };
-                  };
-                  /**
-                   * Format: hex
-                   * @description The BLS signature of the `IndexedAttestation`, created by the validator of the attestation.
-                   * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-                   */
-                  signature: string;
-                };
-              }[];
-              attestations: {
-                /**
-                 * Format: hex
-                 * @description Attester aggregation bits.
-                 * @example 0x01
-                 */
-                aggregation_bits: string;
-                /** @description The [`AttestationData`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#attestationdata) object from the CL spec. */
-                data: {
-                  /** @example 1 */
-                  slot: string;
-                  /** @example 1 */
-                  index: string;
-                  /**
-                   * Format: hex
-                   * @description LMD GHOST vote.
-                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                   */
-                  beacon_block_root: string;
-                  /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
-                  source: {
-                    /** @example 1 */
-                    epoch: string;
-                    /**
-                     * Format: hex
-                     * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                     */
-                    root: string;
-                  };
-                  /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
-                  target: {
-                    /** @example 1 */
-                    epoch: string;
-                    /**
-                     * Format: hex
-                     * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                     */
-                    root: string;
-                  };
-                };
-                /**
-                 * Format: hex
-                 * @description BLS aggregate signature.
-                 * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-                 */
-                signature: string;
-                /**
-                 * Format: hex
-                 * @description Committee bits.
-                 * @example 0x0000000000000001
-                 */
-                committee_bits: string;
-              }[];
-              deposits: {
-                /** @description Branch in the deposit tree. */
-                proof: string[];
-                /** @description The [`DepositData`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#depositdata) object from the CL spec. */
-                data: {
-                  /**
-                   * Format: hex
-                   * @description The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._
-                   * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
-                   */
-                  pubkey: string;
-                  /**
-                   * Format: hex
-                   * @description The withdrawal credentials.
-                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                   */
-                  withdrawal_credentials: string;
-                  /**
-                   * @description Amount in Gwei.
-                   * @example 1
-                   */
-                  amount: string;
-                  /**
-                   * Format: hex
-                   * @description Container self-signature.
-                   * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-                   */
-                  signature: string;
-                };
-              }[];
-              voluntary_exits: {
-                /** @description The [`VoluntaryExit`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#voluntaryexit) object from the CL spec. */
-                message: {
-                  /**
-                   * @description Minimum epoch for processing exit.
-                   * @example 1
-                   */
-                  epoch: string;
-                  /**
-                   * @description Index of the exiting validator.
-                   * @example 1
-                   */
-                  validator_index: string;
-                };
-                /**
-                 * Format: hex
-                 * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-                 */
-                signature: string;
-              }[];
-              /** @description The [`SyncAggregate`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/altair/beacon-chain.md#syncaggregate) object from the CL Altair spec. */
-              sync_aggregate: {
-                /**
-                 * Format: hex
-                 * @description Aggregation bits of sync
-                 * @example 0x01
-                 */
-                sync_committee_bits: string;
-                /**
-                 * Format: hex
-                 * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-                 */
-                sync_committee_signature: string;
-              };
-              bls_to_execution_changes: {
-                /** @description The [`BLSToExecutionChange`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/capella/beacon-chain.md#blstoexecutionchange) object from the CL spec. */
-                message: {
-                  /**
-                   * @description Index of the validator for which credentials will be changed.
-                   * @example 1
-                   */
-                  validator_index: string;
-                  /**
-                   * Format: hex
-                   * @description The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._
-                   * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
-                   */
-                  from_bls_pubkey: string;
-                  /**
-                   * Format: hex
-                   * @description Execution address to which the credentials will be changed.
-                   * @example 0xAbcF8e0d4e9587369b2301D0790347320302cc09
-                   */
-                  to_execution_address: string;
-                };
-                /**
-                 * Format: hex
-                 * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-                 */
-                signature: string;
-              }[];
-              blob_kzg_commitments: string[];
-            } & {
-              /** @description The [`ExecutionPayloadHeader`](https://github.com/ethereum/consensus-specs/blob/master/specs/deneb/beacon-chain.md#executionpayloadheader) object from the CL Deneb spec. */
-              execution_payload_header: {
-                /**
-                 * Format: hex
-                 * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                 */
-                parent_hash: string;
-                /**
-                 * Format: hex
-                 * @description An address on the execution (Ethereum 1) network.
-                 * @example 0xAbcF8e0d4e9587369b2301D0790347320302cc09
-                 */
-                fee_recipient: string;
-                /**
-                 * Format: hex
-                 * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                 */
-                state_root: string;
-                /**
-                 * Format: hex
-                 * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                 */
-                receipts_root: string;
-                /**
-                 * Format: hex
-                 * @example 0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-                 */
-                logs_bloom: string;
-                /**
-                 * Format: hex
-                 * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                 */
-                prev_randao: string;
-                /** @example 1 */
-                block_number: string;
-                /** @example 1 */
-                gas_limit: string;
-                /** @example 1 */
-                gas_used: string;
-                /** @example 1 */
-                timestamp: string;
-                /**
-                 * Format: hex
-                 * @description Extra data on the execution (Ethereum 1) network.
-                 * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                 */
-                extra_data: string;
-                /** @example 1 */
-                base_fee_per_gas: string;
-                /** @example 1 */
-                excess_blob_gas: string;
-                /**
-                 * Format: hex
-                 * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                 */
-                block_hash: string;
-              } & {
-                /**
-                 * Format: hex
-                 * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                 */
-                transactions_root: string;
-                /**
-                 * Format: hex
-                 * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                 */
-                withdrawals_root: string;
-              };
-              /** @description The [`ExecutionRequests`](https://github.com/ethereum/consensus-specs/blob/v1.5.0-beta.2/specs/electra/beacon-chain.md#executionrequests) object from the CL Electra spec. */
-              execution_requests: {
-                deposits: {
-                  /**
-                   * Format: hex
-                   * @description The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._
-                   * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
-                   */
-                  pubkey: string;
-                  /**
-                   * Format: hex
-                   * @description The withdrawal credentials.
-                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                   */
-                  withdrawal_credentials: string;
-                  /**
-                   * @description The value to be deposited (gwei).
-                   * @example 1
-                   */
-                  amount: string;
-                  /**
-                   * Format: hex
-                   * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-                   */
-                  signature: string;
-                  /**
-                   * @description The index of the deposit request.
-                   * @example 1
-                   */
-                  index: string;
-                }[];
-                withdrawals: {
-                  /**
-                   * Format: hex
-                   * @description An address on the execution (Ethereum 1) network.
-                   * @example 0xAbcF8e0d4e9587369b2301D0790347320302cc09
-                   */
-                  source_address: string;
-                  /**
-                   * Format: hex
-                   * @description The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._
-                   * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
-                   */
-                  validator_pubkey: string;
-                  /**
-                   * @description The value to be withdrawn (gwei).
-                   * @example 1
-                   */
-                  amount: string;
-                }[];
-                consolidations: {
-                  /**
-                   * Format: hex
-                   * @description An address on the execution (Ethereum 1) network.
-                   * @example 0xAbcF8e0d4e9587369b2301D0790347320302cc09
-                   */
-                  source_address: string;
-                  /**
-                   * Format: hex
-                   * @description The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._
-                   * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
-                   */
-                  source_pubkey: string;
-                  /**
-                   * Format: hex
-                   * @description The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._
-                   * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
-                   */
-                  target_pubkey: string;
-                }[];
-              };
-            };
-          };
-          /**
-           * Format: hex
-           * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-           */
-          signature: string;
-        }> &
-          Partial<{
-            /** @description A variant of the [`BeaconBlock`](https://github.com/ethereum/consensus-specs/blob/master/specs/phase0/beacon-chain.md#beaconblock) object from the CL Deneb spec, which contains a `BlindedBeaconBlockBody` rather than a `BeaconBlockBody`. */
-            message: {
-              /**
-               * @description The slot to which this block corresponds.
-               * @example 1
-               */
-              slot: string;
-              /**
-               * @description Index of validator in validator registry.
-               * @example 1
-               */
-              proposer_index: string;
-              /**
-               * Format: hex
-               * @description The signing Merkle root of the parent `BeaconBlock`.
-               * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-               */
-              parent_root: string;
-              /**
-               * Format: hex
-               * @description The tree hash Merkle root of the `BeaconState` for the `BeaconBlock`.
-               * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-               */
-              state_root: string;
-            } & {
-              /** @description A variant of the [`BeaconBlockBody`](https://github.com/ethereum/consensus-specs/blob/master/specs/deneb/beacon-chain.md#beaconblockbody) object from the CL Deneb spec, which contains a transactions root rather than a full transactions list. */
-              body: {
-                randao_reveal: string & unknown;
-                /** @description The [`Eth1Data`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#eth1data) object from the CL spec. */
-                eth1_data: {
-                  /**
-                   * Format: hex
-                   * @description Root of the deposit tree.
-                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                   */
-                  deposit_root: string;
-                  /**
-                   * @description Total number of deposits.
-                   * @example 1
-                   */
-                  deposit_count: string;
-                  /**
-                   * Format: hex
-                   * @description Ethereum 1.x block hash.
-                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                   */
-                  block_hash: string;
-                };
-                /**
-                 * Format: hex
-                 * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                 */
-                graffiti: string;
-                proposer_slashings: {
-                  /** @description The [`SignedBeaconBlockHeader`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#signedbeaconblockheader) object envelope from the CL spec. */
-                  signed_header_1: {
-                    /** @description The [`BeaconBlockHeader`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#beaconblockheader) object from the CL spec. */
-                    message: {
-                      /**
-                       * @description The slot to which this block corresponds.
-                       * @example 1
-                       */
-                      slot: string;
-                      /**
-                       * @description Index of validator in validator registry.
-                       * @example 1
-                       */
-                      proposer_index: string;
-                      /**
-                       * Format: hex
-                       * @description The signing merkle root of the parent `BeaconBlock`.
-                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                       */
-                      parent_root: string;
-                      /**
-                       * Format: hex
-                       * @description The tree hash merkle root of the `BeaconState` for the `BeaconBlock`.
-                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                       */
-                      state_root: string;
-                    } & {
-                      /**
-                       * Format: hex
-                       * @description The tree hash merkle root of the `BeaconBlockBody` for the `BeaconBlock`
-                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                       */
-                      body_root: string;
-                    };
-                    /**
-                     * Format: hex
-                     * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-                     */
-                    signature: string;
-                  };
-                  /** @description The [`SignedBeaconBlockHeader`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#signedbeaconblockheader) object envelope from the CL spec. */
-                  signed_header_2: {
-                    /** @description The [`BeaconBlockHeader`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#beaconblockheader) object from the CL spec. */
-                    message: {
-                      /**
-                       * @description The slot to which this block corresponds.
-                       * @example 1
-                       */
-                      slot: string;
-                      /**
-                       * @description Index of validator in validator registry.
-                       * @example 1
-                       */
-                      proposer_index: string;
-                      /**
-                       * Format: hex
-                       * @description The signing merkle root of the parent `BeaconBlock`.
-                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                       */
-                      parent_root: string;
-                      /**
-                       * Format: hex
-                       * @description The tree hash merkle root of the `BeaconState` for the `BeaconBlock`.
-                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                       */
-                      state_root: string;
-                    } & {
-                      /**
-                       * Format: hex
-                       * @description The tree hash merkle root of the `BeaconBlockBody` for the `BeaconBlock`
-                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                       */
-                      body_root: string;
-                    };
-                    /**
-                     * Format: hex
-                     * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-                     */
-                    signature: string;
-                  };
-                }[];
-                attester_slashings: {
-                  /** @description The [`IndexedAttestation`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#indexedattestation) object from the CL spec. */
-                  attestation_1: {
-                    /** @description Attesting validator indices */
-                    attesting_indices: string[];
-                    /** @description The [`AttestationData`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#attestationdata) object from the CL spec. */
-                    data: {
-                      /** @example 1 */
-                      slot: string;
-                      /** @example 1 */
-                      index: string;
-                      /**
-                       * Format: hex
-                       * @description LMD GHOST vote.
-                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                       */
-                      beacon_block_root: string;
-                      /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
-                      source: {
-                        /** @example 1 */
-                        epoch: string;
-                        /**
-                         * Format: hex
-                         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                         */
-                        root: string;
-                      };
-                      /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
-                      target: {
-                        /** @example 1 */
-                        epoch: string;
-                        /**
-                         * Format: hex
-                         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                         */
-                        root: string;
-                      };
-                    };
-                    /**
-                     * Format: hex
-                     * @description The BLS signature of the `IndexedAttestation`, created by the validator of the attestation.
-                     * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-                     */
-                    signature: string;
-                  };
-                  /** @description The [`IndexedAttestation`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#indexedattestation) object from the CL spec. */
-                  attestation_2: {
-                    /** @description Attesting validator indices */
-                    attesting_indices: string[];
-                    /** @description The [`AttestationData`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#attestationdata) object from the CL spec. */
-                    data: {
-                      /** @example 1 */
-                      slot: string;
-                      /** @example 1 */
-                      index: string;
-                      /**
-                       * Format: hex
-                       * @description LMD GHOST vote.
-                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                       */
-                      beacon_block_root: string;
-                      /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
-                      source: {
-                        /** @example 1 */
-                        epoch: string;
-                        /**
-                         * Format: hex
-                         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                         */
-                        root: string;
-                      };
-                      /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
-                      target: {
-                        /** @example 1 */
-                        epoch: string;
-                        /**
-                         * Format: hex
-                         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                         */
-                        root: string;
-                      };
-                    };
-                    /**
-                     * Format: hex
-                     * @description The BLS signature of the `IndexedAttestation`, created by the validator of the attestation.
-                     * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-                     */
-                    signature: string;
-                  };
-                }[];
-                attestations: {
-                  /**
-                   * Format: hex
-                   * @description Attester aggregation bits.
-                   * @example 0x01
-                   */
-                  aggregation_bits: string;
-                  /** @description The [`AttestationData`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#attestationdata) object from the CL spec. */
-                  data: {
-                    /** @example 1 */
-                    slot: string;
-                    /** @example 1 */
-                    index: string;
-                    /**
-                     * Format: hex
-                     * @description LMD GHOST vote.
-                     * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                     */
-                    beacon_block_root: string;
-                    /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
-                    source: {
-                      /** @example 1 */
-                      epoch: string;
-                      /**
-                       * Format: hex
-                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                       */
-                      root: string;
-                    };
-                    /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
-                    target: {
-                      /** @example 1 */
-                      epoch: string;
-                      /**
-                       * Format: hex
-                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                       */
-                      root: string;
-                    };
-                  };
-                  /**
-                   * Format: hex
-                   * @description BLS aggregate signature.
-                   * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-                   */
-                  signature: string;
-                }[];
-                deposits: {
-                  /** @description Branch in the deposit tree. */
-                  proof: string[];
-                  /** @description The [`DepositData`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#depositdata) object from the CL spec. */
-                  data: {
-                    /**
-                     * Format: hex
-                     * @description The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._
-                     * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
-                     */
-                    pubkey: string;
-                    /**
-                     * Format: hex
-                     * @description The withdrawal credentials.
-                     * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                     */
-                    withdrawal_credentials: string;
-                    /**
-                     * @description Amount in Gwei.
-                     * @example 1
-                     */
-                    amount: string;
-                    /**
-                     * Format: hex
-                     * @description Container self-signature.
-                     * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-                     */
-                    signature: string;
-                  };
-                }[];
-                voluntary_exits: {
-                  /** @description The [`VoluntaryExit`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#voluntaryexit) object from the CL spec. */
-                  message: {
-                    /**
-                     * @description Minimum epoch for processing exit.
-                     * @example 1
-                     */
-                    epoch: string;
-                    /**
-                     * @description Index of the exiting validator.
-                     * @example 1
-                     */
-                    validator_index: string;
-                  };
-                  /**
-                   * Format: hex
-                   * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-                   */
-                  signature: string;
-                }[];
-                /** @description The [`SyncAggregate`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/altair/beacon-chain.md#syncaggregate) object from the CL Altair spec. */
-                sync_aggregate: {
-                  /**
-                   * Format: hex
-                   * @description Aggregation bits of sync
-                   * @example 0x01
-                   */
-                  sync_committee_bits: string;
-                  /**
-                   * Format: hex
-                   * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-                   */
-                  sync_committee_signature: string;
-                };
-                bls_to_execution_changes: {
-                  /** @description The [`BLSToExecutionChange`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/capella/beacon-chain.md#blstoexecutionchange) object from the CL spec. */
-                  message: {
-                    /**
-                     * @description Index of the validator for which credentials will be changed.
-                     * @example 1
-                     */
-                    validator_index: string;
-                    /**
-                     * Format: hex
-                     * @description The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._
-                     * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
-                     */
-                    from_bls_pubkey: string;
-                    /**
-                     * Format: hex
-                     * @description Execution address to which the credentials will be changed.
-                     * @example 0xAbcF8e0d4e9587369b2301D0790347320302cc09
-                     */
-                    to_execution_address: string;
-                  };
-                  /**
-                   * Format: hex
-                   * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-                   */
-                  signature: string;
-                }[];
-                blob_kzg_commitments: string[];
-              } & {
-                /** @description The [`ExecutionPayloadHeader`](https://github.com/ethereum/consensus-specs/blob/master/specs/deneb/beacon-chain.md#executionpayloadheader) object from the CL Deneb spec. */
-                execution_payload_header: {
-                  /**
-                   * Format: hex
-                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                   */
-                  parent_hash: string;
-                  /**
-                   * Format: hex
-                   * @description An address on the execution (Ethereum 1) network.
-                   * @example 0xAbcF8e0d4e9587369b2301D0790347320302cc09
-                   */
-                  fee_recipient: string;
-                  /**
-                   * Format: hex
-                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                   */
-                  state_root: string;
-                  /**
-                   * Format: hex
-                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                   */
-                  receipts_root: string;
-                  /**
-                   * Format: hex
-                   * @example 0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-                   */
-                  logs_bloom: string;
-                  /**
-                   * Format: hex
-                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                   */
-                  prev_randao: string;
-                  /** @example 1 */
-                  block_number: string;
-                  /** @example 1 */
-                  gas_limit: string;
-                  /** @example 1 */
-                  gas_used: string;
-                  /** @example 1 */
-                  timestamp: string;
-                  /**
-                   * Format: hex
-                   * @description Extra data on the execution (Ethereum 1) network.
-                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                   */
-                  extra_data: string;
-                  /** @example 1 */
-                  base_fee_per_gas: string;
-                  /** @example 1 */
-                  excess_blob_gas: string;
-                  /**
-                   * Format: hex
-                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                   */
-                  block_hash: string;
-                } & {
-                  /**
-                   * Format: hex
-                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                   */
-                  transactions_root: string;
-                  /**
-                   * Format: hex
-                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                   */
-                  withdrawals_root: string;
-                };
-              };
-            };
-            /**
-             * Format: hex
-             * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-             */
-            signature: string;
-          }> &
-          Partial<{
-            /** @description A variant of the [`BeaconBlock`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#beaconblock) object from the CL Capella spec, which contains a `BlindedBeaconBlockBody` rather than a `BeaconBlockBody`. */
-            message: {
-              /**
-               * @description The slot to which this block corresponds.
-               * @example 1
-               */
-              slot: string;
-              /**
-               * @description Index of validator in validator registry.
-               * @example 1
-               */
-              proposer_index: string;
-              /**
-               * Format: hex
-               * @description The signing Merkle root of the parent `BeaconBlock`.
-               * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-               */
-              parent_root: string;
-              /**
-               * Format: hex
-               * @description The tree hash Merkle root of the `BeaconState` for the `BeaconBlock`.
-               * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-               */
-              state_root: string;
-            } & {
-              /** @description A variant of the [`BeaconBlockBody`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/capella/beacon-chain.md#beaconblockbody) object from the CL Capella spec, which contains a transactions root rather than a full transactions list. */
-              body: {
-                /**
-                 * Format: hex
-                 * @description The RanDAO reveal value provided by the validator.
-                 * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-                 */
-                randao_reveal: string;
-                /** @description The [`Eth1Data`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#eth1data) object from the CL spec. */
-                eth1_data: {
-                  /**
-                   * Format: hex
-                   * @description Root of the deposit tree.
-                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                   */
-                  deposit_root: string;
-                  /**
-                   * @description Total number of deposits.
-                   * @example 1
-                   */
-                  deposit_count: string;
-                  /**
-                   * Format: hex
-                   * @description Ethereum 1.x block hash.
-                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                   */
-                  block_hash: string;
-                };
-                /**
-                 * Format: hex
-                 * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                 */
-                graffiti: string;
-                proposer_slashings: {
-                  /** @description The [`SignedBeaconBlockHeader`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#signedbeaconblockheader) object envelope from the CL spec. */
-                  signed_header_1: {
-                    /** @description The [`BeaconBlockHeader`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#beaconblockheader) object from the CL spec. */
-                    message: {
-                      /**
-                       * @description The slot to which this block corresponds.
-                       * @example 1
-                       */
-                      slot: string;
-                      /**
-                       * @description Index of validator in validator registry.
-                       * @example 1
-                       */
-                      proposer_index: string;
-                      /**
-                       * Format: hex
-                       * @description The signing merkle root of the parent `BeaconBlock`.
-                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                       */
-                      parent_root: string;
-                      /**
-                       * Format: hex
-                       * @description The tree hash merkle root of the `BeaconState` for the `BeaconBlock`.
-                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                       */
-                      state_root: string;
-                    } & {
-                      /**
-                       * Format: hex
-                       * @description The tree hash merkle root of the `BeaconBlockBody` for the `BeaconBlock`
-                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                       */
-                      body_root: string;
-                    };
-                    /**
-                     * Format: hex
-                     * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-                     */
-                    signature: string;
-                  };
-                  /** @description The [`SignedBeaconBlockHeader`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#signedbeaconblockheader) object envelope from the CL spec. */
-                  signed_header_2: {
-                    /** @description The [`BeaconBlockHeader`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#beaconblockheader) object from the CL spec. */
-                    message: {
-                      /**
-                       * @description The slot to which this block corresponds.
-                       * @example 1
-                       */
-                      slot: string;
-                      /**
-                       * @description Index of validator in validator registry.
-                       * @example 1
-                       */
-                      proposer_index: string;
-                      /**
-                       * Format: hex
-                       * @description The signing merkle root of the parent `BeaconBlock`.
-                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                       */
-                      parent_root: string;
-                      /**
-                       * Format: hex
-                       * @description The tree hash merkle root of the `BeaconState` for the `BeaconBlock`.
-                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                       */
-                      state_root: string;
-                    } & {
-                      /**
-                       * Format: hex
-                       * @description The tree hash merkle root of the `BeaconBlockBody` for the `BeaconBlock`
-                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                       */
-                      body_root: string;
-                    };
-                    /**
-                     * Format: hex
-                     * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-                     */
-                    signature: string;
-                  };
-                }[];
-                attester_slashings: {
-                  /** @description The [`IndexedAttestation`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#indexedattestation) object from the CL spec. */
-                  attestation_1: {
-                    /** @description Attesting validator indices */
-                    attesting_indices: string[];
-                    /** @description The [`AttestationData`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#attestationdata) object from the CL spec. */
-                    data: {
-                      /** @example 1 */
-                      slot: string;
-                      /** @example 1 */
-                      index: string;
-                      /**
-                       * Format: hex
-                       * @description LMD GHOST vote.
-                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                       */
-                      beacon_block_root: string;
-                      /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
-                      source: {
-                        /** @example 1 */
-                        epoch: string;
-                        /**
-                         * Format: hex
-                         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                         */
-                        root: string;
-                      };
-                      /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
-                      target: {
-                        /** @example 1 */
-                        epoch: string;
-                        /**
-                         * Format: hex
-                         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                         */
-                        root: string;
-                      };
-                    };
-                    /**
-                     * Format: hex
-                     * @description The BLS signature of the `IndexedAttestation`, created by the validator of the attestation.
-                     * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-                     */
-                    signature: string;
-                  };
-                  /** @description The [`IndexedAttestation`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#indexedattestation) object from the CL spec. */
-                  attestation_2: {
-                    /** @description Attesting validator indices */
-                    attesting_indices: string[];
-                    /** @description The [`AttestationData`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#attestationdata) object from the CL spec. */
-                    data: {
-                      /** @example 1 */
-                      slot: string;
-                      /** @example 1 */
-                      index: string;
-                      /**
-                       * Format: hex
-                       * @description LMD GHOST vote.
-                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                       */
-                      beacon_block_root: string;
-                      /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
-                      source: {
-                        /** @example 1 */
-                        epoch: string;
-                        /**
-                         * Format: hex
-                         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                         */
-                        root: string;
-                      };
-                      /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
-                      target: {
-                        /** @example 1 */
-                        epoch: string;
-                        /**
-                         * Format: hex
-                         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                         */
-                        root: string;
-                      };
-                    };
-                    /**
-                     * Format: hex
-                     * @description The BLS signature of the `IndexedAttestation`, created by the validator of the attestation.
-                     * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-                     */
-                    signature: string;
-                  };
-                }[];
-                attestations: {
-                  /**
-                   * Format: hex
-                   * @description Attester aggregation bits.
-                   * @example 0x01
-                   */
-                  aggregation_bits: string;
-                  /** @description The [`AttestationData`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#attestationdata) object from the CL spec. */
-                  data: {
-                    /** @example 1 */
-                    slot: string;
-                    /** @example 1 */
-                    index: string;
-                    /**
-                     * Format: hex
-                     * @description LMD GHOST vote.
-                     * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                     */
-                    beacon_block_root: string;
-                    /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
-                    source: {
-                      /** @example 1 */
-                      epoch: string;
-                      /**
-                       * Format: hex
-                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                       */
-                      root: string;
-                    };
-                    /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
-                    target: {
-                      /** @example 1 */
-                      epoch: string;
-                      /**
-                       * Format: hex
-                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                       */
-                      root: string;
-                    };
-                  };
-                  /**
-                   * Format: hex
-                   * @description BLS aggregate signature.
-                   * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-                   */
-                  signature: string;
-                }[];
-                deposits: {
-                  /** @description Branch in the deposit tree. */
-                  proof: string[];
-                  /** @description The [`DepositData`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#depositdata) object from the CL spec. */
-                  data: {
-                    /**
-                     * Format: hex
-                     * @description The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._
-                     * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
-                     */
-                    pubkey: string;
-                    /**
-                     * Format: hex
-                     * @description The withdrawal credentials.
-                     * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                     */
-                    withdrawal_credentials: string;
-                    /**
-                     * @description Amount in Gwei.
-                     * @example 1
-                     */
-                    amount: string;
-                    /**
-                     * Format: hex
-                     * @description Container self-signature.
-                     * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-                     */
-                    signature: string;
-                  };
-                }[];
-                voluntary_exits: {
-                  /** @description The [`VoluntaryExit`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#voluntaryexit) object from the CL spec. */
-                  message: {
-                    /**
-                     * @description Minimum epoch for processing exit.
-                     * @example 1
-                     */
-                    epoch: string;
-                    /**
-                     * @description Index of the exiting validator.
-                     * @example 1
-                     */
-                    validator_index: string;
-                  };
-                  /**
-                   * Format: hex
-                   * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-                   */
-                  signature: string;
-                }[];
-                /** @description The [`SyncAggregate`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/altair/beacon-chain.md#syncaggregate) object from the CL Altair spec. */
-                sync_aggregate: {
-                  /**
-                   * Format: hex
-                   * @description Aggregation bits of sync
-                   * @example 0x01
-                   */
-                  sync_committee_bits: string;
-                  /**
-                   * Format: hex
-                   * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-                   */
-                  sync_committee_signature: string;
-                };
-                bls_to_execution_changes: {
-                  /** @description The [`BLSToExecutionChange`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/capella/beacon-chain.md#blstoexecutionchange) object from the CL spec. */
-                  message: {
-                    /**
-                     * @description Index of the validator for which credentials will be changed.
-                     * @example 1
-                     */
-                    validator_index: string;
-                    /**
-                     * Format: hex
-                     * @description The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._
-                     * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
-                     */
-                    from_bls_pubkey: string;
-                    /**
-                     * Format: hex
-                     * @description Execution address to which the credentials will be changed.
-                     * @example 0xAbcF8e0d4e9587369b2301D0790347320302cc09
-                     */
-                    to_execution_address: string;
-                  };
-                  /**
-                   * Format: hex
-                   * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-                   */
-                  signature: string;
-                }[];
-              } & {
-                /** @description The [`ExecutionPayloadHeader`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/capella/beacon-chain.md#executionpayloadheader) object from the CL Capella spec. */
-                execution_payload_header: {
-                  /**
-                   * Format: hex
-                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                   */
-                  parent_hash: string;
-                  /**
-                   * Format: hex
-                   * @description An address on the execution (Ethereum 1) network.
-                   * @example 0xAbcF8e0d4e9587369b2301D0790347320302cc09
-                   */
-                  fee_recipient: string;
-                  /**
-                   * Format: hex
-                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                   */
-                  state_root: string;
-                  /**
-                   * Format: hex
-                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                   */
-                  receipts_root: string;
-                  /**
-                   * Format: hex
-                   * @example 0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-                   */
-                  logs_bloom: string;
-                  /**
-                   * Format: hex
-                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                   */
-                  prev_randao: string;
-                  /** @example 1 */
-                  block_number: string;
-                  /** @example 1 */
-                  gas_limit: string;
-                  /** @example 1 */
-                  gas_used: string;
-                  /** @example 1 */
-                  timestamp: string;
-                  /**
-                   * Format: hex
-                   * @description Extra data on the execution (Ethereum 1) network.
-                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                   */
-                  extra_data: string;
-                  /** @example 1 */
-                  base_fee_per_gas: string;
-                  /**
-                   * Format: hex
-                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                   */
-                  block_hash: string;
-                } & {
-                  /**
-                   * Format: hex
-                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                   */
-                  transactions_root: string;
-                  /**
-                   * Format: hex
-                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                   */
-                  withdrawals_root: string;
-                };
-              };
-            };
-            /**
-             * Format: hex
-             * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-             */
-            signature: string;
-          }> &
-          Partial<{
-            /** @description A variant of the [`BeaconBlock`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#beaconblock) object from the CL Bellatrix spec, which contains a `BlindedBeaconBlockBody` rather than a `BeaconBlockBody`. */
-            message: {
-              /**
-               * @description The slot to which this block corresponds.
-               * @example 1
-               */
-              slot: string;
-              /**
-               * @description Index of validator in validator registry.
-               * @example 1
-               */
-              proposer_index: string;
-              /**
-               * Format: hex
-               * @description The signing Merkle root of the parent `BeaconBlock`.
-               * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-               */
-              parent_root: string;
-              /**
-               * Format: hex
-               * @description The tree hash Merkle root of the `BeaconState` for the `BeaconBlock`.
-               * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-               */
-              state_root: string;
-            } & {
-              /** @description A variant of the [`BeaconBlockBody`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/bellatrix/beacon-chain.md#beaconblockbody) object from the CL Bellatrix spec, which contains a transactions root rather than a full transactions list. */
-              body: {
-                /**
-                 * Format: hex
-                 * @description The RanDAO reveal value provided by the validator.
-                 * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-                 */
-                randao_reveal: string;
-                /** @description The [`Eth1Data`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#eth1data) object from the CL spec. */
-                eth1_data: {
-                  /**
-                   * Format: hex
-                   * @description Root of the deposit tree.
-                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                   */
-                  deposit_root: string;
-                  /**
-                   * @description Total number of deposits.
-                   * @example 1
-                   */
-                  deposit_count: string;
-                  /**
-                   * Format: hex
-                   * @description Ethereum 1.x block hash.
-                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                   */
-                  block_hash: string;
-                };
-                /**
-                 * Format: hex
-                 * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                 */
-                graffiti: string;
-                proposer_slashings: {
-                  /** @description The [`SignedBeaconBlockHeader`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#signedbeaconblockheader) object envelope from the CL spec. */
-                  signed_header_1: {
-                    /** @description The [`BeaconBlockHeader`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#beaconblockheader) object from the CL spec. */
-                    message: {
-                      /**
-                       * @description The slot to which this block corresponds.
-                       * @example 1
-                       */
-                      slot: string;
-                      /**
-                       * @description Index of validator in validator registry.
-                       * @example 1
-                       */
-                      proposer_index: string;
-                      /**
-                       * Format: hex
-                       * @description The signing merkle root of the parent `BeaconBlock`.
-                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                       */
-                      parent_root: string;
-                      /**
-                       * Format: hex
-                       * @description The tree hash merkle root of the `BeaconState` for the `BeaconBlock`.
-                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                       */
-                      state_root: string;
-                    } & {
-                      /**
-                       * Format: hex
-                       * @description The tree hash merkle root of the `BeaconBlockBody` for the `BeaconBlock`
-                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                       */
-                      body_root: string;
-                    };
-                    /**
-                     * Format: hex
-                     * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-                     */
-                    signature: string;
-                  };
-                  /** @description The [`SignedBeaconBlockHeader`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#signedbeaconblockheader) object envelope from the CL spec. */
-                  signed_header_2: {
-                    /** @description The [`BeaconBlockHeader`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#beaconblockheader) object from the CL spec. */
-                    message: {
-                      /**
-                       * @description The slot to which this block corresponds.
-                       * @example 1
-                       */
-                      slot: string;
-                      /**
-                       * @description Index of validator in validator registry.
-                       * @example 1
-                       */
-                      proposer_index: string;
-                      /**
-                       * Format: hex
-                       * @description The signing merkle root of the parent `BeaconBlock`.
-                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                       */
-                      parent_root: string;
-                      /**
-                       * Format: hex
-                       * @description The tree hash merkle root of the `BeaconState` for the `BeaconBlock`.
-                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                       */
-                      state_root: string;
-                    } & {
-                      /**
-                       * Format: hex
-                       * @description The tree hash merkle root of the `BeaconBlockBody` for the `BeaconBlock`
-                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                       */
-                      body_root: string;
-                    };
-                    /**
-                     * Format: hex
-                     * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-                     */
-                    signature: string;
-                  };
-                }[];
-                attester_slashings: {
-                  /** @description The [`IndexedAttestation`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#indexedattestation) object from the CL spec. */
-                  attestation_1: {
-                    /** @description Attesting validator indices */
-                    attesting_indices: string[];
-                    /** @description The [`AttestationData`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#attestationdata) object from the CL spec. */
-                    data: {
-                      /** @example 1 */
-                      slot: string;
-                      /** @example 1 */
-                      index: string;
-                      /**
-                       * Format: hex
-                       * @description LMD GHOST vote.
-                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                       */
-                      beacon_block_root: string;
-                      /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
-                      source: {
-                        /** @example 1 */
-                        epoch: string;
-                        /**
-                         * Format: hex
-                         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                         */
-                        root: string;
-                      };
-                      /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
-                      target: {
-                        /** @example 1 */
-                        epoch: string;
-                        /**
-                         * Format: hex
-                         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                         */
-                        root: string;
-                      };
-                    };
-                    /**
-                     * Format: hex
-                     * @description The BLS signature of the `IndexedAttestation`, created by the validator of the attestation.
-                     * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-                     */
-                    signature: string;
-                  };
-                  /** @description The [`IndexedAttestation`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#indexedattestation) object from the CL spec. */
-                  attestation_2: {
-                    /** @description Attesting validator indices */
-                    attesting_indices: string[];
-                    /** @description The [`AttestationData`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#attestationdata) object from the CL spec. */
-                    data: {
-                      /** @example 1 */
-                      slot: string;
-                      /** @example 1 */
-                      index: string;
-                      /**
-                       * Format: hex
-                       * @description LMD GHOST vote.
-                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                       */
-                      beacon_block_root: string;
-                      /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
-                      source: {
-                        /** @example 1 */
-                        epoch: string;
-                        /**
-                         * Format: hex
-                         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                         */
-                        root: string;
-                      };
-                      /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
-                      target: {
-                        /** @example 1 */
-                        epoch: string;
-                        /**
-                         * Format: hex
-                         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                         */
-                        root: string;
-                      };
-                    };
-                    /**
-                     * Format: hex
-                     * @description The BLS signature of the `IndexedAttestation`, created by the validator of the attestation.
-                     * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-                     */
-                    signature: string;
-                  };
-                }[];
-                attestations: {
-                  /**
-                   * Format: hex
-                   * @description Attester aggregation bits.
-                   * @example 0x01
-                   */
-                  aggregation_bits: string;
-                  /** @description The [`AttestationData`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#attestationdata) object from the CL spec. */
-                  data: {
-                    /** @example 1 */
-                    slot: string;
-                    /** @example 1 */
-                    index: string;
-                    /**
-                     * Format: hex
-                     * @description LMD GHOST vote.
-                     * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                     */
-                    beacon_block_root: string;
-                    /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
-                    source: {
-                      /** @example 1 */
-                      epoch: string;
-                      /**
-                       * Format: hex
-                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                       */
-                      root: string;
-                    };
-                    /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
-                    target: {
-                      /** @example 1 */
-                      epoch: string;
-                      /**
-                       * Format: hex
-                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                       */
-                      root: string;
-                    };
-                  };
-                  /**
-                   * Format: hex
-                   * @description BLS aggregate signature.
-                   * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-                   */
-                  signature: string;
-                }[];
-                deposits: {
-                  /** @description Branch in the deposit tree. */
-                  proof: string[];
-                  /** @description The [`DepositData`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#depositdata) object from the CL spec. */
-                  data: {
-                    /**
-                     * Format: hex
-                     * @description The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._
-                     * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
-                     */
-                    pubkey: string;
-                    /**
-                     * Format: hex
-                     * @description The withdrawal credentials.
-                     * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                     */
-                    withdrawal_credentials: string;
-                    /**
-                     * @description Amount in Gwei.
-                     * @example 1
-                     */
-                    amount: string;
-                    /**
-                     * Format: hex
-                     * @description Container self-signature.
-                     * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-                     */
-                    signature: string;
-                  };
-                }[];
-                voluntary_exits: {
-                  /** @description The [`VoluntaryExit`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#voluntaryexit) object from the CL spec. */
-                  message: {
-                    /**
-                     * @description Minimum epoch for processing exit.
-                     * @example 1
-                     */
-                    epoch: string;
-                    /**
-                     * @description Index of the exiting validator.
-                     * @example 1
-                     */
-                    validator_index: string;
-                  };
-                  /**
-                   * Format: hex
-                   * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-                   */
-                  signature: string;
-                }[];
-                /** @description The [`SyncAggregate`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/altair/beacon-chain.md#syncaggregate) object from the CL Altair spec. */
-                sync_aggregate: {
-                  /**
-                   * Format: hex
-                   * @description Aggregation bits of sync
-                   * @example 0x01
-                   */
-                  sync_committee_bits: string;
-                  /**
-                   * Format: hex
-                   * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-                   */
-                  sync_committee_signature: string;
-                };
-              } & {
-                /** @description The [`ExecutionPayloadHeader`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/bellatrix/beacon-chain.md#executionpayloadheader) object from the CL Bellatrix spec. */
-                execution_payload_header: {
-                  /**
-                   * Format: hex
-                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                   */
-                  parent_hash: string;
-                  /**
-                   * Format: hex
-                   * @description An address on the execution (Ethereum 1) network.
-                   * @example 0xAbcF8e0d4e9587369b2301D0790347320302cc09
-                   */
-                  fee_recipient: string;
-                  /**
-                   * Format: hex
-                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                   */
-                  state_root: string;
-                  /**
-                   * Format: hex
-                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                   */
-                  receipts_root: string;
-                  /**
-                   * Format: hex
-                   * @example 0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-                   */
-                  logs_bloom: string;
-                  /**
-                   * Format: hex
-                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                   */
-                  prev_randao: string;
-                  /** @example 1 */
-                  block_number: string;
-                  /** @example 1 */
-                  gas_limit: string;
-                  /** @example 1 */
-                  gas_used: string;
-                  /** @example 1 */
-                  timestamp: string;
-                  /**
-                   * Format: hex
-                   * @description Extra data on the execution (Ethereum 1) network.
-                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                   */
-                  extra_data: string;
-                  /** @example 1 */
-                  base_fee_per_gas: string;
-                  /**
-                   * Format: hex
-                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                   */
-                  block_hash: string;
-                } & {
-                  /**
-                   * Format: hex
-                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                   */
-                  transactions_root: string;
-                };
-              };
-            };
-            /**
-             * Format: hex
-             * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-             */
-            signature: string;
-          }> &
-          Partial<{
-            /** @description The [`BeaconBlock`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#beaconblock) object from the CL Altair spec. */
-            message: {
-              /**
-               * @description The slot to which this block corresponds.
-               * @example 1
-               */
-              slot: string;
-              /**
-               * @description Index of validator in validator registry.
-               * @example 1
-               */
-              proposer_index: string;
-              /**
-               * Format: hex
-               * @description The signing Merkle root of the parent `BeaconBlock`.
-               * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-               */
-              parent_root: string;
-              /**
-               * Format: hex
-               * @description The tree hash Merkle root of the `BeaconState` for the `BeaconBlock`.
-               * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-               */
-              state_root: string;
-            } & {
-              /** @description The [`BeaconBlockBody`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/altair/beacon-chain.md#beaconblockbody) object from the CL Altair spec. */
-              body: {
-                /**
-                 * Format: hex
-                 * @description The RanDAO reveal value provided by the validator.
-                 * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-                 */
-                randao_reveal: string;
-                /** @description The [`Eth1Data`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#eth1data) object from the CL spec. */
-                eth1_data: {
-                  /**
-                   * Format: hex
-                   * @description Root of the deposit tree.
-                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                   */
-                  deposit_root: string;
-                  /**
-                   * @description Total number of deposits.
-                   * @example 1
-                   */
-                  deposit_count: string;
-                  /**
-                   * Format: hex
-                   * @description Ethereum 1.x block hash.
-                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                   */
-                  block_hash: string;
-                };
-                /**
-                 * Format: hex
-                 * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                 */
-                graffiti: string;
-                proposer_slashings: {
-                  /** @description The [`SignedBeaconBlockHeader`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#signedbeaconblockheader) object envelope from the CL spec. */
-                  signed_header_1: {
-                    /** @description The [`BeaconBlockHeader`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#beaconblockheader) object from the CL spec. */
-                    message: {
-                      /**
-                       * @description The slot to which this block corresponds.
-                       * @example 1
-                       */
-                      slot: string;
-                      /**
-                       * @description Index of validator in validator registry.
-                       * @example 1
-                       */
-                      proposer_index: string;
-                      /**
-                       * Format: hex
-                       * @description The signing merkle root of the parent `BeaconBlock`.
-                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                       */
-                      parent_root: string;
-                      /**
-                       * Format: hex
-                       * @description The tree hash merkle root of the `BeaconState` for the `BeaconBlock`.
-                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                       */
-                      state_root: string;
-                    } & {
-                      /**
-                       * Format: hex
-                       * @description The tree hash merkle root of the `BeaconBlockBody` for the `BeaconBlock`
-                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                       */
-                      body_root: string;
-                    };
-                    /**
-                     * Format: hex
-                     * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-                     */
-                    signature: string;
-                  };
-                  /** @description The [`SignedBeaconBlockHeader`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#signedbeaconblockheader) object envelope from the CL spec. */
-                  signed_header_2: {
-                    /** @description The [`BeaconBlockHeader`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#beaconblockheader) object from the CL spec. */
-                    message: {
-                      /**
-                       * @description The slot to which this block corresponds.
-                       * @example 1
-                       */
-                      slot: string;
-                      /**
-                       * @description Index of validator in validator registry.
-                       * @example 1
-                       */
-                      proposer_index: string;
-                      /**
-                       * Format: hex
-                       * @description The signing merkle root of the parent `BeaconBlock`.
-                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                       */
-                      parent_root: string;
-                      /**
-                       * Format: hex
-                       * @description The tree hash merkle root of the `BeaconState` for the `BeaconBlock`.
-                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                       */
-                      state_root: string;
-                    } & {
-                      /**
-                       * Format: hex
-                       * @description The tree hash merkle root of the `BeaconBlockBody` for the `BeaconBlock`
-                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                       */
-                      body_root: string;
-                    };
-                    /**
-                     * Format: hex
-                     * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-                     */
-                    signature: string;
-                  };
-                }[];
-                attester_slashings: {
-                  /** @description The [`IndexedAttestation`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#indexedattestation) object from the CL spec. */
-                  attestation_1: {
-                    /** @description Attesting validator indices */
-                    attesting_indices: string[];
-                    /** @description The [`AttestationData`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#attestationdata) object from the CL spec. */
-                    data: {
-                      /** @example 1 */
-                      slot: string;
-                      /** @example 1 */
-                      index: string;
-                      /**
-                       * Format: hex
-                       * @description LMD GHOST vote.
-                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                       */
-                      beacon_block_root: string;
-                      /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
-                      source: {
-                        /** @example 1 */
-                        epoch: string;
-                        /**
-                         * Format: hex
-                         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                         */
-                        root: string;
-                      };
-                      /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
-                      target: {
-                        /** @example 1 */
-                        epoch: string;
-                        /**
-                         * Format: hex
-                         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                         */
-                        root: string;
-                      };
-                    };
-                    /**
-                     * Format: hex
-                     * @description The BLS signature of the `IndexedAttestation`, created by the validator of the attestation.
-                     * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-                     */
-                    signature: string;
-                  };
-                  /** @description The [`IndexedAttestation`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#indexedattestation) object from the CL spec. */
-                  attestation_2: {
-                    /** @description Attesting validator indices */
-                    attesting_indices: string[];
-                    /** @description The [`AttestationData`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#attestationdata) object from the CL spec. */
-                    data: {
-                      /** @example 1 */
-                      slot: string;
-                      /** @example 1 */
-                      index: string;
-                      /**
-                       * Format: hex
-                       * @description LMD GHOST vote.
-                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                       */
-                      beacon_block_root: string;
-                      /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
-                      source: {
-                        /** @example 1 */
-                        epoch: string;
-                        /**
-                         * Format: hex
-                         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                         */
-                        root: string;
-                      };
-                      /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
-                      target: {
-                        /** @example 1 */
-                        epoch: string;
-                        /**
-                         * Format: hex
-                         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                         */
-                        root: string;
-                      };
-                    };
-                    /**
-                     * Format: hex
-                     * @description The BLS signature of the `IndexedAttestation`, created by the validator of the attestation.
-                     * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-                     */
-                    signature: string;
-                  };
-                }[];
-                attestations: {
-                  /**
-                   * Format: hex
-                   * @description Attester aggregation bits.
-                   * @example 0x01
-                   */
-                  aggregation_bits: string;
-                  /** @description The [`AttestationData`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#attestationdata) object from the CL spec. */
-                  data: {
-                    /** @example 1 */
-                    slot: string;
-                    /** @example 1 */
-                    index: string;
-                    /**
-                     * Format: hex
-                     * @description LMD GHOST vote.
-                     * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                     */
-                    beacon_block_root: string;
-                    /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
-                    source: {
-                      /** @example 1 */
-                      epoch: string;
-                      /**
-                       * Format: hex
-                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                       */
-                      root: string;
-                    };
-                    /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
-                    target: {
-                      /** @example 1 */
-                      epoch: string;
-                      /**
-                       * Format: hex
-                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                       */
-                      root: string;
-                    };
-                  };
-                  /**
-                   * Format: hex
-                   * @description BLS aggregate signature.
-                   * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-                   */
-                  signature: string;
-                }[];
-                deposits: {
-                  /** @description Branch in the deposit tree. */
-                  proof: string[];
-                  /** @description The [`DepositData`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#depositdata) object from the CL spec. */
-                  data: {
-                    /**
-                     * Format: hex
-                     * @description The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._
-                     * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
-                     */
-                    pubkey: string;
-                    /**
-                     * Format: hex
-                     * @description The withdrawal credentials.
-                     * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                     */
-                    withdrawal_credentials: string;
-                    /**
-                     * @description Amount in Gwei.
-                     * @example 1
-                     */
-                    amount: string;
-                    /**
-                     * Format: hex
-                     * @description Container self-signature.
-                     * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-                     */
-                    signature: string;
-                  };
-                }[];
-                voluntary_exits: {
-                  /** @description The [`VoluntaryExit`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#voluntaryexit) object from the CL spec. */
-                  message: {
-                    /**
-                     * @description Minimum epoch for processing exit.
-                     * @example 1
-                     */
-                    epoch: string;
-                    /**
-                     * @description Index of the exiting validator.
-                     * @example 1
-                     */
-                    validator_index: string;
-                  };
-                  /**
-                   * Format: hex
-                   * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-                   */
-                  signature: string;
-                }[];
-                /** @description The [`SyncAggregate`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/altair/beacon-chain.md#syncaggregate) object from the CL Altair spec. */
-                sync_aggregate: {
-                  /**
-                   * Format: hex
-                   * @description Aggregation bits of sync
-                   * @example 0x01
-                   */
-                  sync_committee_bits: string;
-                  /**
-                   * Format: hex
-                   * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-                   */
-                  sync_committee_signature: string;
-                };
-              };
-            };
-            /**
-             * Format: hex
-             * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-             */
-            signature: string;
-          }> &
-          Partial<{
-            /** @description The [`BeaconBlock`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#beaconblock) object from the CL spec. */
-            message: {
-              /**
-               * @description The slot to which this block corresponds.
-               * @example 1
-               */
-              slot: string;
-              /**
-               * @description Index of validator in validator registry.
-               * @example 1
-               */
-              proposer_index: string;
-              /**
-               * Format: hex
-               * @description The signing merkle root of the parent `BeaconBlock`.
-               * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-               */
-              parent_root: string;
-              /**
-               * Format: hex
-               * @description The tree hash merkle root of the `BeaconState` for the `BeaconBlock`.
-               * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-               */
-              state_root: string;
-            } & {
-              /** @description The [`BeaconBlockBody`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#beaconblockbody) object from the CL spec. */
-              body: {
-                /**
-                 * Format: hex
-                 * @description The RanDAO reveal value provided by the validator.
-                 * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-                 */
-                randao_reveal: string;
-                /** @description The [`Eth1Data`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#eth1data) object from the CL spec. */
-                eth1_data: {
-                  /**
-                   * Format: hex
-                   * @description Root of the deposit tree.
-                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                   */
-                  deposit_root: string;
-                  /**
-                   * @description Total number of deposits.
-                   * @example 1
-                   */
-                  deposit_count: string;
-                  /**
-                   * Format: hex
-                   * @description Ethereum 1.x block hash.
-                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                   */
-                  block_hash: string;
-                };
-                /**
-                 * Format: hex
-                 * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                 */
-                graffiti: string;
-                proposer_slashings: {
-                  /** @description The [`SignedBeaconBlockHeader`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#signedbeaconblockheader) object envelope from the CL spec. */
-                  signed_header_1: {
-                    /** @description The [`BeaconBlockHeader`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#beaconblockheader) object from the CL spec. */
-                    message: {
-                      /**
-                       * @description The slot to which this block corresponds.
-                       * @example 1
-                       */
-                      slot: string;
-                      /**
-                       * @description Index of validator in validator registry.
-                       * @example 1
-                       */
-                      proposer_index: string;
-                      /**
-                       * Format: hex
-                       * @description The signing merkle root of the parent `BeaconBlock`.
-                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                       */
-                      parent_root: string;
-                      /**
-                       * Format: hex
-                       * @description The tree hash merkle root of the `BeaconState` for the `BeaconBlock`.
-                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                       */
-                      state_root: string;
-                    } & {
-                      /**
-                       * Format: hex
-                       * @description The tree hash merkle root of the `BeaconBlockBody` for the `BeaconBlock`
-                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                       */
-                      body_root: string;
-                    };
-                    /**
-                     * Format: hex
-                     * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-                     */
-                    signature: string;
-                  };
-                  /** @description The [`SignedBeaconBlockHeader`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#signedbeaconblockheader) object envelope from the CL spec. */
-                  signed_header_2: {
-                    /** @description The [`BeaconBlockHeader`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#beaconblockheader) object from the CL spec. */
-                    message: {
-                      /**
-                       * @description The slot to which this block corresponds.
-                       * @example 1
-                       */
-                      slot: string;
-                      /**
-                       * @description Index of validator in validator registry.
-                       * @example 1
-                       */
-                      proposer_index: string;
-                      /**
-                       * Format: hex
-                       * @description The signing merkle root of the parent `BeaconBlock`.
-                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                       */
-                      parent_root: string;
-                      /**
-                       * Format: hex
-                       * @description The tree hash merkle root of the `BeaconState` for the `BeaconBlock`.
-                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                       */
-                      state_root: string;
-                    } & {
-                      /**
-                       * Format: hex
-                       * @description The tree hash merkle root of the `BeaconBlockBody` for the `BeaconBlock`
-                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                       */
-                      body_root: string;
-                    };
-                    /**
-                     * Format: hex
-                     * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-                     */
-                    signature: string;
-                  };
-                }[];
-                attester_slashings: {
-                  /** @description The [`IndexedAttestation`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#indexedattestation) object from the CL spec. */
-                  attestation_1: {
-                    /** @description Attesting validator indices */
-                    attesting_indices: string[];
-                    /** @description The [`AttestationData`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#attestationdata) object from the CL spec. */
-                    data: {
-                      /** @example 1 */
-                      slot: string;
-                      /** @example 1 */
-                      index: string;
-                      /**
-                       * Format: hex
-                       * @description LMD GHOST vote.
-                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                       */
-                      beacon_block_root: string;
-                      /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
-                      source: {
-                        /** @example 1 */
-                        epoch: string;
-                        /**
-                         * Format: hex
-                         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                         */
-                        root: string;
-                      };
-                      /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
-                      target: {
-                        /** @example 1 */
-                        epoch: string;
-                        /**
-                         * Format: hex
-                         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                         */
-                        root: string;
-                      };
-                    };
-                    /**
-                     * Format: hex
-                     * @description The BLS signature of the `IndexedAttestation`, created by the validator of the attestation.
-                     * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-                     */
-                    signature: string;
-                  };
-                  /** @description The [`IndexedAttestation`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#indexedattestation) object from the CL spec. */
-                  attestation_2: {
-                    /** @description Attesting validator indices */
-                    attesting_indices: string[];
-                    /** @description The [`AttestationData`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#attestationdata) object from the CL spec. */
-                    data: {
-                      /** @example 1 */
-                      slot: string;
-                      /** @example 1 */
-                      index: string;
-                      /**
-                       * Format: hex
-                       * @description LMD GHOST vote.
-                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                       */
-                      beacon_block_root: string;
-                      /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
-                      source: {
-                        /** @example 1 */
-                        epoch: string;
-                        /**
-                         * Format: hex
-                         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                         */
-                        root: string;
-                      };
-                      /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
-                      target: {
-                        /** @example 1 */
-                        epoch: string;
-                        /**
-                         * Format: hex
-                         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                         */
-                        root: string;
-                      };
-                    };
-                    /**
-                     * Format: hex
-                     * @description The BLS signature of the `IndexedAttestation`, created by the validator of the attestation.
-                     * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-                     */
-                    signature: string;
-                  };
-                }[];
-                attestations: {
-                  /**
-                   * Format: hex
-                   * @description Attester aggregation bits.
-                   * @example 0x01
-                   */
-                  aggregation_bits: string;
-                  /** @description The [`AttestationData`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#attestationdata) object from the CL spec. */
-                  data: {
-                    /** @example 1 */
-                    slot: string;
-                    /** @example 1 */
-                    index: string;
-                    /**
-                     * Format: hex
-                     * @description LMD GHOST vote.
-                     * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                     */
-                    beacon_block_root: string;
-                    /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
-                    source: {
-                      /** @example 1 */
-                      epoch: string;
-                      /**
-                       * Format: hex
-                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                       */
-                      root: string;
-                    };
-                    /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
-                    target: {
-                      /** @example 1 */
-                      epoch: string;
-                      /**
-                       * Format: hex
-                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                       */
-                      root: string;
-                    };
-                  };
-                  /**
-                   * Format: hex
-                   * @description BLS aggregate signature.
-                   * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-                   */
-                  signature: string;
-                }[];
-                deposits: {
-                  /** @description Branch in the deposit tree. */
-                  proof: string[];
-                  /** @description The [`DepositData`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#depositdata) object from the CL spec. */
-                  data: {
-                    /**
-                     * Format: hex
-                     * @description The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._
-                     * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
-                     */
-                    pubkey: string;
-                    /**
-                     * Format: hex
-                     * @description The withdrawal credentials.
-                     * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                     */
-                    withdrawal_credentials: string;
-                    /**
-                     * @description Amount in Gwei.
-                     * @example 1
-                     */
-                    amount: string;
-                    /**
-                     * Format: hex
-                     * @description Container self-signature.
-                     * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-                     */
-                    signature: string;
-                  };
-                }[];
-                voluntary_exits: {
-                  /** @description The [`VoluntaryExit`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#voluntaryexit) object from the CL spec. */
-                  message: {
-                    /**
-                     * @description Minimum epoch for processing exit.
-                     * @example 1
-                     */
-                    epoch: string;
-                    /**
-                     * @description Index of the exiting validator.
-                     * @example 1
-                     */
-                    validator_index: string;
-                  };
-                  /**
-                   * Format: hex
-                   * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-                   */
-                  signature: string;
-                }[];
-              };
-            };
-            /**
-             * Format: hex
-             * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-             */
-            signature: string;
-          }>;
-        'application/octet-stream': unknown;
-      };
-    };
-  };
-  /**
-   * Instructs the beacon node to use the components of the `SignedBlindedBeaconBlock` to construct and publish a
-   * `SignedBeaconBlock` by swapping out the `transactions_root` for the corresponding full list of `transactions`.
-   * The beacon node should broadcast a newly constructed `SignedBeaconBlock` to the beacon network,
-   * to be included in the beacon chain. The beacon node is not required to validate the signed
-   * `BeaconBlock`, and a successful response (20X) only indicates that the broadcast has been
-   * successful. The beacon node is expected to integrate the new block into its state, and
-   * therefore validate the block internally, however blocks which fail the validation are still
-   * broadcast but a different status code is returned (202). Before Bellatrix, this endpoint will accept
    * a `SignedBeaconBlock`. The broadcast behaviour may be adjusted via the `broadcast_validation`
    * query parameter.
    */
@@ -21413,7 +22084,9 @@ export interface operations {
           | 'bellatrix'
           | 'capella'
           | 'deneb'
-          | 'electra';
+          | 'electra'
+          | 'fulu'
+          | 'gloas';
       };
     };
     responses: {
@@ -21490,7 +22163,7 @@ export interface operations {
     requestBody: {
       content: {
         'application/json': Partial<{
-          /** @description A variant of the [`BeaconBlock`](https://github.com/ethereum/consensus-specs/blob/v1.5.0-beta.2/specs/phase0/beacon-chain.md#beaconblock) object from the CL Electra spec, which contains a `BlindedBeaconBlockBody` rather than a `BeaconBlockBody`. */
+          /** @description A variant of the [`BeaconBlock`](https://github.com/ethereum/consensus-specs/blob/v1.5.0/specs/phase0/beacon-chain.md#beaconblock) object from the CL Electra spec, which contains a `BlindedBeaconBlockBody` rather than a `BeaconBlockBody`. */
           message: {
             /**
              * @description The slot to which this block corresponds.
@@ -21515,7 +22188,7 @@ export interface operations {
              */
             state_root: string;
           } & {
-            /** @description A variant of the [`BeaconBlockBody`](https://github.com/ethereum/consensus-specs/blob/v1.5.0-beta.2/specs/electra/beacon-chain.md#beaconblockbody) object from the CL Electra spec, which contains a transactions root rather than a full transactions list. */
+            /** @description A variant of the [`BeaconBlockBody`](https://github.com/ethereum/consensus-specs/blob/v1.5.0/specs/electra/beacon-chain.md#beaconblockbody) object from the CL Electra spec, which contains a transactions root rather than a full transactions list. */
             body: {
               randao_reveal: string & unknown;
               /** @description The [`Eth1Data`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#eth1data) object from the CL spec. */
@@ -21626,7 +22299,7 @@ export interface operations {
                 };
               }[];
               attester_slashings: {
-                /** @description The [`IndexedAttestation`](https://github.com/ethereum/consensus-specs/blob/v1.5.0-beta.2/specs/electra/beacon-chain.md#indexedattestation) object from the CL spec. */
+                /** @description The [`IndexedAttestation`](https://github.com/ethereum/consensus-specs/blob/v1.5.0/specs/electra/beacon-chain.md#indexedattestation) object from the CL spec. */
                 attestation_1: {
                   /** @description Attesting validator indices */
                   attesting_indices: string[];
@@ -21670,7 +22343,7 @@ export interface operations {
                    */
                   signature: string;
                 };
-                /** @description The [`IndexedAttestation`](https://github.com/ethereum/consensus-specs/blob/v1.5.0-beta.2/specs/electra/beacon-chain.md#indexedattestation) object from the CL spec. */
+                /** @description The [`IndexedAttestation`](https://github.com/ethereum/consensus-specs/blob/v1.5.0/specs/electra/beacon-chain.md#indexedattestation) object from the CL spec. */
                 attestation_2: {
                   /** @description Attesting validator indices */
                   attesting_indices: string[];
@@ -21861,7 +22534,7 @@ export interface operations {
               }[];
               blob_kzg_commitments: string[];
             } & {
-              /** @description The [`ExecutionPayloadHeader`](https://github.com/ethereum/consensus-specs/blob/master/specs/deneb/beacon-chain.md#executionpayloadheader) object from the CL Deneb spec. */
+              /** @description The [`ExecutionPayloadHeader`](https://github.com/ethereum/consensus-specs/blob/v1.4.0/specs/deneb/beacon-chain.md#executionpayloadheader) object from the CL Deneb spec. */
               execution_payload_header: {
                 /**
                  * Format: hex
@@ -21911,6 +22584,8 @@ export interface operations {
                 /** @example 1 */
                 base_fee_per_gas: string;
                 /** @example 1 */
+                blob_gas_used: string;
+                /** @example 1 */
                 excess_blob_gas: string;
                 /**
                  * Format: hex
@@ -21929,7 +22604,7 @@ export interface operations {
                  */
                 withdrawals_root: string;
               };
-              /** @description The [`ExecutionRequests`](https://github.com/ethereum/consensus-specs/blob/v1.5.0-beta.2/specs/electra/beacon-chain.md#executionrequests) object from the CL Electra spec. */
+              /** @description The [`ExecutionRequests`](https://github.com/ethereum/consensus-specs/blob/v1.5.0/specs/electra/beacon-chain.md#executionrequests) object from the CL Electra spec. */
               execution_requests: {
                 deposits: {
                   /**
@@ -22009,7 +22684,7 @@ export interface operations {
           signature: string;
         }> &
           Partial<{
-            /** @description A variant of the [`BeaconBlock`](https://github.com/ethereum/consensus-specs/blob/master/specs/phase0/beacon-chain.md#beaconblock) object from the CL Deneb spec, which contains a `BlindedBeaconBlockBody` rather than a `BeaconBlockBody`. */
+            /** @description A variant of the [`BeaconBlock`](https://github.com/ethereum/consensus-specs/blob/v1.4.0/specs/phase0/beacon-chain.md#beaconblock) object from the CL Deneb spec, which contains a `BlindedBeaconBlockBody` rather than a `BeaconBlockBody`. */
             message: {
               /**
                * @description The slot to which this block corresponds.
@@ -22034,7 +22709,7 @@ export interface operations {
                */
               state_root: string;
             } & {
-              /** @description A variant of the [`BeaconBlockBody`](https://github.com/ethereum/consensus-specs/blob/master/specs/deneb/beacon-chain.md#beaconblockbody) object from the CL Deneb spec, which contains a transactions root rather than a full transactions list. */
+              /** @description A variant of the [`BeaconBlockBody`](https://github.com/ethereum/consensus-specs/blob/v1.4.0/specs/deneb/beacon-chain.md#beaconblockbody) object from the CL Deneb spec, which contains a transactions root rather than a full transactions list. */
               body: {
                 randao_reveal: string & unknown;
                 /** @description The [`Eth1Data`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#eth1data) object from the CL spec. */
@@ -22374,7 +23049,7 @@ export interface operations {
                 }[];
                 blob_kzg_commitments: string[];
               } & {
-                /** @description The [`ExecutionPayloadHeader`](https://github.com/ethereum/consensus-specs/blob/master/specs/deneb/beacon-chain.md#executionpayloadheader) object from the CL Deneb spec. */
+                /** @description The [`ExecutionPayloadHeader`](https://github.com/ethereum/consensus-specs/blob/v1.4.0/specs/deneb/beacon-chain.md#executionpayloadheader) object from the CL Deneb spec. */
                 execution_payload_header: {
                   /**
                    * Format: hex
@@ -22423,6 +23098,8 @@ export interface operations {
                   extra_data: string;
                   /** @example 1 */
                   base_fee_per_gas: string;
+                  /** @example 1 */
+                  blob_gas_used: string;
                   /** @example 1 */
                   excess_blob_gas: string;
                   /**
@@ -23297,2649 +23974,6 @@ export interface operations {
                    * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
                    */
                   transactions_root: string;
-                };
-              };
-            };
-            /**
-             * Format: hex
-             * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-             */
-            signature: string;
-          }> &
-          Partial<{
-            /** @description The [`BeaconBlock`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#beaconblock) object from the CL Altair spec. */
-            message: {
-              /**
-               * @description The slot to which this block corresponds.
-               * @example 1
-               */
-              slot: string;
-              /**
-               * @description Index of validator in validator registry.
-               * @example 1
-               */
-              proposer_index: string;
-              /**
-               * Format: hex
-               * @description The signing Merkle root of the parent `BeaconBlock`.
-               * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-               */
-              parent_root: string;
-              /**
-               * Format: hex
-               * @description The tree hash Merkle root of the `BeaconState` for the `BeaconBlock`.
-               * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-               */
-              state_root: string;
-            } & {
-              /** @description The [`BeaconBlockBody`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/altair/beacon-chain.md#beaconblockbody) object from the CL Altair spec. */
-              body: {
-                /**
-                 * Format: hex
-                 * @description The RanDAO reveal value provided by the validator.
-                 * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-                 */
-                randao_reveal: string;
-                /** @description The [`Eth1Data`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#eth1data) object from the CL spec. */
-                eth1_data: {
-                  /**
-                   * Format: hex
-                   * @description Root of the deposit tree.
-                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                   */
-                  deposit_root: string;
-                  /**
-                   * @description Total number of deposits.
-                   * @example 1
-                   */
-                  deposit_count: string;
-                  /**
-                   * Format: hex
-                   * @description Ethereum 1.x block hash.
-                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                   */
-                  block_hash: string;
-                };
-                /**
-                 * Format: hex
-                 * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                 */
-                graffiti: string;
-                proposer_slashings: {
-                  /** @description The [`SignedBeaconBlockHeader`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#signedbeaconblockheader) object envelope from the CL spec. */
-                  signed_header_1: {
-                    /** @description The [`BeaconBlockHeader`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#beaconblockheader) object from the CL spec. */
-                    message: {
-                      /**
-                       * @description The slot to which this block corresponds.
-                       * @example 1
-                       */
-                      slot: string;
-                      /**
-                       * @description Index of validator in validator registry.
-                       * @example 1
-                       */
-                      proposer_index: string;
-                      /**
-                       * Format: hex
-                       * @description The signing merkle root of the parent `BeaconBlock`.
-                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                       */
-                      parent_root: string;
-                      /**
-                       * Format: hex
-                       * @description The tree hash merkle root of the `BeaconState` for the `BeaconBlock`.
-                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                       */
-                      state_root: string;
-                    } & {
-                      /**
-                       * Format: hex
-                       * @description The tree hash merkle root of the `BeaconBlockBody` for the `BeaconBlock`
-                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                       */
-                      body_root: string;
-                    };
-                    /**
-                     * Format: hex
-                     * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-                     */
-                    signature: string;
-                  };
-                  /** @description The [`SignedBeaconBlockHeader`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#signedbeaconblockheader) object envelope from the CL spec. */
-                  signed_header_2: {
-                    /** @description The [`BeaconBlockHeader`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#beaconblockheader) object from the CL spec. */
-                    message: {
-                      /**
-                       * @description The slot to which this block corresponds.
-                       * @example 1
-                       */
-                      slot: string;
-                      /**
-                       * @description Index of validator in validator registry.
-                       * @example 1
-                       */
-                      proposer_index: string;
-                      /**
-                       * Format: hex
-                       * @description The signing merkle root of the parent `BeaconBlock`.
-                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                       */
-                      parent_root: string;
-                      /**
-                       * Format: hex
-                       * @description The tree hash merkle root of the `BeaconState` for the `BeaconBlock`.
-                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                       */
-                      state_root: string;
-                    } & {
-                      /**
-                       * Format: hex
-                       * @description The tree hash merkle root of the `BeaconBlockBody` for the `BeaconBlock`
-                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                       */
-                      body_root: string;
-                    };
-                    /**
-                     * Format: hex
-                     * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-                     */
-                    signature: string;
-                  };
-                }[];
-                attester_slashings: {
-                  /** @description The [`IndexedAttestation`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#indexedattestation) object from the CL spec. */
-                  attestation_1: {
-                    /** @description Attesting validator indices */
-                    attesting_indices: string[];
-                    /** @description The [`AttestationData`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#attestationdata) object from the CL spec. */
-                    data: {
-                      /** @example 1 */
-                      slot: string;
-                      /** @example 1 */
-                      index: string;
-                      /**
-                       * Format: hex
-                       * @description LMD GHOST vote.
-                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                       */
-                      beacon_block_root: string;
-                      /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
-                      source: {
-                        /** @example 1 */
-                        epoch: string;
-                        /**
-                         * Format: hex
-                         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                         */
-                        root: string;
-                      };
-                      /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
-                      target: {
-                        /** @example 1 */
-                        epoch: string;
-                        /**
-                         * Format: hex
-                         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                         */
-                        root: string;
-                      };
-                    };
-                    /**
-                     * Format: hex
-                     * @description The BLS signature of the `IndexedAttestation`, created by the validator of the attestation.
-                     * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-                     */
-                    signature: string;
-                  };
-                  /** @description The [`IndexedAttestation`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#indexedattestation) object from the CL spec. */
-                  attestation_2: {
-                    /** @description Attesting validator indices */
-                    attesting_indices: string[];
-                    /** @description The [`AttestationData`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#attestationdata) object from the CL spec. */
-                    data: {
-                      /** @example 1 */
-                      slot: string;
-                      /** @example 1 */
-                      index: string;
-                      /**
-                       * Format: hex
-                       * @description LMD GHOST vote.
-                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                       */
-                      beacon_block_root: string;
-                      /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
-                      source: {
-                        /** @example 1 */
-                        epoch: string;
-                        /**
-                         * Format: hex
-                         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                         */
-                        root: string;
-                      };
-                      /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
-                      target: {
-                        /** @example 1 */
-                        epoch: string;
-                        /**
-                         * Format: hex
-                         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                         */
-                        root: string;
-                      };
-                    };
-                    /**
-                     * Format: hex
-                     * @description The BLS signature of the `IndexedAttestation`, created by the validator of the attestation.
-                     * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-                     */
-                    signature: string;
-                  };
-                }[];
-                attestations: {
-                  /**
-                   * Format: hex
-                   * @description Attester aggregation bits.
-                   * @example 0x01
-                   */
-                  aggregation_bits: string;
-                  /** @description The [`AttestationData`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#attestationdata) object from the CL spec. */
-                  data: {
-                    /** @example 1 */
-                    slot: string;
-                    /** @example 1 */
-                    index: string;
-                    /**
-                     * Format: hex
-                     * @description LMD GHOST vote.
-                     * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                     */
-                    beacon_block_root: string;
-                    /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
-                    source: {
-                      /** @example 1 */
-                      epoch: string;
-                      /**
-                       * Format: hex
-                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                       */
-                      root: string;
-                    };
-                    /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
-                    target: {
-                      /** @example 1 */
-                      epoch: string;
-                      /**
-                       * Format: hex
-                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                       */
-                      root: string;
-                    };
-                  };
-                  /**
-                   * Format: hex
-                   * @description BLS aggregate signature.
-                   * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-                   */
-                  signature: string;
-                }[];
-                deposits: {
-                  /** @description Branch in the deposit tree. */
-                  proof: string[];
-                  /** @description The [`DepositData`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#depositdata) object from the CL spec. */
-                  data: {
-                    /**
-                     * Format: hex
-                     * @description The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._
-                     * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
-                     */
-                    pubkey: string;
-                    /**
-                     * Format: hex
-                     * @description The withdrawal credentials.
-                     * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                     */
-                    withdrawal_credentials: string;
-                    /**
-                     * @description Amount in Gwei.
-                     * @example 1
-                     */
-                    amount: string;
-                    /**
-                     * Format: hex
-                     * @description Container self-signature.
-                     * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-                     */
-                    signature: string;
-                  };
-                }[];
-                voluntary_exits: {
-                  /** @description The [`VoluntaryExit`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#voluntaryexit) object from the CL spec. */
-                  message: {
-                    /**
-                     * @description Minimum epoch for processing exit.
-                     * @example 1
-                     */
-                    epoch: string;
-                    /**
-                     * @description Index of the exiting validator.
-                     * @example 1
-                     */
-                    validator_index: string;
-                  };
-                  /**
-                   * Format: hex
-                   * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-                   */
-                  signature: string;
-                }[];
-                /** @description The [`SyncAggregate`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/altair/beacon-chain.md#syncaggregate) object from the CL Altair spec. */
-                sync_aggregate: {
-                  /**
-                   * Format: hex
-                   * @description Aggregation bits of sync
-                   * @example 0x01
-                   */
-                  sync_committee_bits: string;
-                  /**
-                   * Format: hex
-                   * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-                   */
-                  sync_committee_signature: string;
-                };
-              };
-            };
-            /**
-             * Format: hex
-             * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-             */
-            signature: string;
-          }> &
-          Partial<{
-            /** @description The [`BeaconBlock`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#beaconblock) object from the CL spec. */
-            message: {
-              /**
-               * @description The slot to which this block corresponds.
-               * @example 1
-               */
-              slot: string;
-              /**
-               * @description Index of validator in validator registry.
-               * @example 1
-               */
-              proposer_index: string;
-              /**
-               * Format: hex
-               * @description The signing merkle root of the parent `BeaconBlock`.
-               * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-               */
-              parent_root: string;
-              /**
-               * Format: hex
-               * @description The tree hash merkle root of the `BeaconState` for the `BeaconBlock`.
-               * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-               */
-              state_root: string;
-            } & {
-              /** @description The [`BeaconBlockBody`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#beaconblockbody) object from the CL spec. */
-              body: {
-                /**
-                 * Format: hex
-                 * @description The RanDAO reveal value provided by the validator.
-                 * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-                 */
-                randao_reveal: string;
-                /** @description The [`Eth1Data`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#eth1data) object from the CL spec. */
-                eth1_data: {
-                  /**
-                   * Format: hex
-                   * @description Root of the deposit tree.
-                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                   */
-                  deposit_root: string;
-                  /**
-                   * @description Total number of deposits.
-                   * @example 1
-                   */
-                  deposit_count: string;
-                  /**
-                   * Format: hex
-                   * @description Ethereum 1.x block hash.
-                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                   */
-                  block_hash: string;
-                };
-                /**
-                 * Format: hex
-                 * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                 */
-                graffiti: string;
-                proposer_slashings: {
-                  /** @description The [`SignedBeaconBlockHeader`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#signedbeaconblockheader) object envelope from the CL spec. */
-                  signed_header_1: {
-                    /** @description The [`BeaconBlockHeader`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#beaconblockheader) object from the CL spec. */
-                    message: {
-                      /**
-                       * @description The slot to which this block corresponds.
-                       * @example 1
-                       */
-                      slot: string;
-                      /**
-                       * @description Index of validator in validator registry.
-                       * @example 1
-                       */
-                      proposer_index: string;
-                      /**
-                       * Format: hex
-                       * @description The signing merkle root of the parent `BeaconBlock`.
-                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                       */
-                      parent_root: string;
-                      /**
-                       * Format: hex
-                       * @description The tree hash merkle root of the `BeaconState` for the `BeaconBlock`.
-                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                       */
-                      state_root: string;
-                    } & {
-                      /**
-                       * Format: hex
-                       * @description The tree hash merkle root of the `BeaconBlockBody` for the `BeaconBlock`
-                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                       */
-                      body_root: string;
-                    };
-                    /**
-                     * Format: hex
-                     * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-                     */
-                    signature: string;
-                  };
-                  /** @description The [`SignedBeaconBlockHeader`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#signedbeaconblockheader) object envelope from the CL spec. */
-                  signed_header_2: {
-                    /** @description The [`BeaconBlockHeader`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#beaconblockheader) object from the CL spec. */
-                    message: {
-                      /**
-                       * @description The slot to which this block corresponds.
-                       * @example 1
-                       */
-                      slot: string;
-                      /**
-                       * @description Index of validator in validator registry.
-                       * @example 1
-                       */
-                      proposer_index: string;
-                      /**
-                       * Format: hex
-                       * @description The signing merkle root of the parent `BeaconBlock`.
-                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                       */
-                      parent_root: string;
-                      /**
-                       * Format: hex
-                       * @description The tree hash merkle root of the `BeaconState` for the `BeaconBlock`.
-                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                       */
-                      state_root: string;
-                    } & {
-                      /**
-                       * Format: hex
-                       * @description The tree hash merkle root of the `BeaconBlockBody` for the `BeaconBlock`
-                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                       */
-                      body_root: string;
-                    };
-                    /**
-                     * Format: hex
-                     * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-                     */
-                    signature: string;
-                  };
-                }[];
-                attester_slashings: {
-                  /** @description The [`IndexedAttestation`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#indexedattestation) object from the CL spec. */
-                  attestation_1: {
-                    /** @description Attesting validator indices */
-                    attesting_indices: string[];
-                    /** @description The [`AttestationData`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#attestationdata) object from the CL spec. */
-                    data: {
-                      /** @example 1 */
-                      slot: string;
-                      /** @example 1 */
-                      index: string;
-                      /**
-                       * Format: hex
-                       * @description LMD GHOST vote.
-                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                       */
-                      beacon_block_root: string;
-                      /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
-                      source: {
-                        /** @example 1 */
-                        epoch: string;
-                        /**
-                         * Format: hex
-                         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                         */
-                        root: string;
-                      };
-                      /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
-                      target: {
-                        /** @example 1 */
-                        epoch: string;
-                        /**
-                         * Format: hex
-                         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                         */
-                        root: string;
-                      };
-                    };
-                    /**
-                     * Format: hex
-                     * @description The BLS signature of the `IndexedAttestation`, created by the validator of the attestation.
-                     * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-                     */
-                    signature: string;
-                  };
-                  /** @description The [`IndexedAttestation`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#indexedattestation) object from the CL spec. */
-                  attestation_2: {
-                    /** @description Attesting validator indices */
-                    attesting_indices: string[];
-                    /** @description The [`AttestationData`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#attestationdata) object from the CL spec. */
-                    data: {
-                      /** @example 1 */
-                      slot: string;
-                      /** @example 1 */
-                      index: string;
-                      /**
-                       * Format: hex
-                       * @description LMD GHOST vote.
-                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                       */
-                      beacon_block_root: string;
-                      /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
-                      source: {
-                        /** @example 1 */
-                        epoch: string;
-                        /**
-                         * Format: hex
-                         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                         */
-                        root: string;
-                      };
-                      /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
-                      target: {
-                        /** @example 1 */
-                        epoch: string;
-                        /**
-                         * Format: hex
-                         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                         */
-                        root: string;
-                      };
-                    };
-                    /**
-                     * Format: hex
-                     * @description The BLS signature of the `IndexedAttestation`, created by the validator of the attestation.
-                     * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-                     */
-                    signature: string;
-                  };
-                }[];
-                attestations: {
-                  /**
-                   * Format: hex
-                   * @description Attester aggregation bits.
-                   * @example 0x01
-                   */
-                  aggregation_bits: string;
-                  /** @description The [`AttestationData`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#attestationdata) object from the CL spec. */
-                  data: {
-                    /** @example 1 */
-                    slot: string;
-                    /** @example 1 */
-                    index: string;
-                    /**
-                     * Format: hex
-                     * @description LMD GHOST vote.
-                     * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                     */
-                    beacon_block_root: string;
-                    /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
-                    source: {
-                      /** @example 1 */
-                      epoch: string;
-                      /**
-                       * Format: hex
-                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                       */
-                      root: string;
-                    };
-                    /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
-                    target: {
-                      /** @example 1 */
-                      epoch: string;
-                      /**
-                       * Format: hex
-                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                       */
-                      root: string;
-                    };
-                  };
-                  /**
-                   * Format: hex
-                   * @description BLS aggregate signature.
-                   * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-                   */
-                  signature: string;
-                }[];
-                deposits: {
-                  /** @description Branch in the deposit tree. */
-                  proof: string[];
-                  /** @description The [`DepositData`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#depositdata) object from the CL spec. */
-                  data: {
-                    /**
-                     * Format: hex
-                     * @description The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._
-                     * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
-                     */
-                    pubkey: string;
-                    /**
-                     * Format: hex
-                     * @description The withdrawal credentials.
-                     * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                     */
-                    withdrawal_credentials: string;
-                    /**
-                     * @description Amount in Gwei.
-                     * @example 1
-                     */
-                    amount: string;
-                    /**
-                     * Format: hex
-                     * @description Container self-signature.
-                     * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-                     */
-                    signature: string;
-                  };
-                }[];
-                voluntary_exits: {
-                  /** @description The [`VoluntaryExit`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#voluntaryexit) object from the CL spec. */
-                  message: {
-                    /**
-                     * @description Minimum epoch for processing exit.
-                     * @example 1
-                     */
-                    epoch: string;
-                    /**
-                     * @description Index of the exiting validator.
-                     * @example 1
-                     */
-                    validator_index: string;
-                  };
-                  /**
-                   * Format: hex
-                   * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-                   */
-                  signature: string;
-                }[];
-              };
-            };
-            /**
-             * Format: hex
-             * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-             */
-            signature: string;
-          }>;
-        'application/octet-stream': unknown;
-      };
-    };
-  };
-  /**
-   * Instructs the beacon node to broadcast a newly signed beacon block to the beacon network,
-   * to be included in the beacon chain. A success response (20x) indicates that the block
-   * passed gossip validation and was successfully broadcast onto the network.
-   * The beacon node is also expected to integrate the block into state, but may broadcast it
-   * before doing so, so as to aid timely delivery of the block. Should the block fail full
-   * validation, a separate success response code (202) is used to indicate that the block was
-   * successfully broadcast but failed integration. After Deneb, this additionally instructs
-   * the beacon node to broadcast all given blobs.
-   */
-  publishBlock: {
-    parameters: {
-      header: {
-        /** The active consensus version to which the block being submitted belongs. */
-        'Eth-Consensus-Version'?:
-          | 'phase0'
-          | 'altair'
-          | 'bellatrix'
-          | 'capella'
-          | 'deneb'
-          | 'electra';
-      };
-    };
-    responses: {
-      /** The block was validated successfully and has been broadcast. It has also been integrated into the beacon node's database. */
-      200: unknown;
-      /** The block could not be integrated into the beacon node's database as it failed validation, but was successfully broadcast. */
-      202: unknown;
-      /** The `SignedBeaconBlock` object is invalid and could not be broadcast */
-      400: {
-        content: {
-          'application/json': {
-            /**
-             * @description Either specific error code in case of invalid request or http status code
-             * @example 404
-             */
-            code: number;
-            /** @description Message describing error */
-            message: string;
-            /** @description Optional stacktraces, sent when node is in debug mode */
-            stacktraces?: string[];
-          };
-        };
-      };
-      /** Supplied content-type is not supported. */
-      415: {
-        content: {
-          'application/json': {
-            /**
-             * @description The media type in "Content-Type" header is unsupported, and the request has been rejected. This occurs when a HTTP request supplies a payload in a content-type that the server is not able to handle.
-             * @example 415
-             */
-            code: number;
-            /** @description Message describing error */
-            message: string;
-            /** @description Optional stacktraces, sent when node is in debug mode */
-            stacktraces?: string[];
-          };
-        };
-      };
-      /** Beacon node internal error. */
-      500: {
-        content: {
-          'application/json': {
-            /**
-             * @description Either specific error code in case of invalid request or http status code
-             * @example 404
-             */
-            code: number;
-            /** @description Message describing error */
-            message: string;
-            /** @description Optional stacktraces, sent when node is in debug mode */
-            stacktraces?: string[];
-          };
-        };
-      };
-      /** Beacon node is currently syncing, try again later. */
-      503: {
-        content: {
-          'application/json': {
-            /**
-             * @description Either specific error code in case of invalid request or http status code
-             * @example 404
-             */
-            code: number;
-            /** @description Message describing error */
-            message: string;
-            /** @description Optional stacktraces, sent when node is in debug mode */
-            stacktraces?: string[];
-          };
-        };
-      };
-    };
-    /** The `SignedBeaconBlock` object composed of `BeaconBlock` object (produced by beacon node) and validator signature. */
-    requestBody: {
-      content: {
-        'application/json': Partial<{
-          /** @description The [`SignedBeaconBlock`](https://github.com/ethereum/consensus-specs/blob/v1.5.0-beta.2/specs/phase0/beacon-chain.md#signedbeaconblock) object envelope from the CL Electra spec. */
-          signed_block: {
-            /** @description The [`BeaconBlock`](https://github.com/ethereum/consensus-specs/blob/v1.5.0-beta.2/specs/phase0/beacon-chain.md#beaconblock) object from the CL Electra spec. */
-            message: {
-              /**
-               * @description The slot to which this block corresponds.
-               * @example 1
-               */
-              slot: string;
-              /**
-               * @description Index of validator in validator registry.
-               * @example 1
-               */
-              proposer_index: string;
-              /**
-               * Format: hex
-               * @description The signing Merkle root of the parent `BeaconBlock`.
-               * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-               */
-              parent_root: string;
-              /**
-               * Format: hex
-               * @description The tree hash Merkle root of the `BeaconState` for the `BeaconBlock`.
-               * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-               */
-              state_root: string;
-            } & {
-              body: {
-                randao_reveal: string & unknown;
-                /** @description The [`Eth1Data`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#eth1data) object from the CL spec. */
-                eth1_data: {
-                  /**
-                   * Format: hex
-                   * @description Root of the deposit tree.
-                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                   */
-                  deposit_root: string;
-                  /**
-                   * @description Total number of deposits.
-                   * @example 1
-                   */
-                  deposit_count: string;
-                  /**
-                   * Format: hex
-                   * @description Ethereum 1.x block hash.
-                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                   */
-                  block_hash: string;
-                };
-                /**
-                 * Format: hex
-                 * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                 */
-                graffiti: string;
-                proposer_slashings: {
-                  /** @description The [`SignedBeaconBlockHeader`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#signedbeaconblockheader) object envelope from the CL spec. */
-                  signed_header_1: {
-                    /** @description The [`BeaconBlockHeader`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#beaconblockheader) object from the CL spec. */
-                    message: {
-                      /**
-                       * @description The slot to which this block corresponds.
-                       * @example 1
-                       */
-                      slot: string;
-                      /**
-                       * @description Index of validator in validator registry.
-                       * @example 1
-                       */
-                      proposer_index: string;
-                      /**
-                       * Format: hex
-                       * @description The signing merkle root of the parent `BeaconBlock`.
-                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                       */
-                      parent_root: string;
-                      /**
-                       * Format: hex
-                       * @description The tree hash merkle root of the `BeaconState` for the `BeaconBlock`.
-                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                       */
-                      state_root: string;
-                    } & {
-                      /**
-                       * Format: hex
-                       * @description The tree hash merkle root of the `BeaconBlockBody` for the `BeaconBlock`
-                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                       */
-                      body_root: string;
-                    };
-                    /**
-                     * Format: hex
-                     * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-                     */
-                    signature: string;
-                  };
-                  /** @description The [`SignedBeaconBlockHeader`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#signedbeaconblockheader) object envelope from the CL spec. */
-                  signed_header_2: {
-                    /** @description The [`BeaconBlockHeader`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#beaconblockheader) object from the CL spec. */
-                    message: {
-                      /**
-                       * @description The slot to which this block corresponds.
-                       * @example 1
-                       */
-                      slot: string;
-                      /**
-                       * @description Index of validator in validator registry.
-                       * @example 1
-                       */
-                      proposer_index: string;
-                      /**
-                       * Format: hex
-                       * @description The signing merkle root of the parent `BeaconBlock`.
-                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                       */
-                      parent_root: string;
-                      /**
-                       * Format: hex
-                       * @description The tree hash merkle root of the `BeaconState` for the `BeaconBlock`.
-                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                       */
-                      state_root: string;
-                    } & {
-                      /**
-                       * Format: hex
-                       * @description The tree hash merkle root of the `BeaconBlockBody` for the `BeaconBlock`
-                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                       */
-                      body_root: string;
-                    };
-                    /**
-                     * Format: hex
-                     * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-                     */
-                    signature: string;
-                  };
-                }[];
-                attester_slashings: {
-                  /** @description The [`IndexedAttestation`](https://github.com/ethereum/consensus-specs/blob/v1.5.0-beta.2/specs/electra/beacon-chain.md#indexedattestation) object from the CL spec. */
-                  attestation_1: {
-                    /** @description Attesting validator indices */
-                    attesting_indices: string[];
-                    /** @description The [`AttestationData`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#attestationdata) object from the CL spec. */
-                    data: {
-                      /** @example 1 */
-                      slot: string;
-                      /** @example 1 */
-                      index: string;
-                      /**
-                       * Format: hex
-                       * @description LMD GHOST vote.
-                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                       */
-                      beacon_block_root: string;
-                      /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
-                      source: {
-                        /** @example 1 */
-                        epoch: string;
-                        /**
-                         * Format: hex
-                         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                         */
-                        root: string;
-                      };
-                      /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
-                      target: {
-                        /** @example 1 */
-                        epoch: string;
-                        /**
-                         * Format: hex
-                         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                         */
-                        root: string;
-                      };
-                    };
-                    /**
-                     * Format: hex
-                     * @description The BLS signature of the `IndexedAttestation`, created by the validator of the attestation.
-                     * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-                     */
-                    signature: string;
-                  };
-                  /** @description The [`IndexedAttestation`](https://github.com/ethereum/consensus-specs/blob/v1.5.0-beta.2/specs/electra/beacon-chain.md#indexedattestation) object from the CL spec. */
-                  attestation_2: {
-                    /** @description Attesting validator indices */
-                    attesting_indices: string[];
-                    /** @description The [`AttestationData`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#attestationdata) object from the CL spec. */
-                    data: {
-                      /** @example 1 */
-                      slot: string;
-                      /** @example 1 */
-                      index: string;
-                      /**
-                       * Format: hex
-                       * @description LMD GHOST vote.
-                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                       */
-                      beacon_block_root: string;
-                      /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
-                      source: {
-                        /** @example 1 */
-                        epoch: string;
-                        /**
-                         * Format: hex
-                         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                         */
-                        root: string;
-                      };
-                      /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
-                      target: {
-                        /** @example 1 */
-                        epoch: string;
-                        /**
-                         * Format: hex
-                         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                         */
-                        root: string;
-                      };
-                    };
-                    /**
-                     * Format: hex
-                     * @description The BLS signature of the `IndexedAttestation`, created by the validator of the attestation.
-                     * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-                     */
-                    signature: string;
-                  };
-                }[];
-                attestations: {
-                  /**
-                   * Format: hex
-                   * @description Attester aggregation bits.
-                   * @example 0x01
-                   */
-                  aggregation_bits: string;
-                  /** @description The [`AttestationData`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#attestationdata) object from the CL spec. */
-                  data: {
-                    /** @example 1 */
-                    slot: string;
-                    /** @example 1 */
-                    index: string;
-                    /**
-                     * Format: hex
-                     * @description LMD GHOST vote.
-                     * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                     */
-                    beacon_block_root: string;
-                    /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
-                    source: {
-                      /** @example 1 */
-                      epoch: string;
-                      /**
-                       * Format: hex
-                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                       */
-                      root: string;
-                    };
-                    /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
-                    target: {
-                      /** @example 1 */
-                      epoch: string;
-                      /**
-                       * Format: hex
-                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                       */
-                      root: string;
-                    };
-                  };
-                  /**
-                   * Format: hex
-                   * @description BLS aggregate signature.
-                   * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-                   */
-                  signature: string;
-                  /**
-                   * Format: hex
-                   * @description Committee bits.
-                   * @example 0x0000000000000001
-                   */
-                  committee_bits: string;
-                }[];
-                deposits: {
-                  /** @description Branch in the deposit tree. */
-                  proof: string[];
-                  /** @description The [`DepositData`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#depositdata) object from the CL spec. */
-                  data: {
-                    /**
-                     * Format: hex
-                     * @description The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._
-                     * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
-                     */
-                    pubkey: string;
-                    /**
-                     * Format: hex
-                     * @description The withdrawal credentials.
-                     * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                     */
-                    withdrawal_credentials: string;
-                    /**
-                     * @description Amount in Gwei.
-                     * @example 1
-                     */
-                    amount: string;
-                    /**
-                     * Format: hex
-                     * @description Container self-signature.
-                     * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-                     */
-                    signature: string;
-                  };
-                }[];
-                voluntary_exits: {
-                  /** @description The [`VoluntaryExit`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#voluntaryexit) object from the CL spec. */
-                  message: {
-                    /**
-                     * @description Minimum epoch for processing exit.
-                     * @example 1
-                     */
-                    epoch: string;
-                    /**
-                     * @description Index of the exiting validator.
-                     * @example 1
-                     */
-                    validator_index: string;
-                  };
-                  /**
-                   * Format: hex
-                   * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-                   */
-                  signature: string;
-                }[];
-                /** @description The [`SyncAggregate`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/altair/beacon-chain.md#syncaggregate) object from the CL Altair spec. */
-                sync_aggregate: {
-                  /**
-                   * Format: hex
-                   * @description Aggregation bits of sync
-                   * @example 0x01
-                   */
-                  sync_committee_bits: string;
-                  /**
-                   * Format: hex
-                   * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-                   */
-                  sync_committee_signature: string;
-                };
-                bls_to_execution_changes: {
-                  /** @description The [`BLSToExecutionChange`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/capella/beacon-chain.md#blstoexecutionchange) object from the CL spec. */
-                  message: {
-                    /**
-                     * @description Index of the validator for which credentials will be changed.
-                     * @example 1
-                     */
-                    validator_index: string;
-                    /**
-                     * Format: hex
-                     * @description The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._
-                     * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
-                     */
-                    from_bls_pubkey: string;
-                    /**
-                     * Format: hex
-                     * @description Execution address to which the credentials will be changed.
-                     * @example 0xAbcF8e0d4e9587369b2301D0790347320302cc09
-                     */
-                    to_execution_address: string;
-                  };
-                  /**
-                   * Format: hex
-                   * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-                   */
-                  signature: string;
-                }[];
-                blob_kzg_commitments: string[];
-              } & {
-                execution_payload: {
-                  /**
-                   * Format: hex
-                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                   */
-                  parent_hash: string;
-                  /**
-                   * Format: hex
-                   * @description An address on the execution (Ethereum 1) network.
-                   * @example 0xAbcF8e0d4e9587369b2301D0790347320302cc09
-                   */
-                  fee_recipient: string;
-                  /**
-                   * Format: hex
-                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                   */
-                  state_root: string;
-                  /**
-                   * Format: hex
-                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                   */
-                  receipts_root: string;
-                  /**
-                   * Format: hex
-                   * @example 0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-                   */
-                  logs_bloom: string;
-                  /**
-                   * Format: hex
-                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                   */
-                  prev_randao: string;
-                  /** @example 1 */
-                  block_number: string;
-                  /** @example 1 */
-                  gas_limit: string;
-                  /** @example 1 */
-                  gas_used: string;
-                  /** @example 1 */
-                  timestamp: string;
-                  /**
-                   * Format: hex
-                   * @description Extra data on the execution (Ethereum 1) network.
-                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                   */
-                  extra_data: string;
-                  /** @example 1 */
-                  base_fee_per_gas: string;
-                  /** @example 1 */
-                  excess_blob_gas: string;
-                  /**
-                   * Format: hex
-                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                   */
-                  block_hash: string;
-                } & {
-                  transactions: string[];
-                  withdrawals: {
-                    /**
-                     * @description The index of the withdrawal.
-                     * @example 1
-                     */
-                    index: string;
-                    /**
-                     * @description The index of the withdrawing validator.
-                     * @example 1
-                     */
-                    validator_index: string;
-                    /**
-                     * Format: hex
-                     * @description An address on the execution (Ethereum 1) network.
-                     * @example 0xAbcF8e0d4e9587369b2301D0790347320302cc09
-                     */
-                    address: string;
-                    /**
-                     * @description The value withdrawn (gwei).
-                     * @example 1
-                     */
-                    amount: string;
-                  }[];
-                };
-                /** @description The [`ExecutionRequests`](https://github.com/ethereum/consensus-specs/blob/v1.5.0-beta.2/specs/electra/beacon-chain.md#executionrequests) object from the CL Electra spec. */
-                execution_requests: {
-                  deposits: {
-                    /**
-                     * Format: hex
-                     * @description The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._
-                     * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
-                     */
-                    pubkey: string;
-                    /**
-                     * Format: hex
-                     * @description The withdrawal credentials.
-                     * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                     */
-                    withdrawal_credentials: string;
-                    /**
-                     * @description The value to be deposited (gwei).
-                     * @example 1
-                     */
-                    amount: string;
-                    /**
-                     * Format: hex
-                     * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-                     */
-                    signature: string;
-                    /**
-                     * @description The index of the deposit request.
-                     * @example 1
-                     */
-                    index: string;
-                  }[];
-                  withdrawals: {
-                    /**
-                     * Format: hex
-                     * @description An address on the execution (Ethereum 1) network.
-                     * @example 0xAbcF8e0d4e9587369b2301D0790347320302cc09
-                     */
-                    source_address: string;
-                    /**
-                     * Format: hex
-                     * @description The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._
-                     * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
-                     */
-                    validator_pubkey: string;
-                    /**
-                     * @description The value to be withdrawn (gwei).
-                     * @example 1
-                     */
-                    amount: string;
-                  }[];
-                  consolidations: {
-                    /**
-                     * Format: hex
-                     * @description An address on the execution (Ethereum 1) network.
-                     * @example 0xAbcF8e0d4e9587369b2301D0790347320302cc09
-                     */
-                    source_address: string;
-                    /**
-                     * Format: hex
-                     * @description The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._
-                     * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
-                     */
-                    source_pubkey: string;
-                    /**
-                     * Format: hex
-                     * @description The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._
-                     * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
-                     */
-                    target_pubkey: string;
-                  }[];
-                };
-              };
-            };
-            /**
-             * Format: hex
-             * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-             */
-            signature: string;
-          };
-          kzg_proofs: string[];
-          blobs: string[];
-        }> &
-          Partial<{
-            /** @description The [`SignedBeaconBlock`](https://github.com/ethereum/consensus-specs/blob/master/specs/phase0/beacon-chain.md#signedbeaconblock) object envelope from the CL Deneb spec. */
-            signed_block: {
-              /** @description The [`BeaconBlock`](https://github.com/ethereum/consensus-specs/blob/master/specs/phase0/beacon-chain.md#beaconblock) object from the CL Deneb spec. */
-              message: {
-                /**
-                 * @description The slot to which this block corresponds.
-                 * @example 1
-                 */
-                slot: string;
-                /**
-                 * @description Index of validator in validator registry.
-                 * @example 1
-                 */
-                proposer_index: string;
-                /**
-                 * Format: hex
-                 * @description The signing Merkle root of the parent `BeaconBlock`.
-                 * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                 */
-                parent_root: string;
-                /**
-                 * Format: hex
-                 * @description The tree hash Merkle root of the `BeaconState` for the `BeaconBlock`.
-                 * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                 */
-                state_root: string;
-              } & {
-                body: {
-                  randao_reveal: string & unknown;
-                  /** @description The [`Eth1Data`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#eth1data) object from the CL spec. */
-                  eth1_data: {
-                    /**
-                     * Format: hex
-                     * @description Root of the deposit tree.
-                     * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                     */
-                    deposit_root: string;
-                    /**
-                     * @description Total number of deposits.
-                     * @example 1
-                     */
-                    deposit_count: string;
-                    /**
-                     * Format: hex
-                     * @description Ethereum 1.x block hash.
-                     * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                     */
-                    block_hash: string;
-                  };
-                  /**
-                   * Format: hex
-                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                   */
-                  graffiti: string;
-                  proposer_slashings: {
-                    /** @description The [`SignedBeaconBlockHeader`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#signedbeaconblockheader) object envelope from the CL spec. */
-                    signed_header_1: {
-                      /** @description The [`BeaconBlockHeader`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#beaconblockheader) object from the CL spec. */
-                      message: {
-                        /**
-                         * @description The slot to which this block corresponds.
-                         * @example 1
-                         */
-                        slot: string;
-                        /**
-                         * @description Index of validator in validator registry.
-                         * @example 1
-                         */
-                        proposer_index: string;
-                        /**
-                         * Format: hex
-                         * @description The signing merkle root of the parent `BeaconBlock`.
-                         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                         */
-                        parent_root: string;
-                        /**
-                         * Format: hex
-                         * @description The tree hash merkle root of the `BeaconState` for the `BeaconBlock`.
-                         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                         */
-                        state_root: string;
-                      } & {
-                        /**
-                         * Format: hex
-                         * @description The tree hash merkle root of the `BeaconBlockBody` for the `BeaconBlock`
-                         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                         */
-                        body_root: string;
-                      };
-                      /**
-                       * Format: hex
-                       * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-                       */
-                      signature: string;
-                    };
-                    /** @description The [`SignedBeaconBlockHeader`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#signedbeaconblockheader) object envelope from the CL spec. */
-                    signed_header_2: {
-                      /** @description The [`BeaconBlockHeader`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#beaconblockheader) object from the CL spec. */
-                      message: {
-                        /**
-                         * @description The slot to which this block corresponds.
-                         * @example 1
-                         */
-                        slot: string;
-                        /**
-                         * @description Index of validator in validator registry.
-                         * @example 1
-                         */
-                        proposer_index: string;
-                        /**
-                         * Format: hex
-                         * @description The signing merkle root of the parent `BeaconBlock`.
-                         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                         */
-                        parent_root: string;
-                        /**
-                         * Format: hex
-                         * @description The tree hash merkle root of the `BeaconState` for the `BeaconBlock`.
-                         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                         */
-                        state_root: string;
-                      } & {
-                        /**
-                         * Format: hex
-                         * @description The tree hash merkle root of the `BeaconBlockBody` for the `BeaconBlock`
-                         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                         */
-                        body_root: string;
-                      };
-                      /**
-                       * Format: hex
-                       * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-                       */
-                      signature: string;
-                    };
-                  }[];
-                  attester_slashings: {
-                    /** @description The [`IndexedAttestation`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#indexedattestation) object from the CL spec. */
-                    attestation_1: {
-                      /** @description Attesting validator indices */
-                      attesting_indices: string[];
-                      /** @description The [`AttestationData`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#attestationdata) object from the CL spec. */
-                      data: {
-                        /** @example 1 */
-                        slot: string;
-                        /** @example 1 */
-                        index: string;
-                        /**
-                         * Format: hex
-                         * @description LMD GHOST vote.
-                         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                         */
-                        beacon_block_root: string;
-                        /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
-                        source: {
-                          /** @example 1 */
-                          epoch: string;
-                          /**
-                           * Format: hex
-                           * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                           */
-                          root: string;
-                        };
-                        /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
-                        target: {
-                          /** @example 1 */
-                          epoch: string;
-                          /**
-                           * Format: hex
-                           * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                           */
-                          root: string;
-                        };
-                      };
-                      /**
-                       * Format: hex
-                       * @description The BLS signature of the `IndexedAttestation`, created by the validator of the attestation.
-                       * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-                       */
-                      signature: string;
-                    };
-                    /** @description The [`IndexedAttestation`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#indexedattestation) object from the CL spec. */
-                    attestation_2: {
-                      /** @description Attesting validator indices */
-                      attesting_indices: string[];
-                      /** @description The [`AttestationData`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#attestationdata) object from the CL spec. */
-                      data: {
-                        /** @example 1 */
-                        slot: string;
-                        /** @example 1 */
-                        index: string;
-                        /**
-                         * Format: hex
-                         * @description LMD GHOST vote.
-                         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                         */
-                        beacon_block_root: string;
-                        /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
-                        source: {
-                          /** @example 1 */
-                          epoch: string;
-                          /**
-                           * Format: hex
-                           * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                           */
-                          root: string;
-                        };
-                        /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
-                        target: {
-                          /** @example 1 */
-                          epoch: string;
-                          /**
-                           * Format: hex
-                           * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                           */
-                          root: string;
-                        };
-                      };
-                      /**
-                       * Format: hex
-                       * @description The BLS signature of the `IndexedAttestation`, created by the validator of the attestation.
-                       * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-                       */
-                      signature: string;
-                    };
-                  }[];
-                  attestations: {
-                    /**
-                     * Format: hex
-                     * @description Attester aggregation bits.
-                     * @example 0x01
-                     */
-                    aggregation_bits: string;
-                    /** @description The [`AttestationData`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#attestationdata) object from the CL spec. */
-                    data: {
-                      /** @example 1 */
-                      slot: string;
-                      /** @example 1 */
-                      index: string;
-                      /**
-                       * Format: hex
-                       * @description LMD GHOST vote.
-                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                       */
-                      beacon_block_root: string;
-                      /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
-                      source: {
-                        /** @example 1 */
-                        epoch: string;
-                        /**
-                         * Format: hex
-                         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                         */
-                        root: string;
-                      };
-                      /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
-                      target: {
-                        /** @example 1 */
-                        epoch: string;
-                        /**
-                         * Format: hex
-                         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                         */
-                        root: string;
-                      };
-                    };
-                    /**
-                     * Format: hex
-                     * @description BLS aggregate signature.
-                     * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-                     */
-                    signature: string;
-                  }[];
-                  deposits: {
-                    /** @description Branch in the deposit tree. */
-                    proof: string[];
-                    /** @description The [`DepositData`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#depositdata) object from the CL spec. */
-                    data: {
-                      /**
-                       * Format: hex
-                       * @description The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._
-                       * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
-                       */
-                      pubkey: string;
-                      /**
-                       * Format: hex
-                       * @description The withdrawal credentials.
-                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                       */
-                      withdrawal_credentials: string;
-                      /**
-                       * @description Amount in Gwei.
-                       * @example 1
-                       */
-                      amount: string;
-                      /**
-                       * Format: hex
-                       * @description Container self-signature.
-                       * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-                       */
-                      signature: string;
-                    };
-                  }[];
-                  voluntary_exits: {
-                    /** @description The [`VoluntaryExit`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#voluntaryexit) object from the CL spec. */
-                    message: {
-                      /**
-                       * @description Minimum epoch for processing exit.
-                       * @example 1
-                       */
-                      epoch: string;
-                      /**
-                       * @description Index of the exiting validator.
-                       * @example 1
-                       */
-                      validator_index: string;
-                    };
-                    /**
-                     * Format: hex
-                     * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-                     */
-                    signature: string;
-                  }[];
-                  /** @description The [`SyncAggregate`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/altair/beacon-chain.md#syncaggregate) object from the CL Altair spec. */
-                  sync_aggregate: {
-                    /**
-                     * Format: hex
-                     * @description Aggregation bits of sync
-                     * @example 0x01
-                     */
-                    sync_committee_bits: string;
-                    /**
-                     * Format: hex
-                     * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-                     */
-                    sync_committee_signature: string;
-                  };
-                  bls_to_execution_changes: {
-                    /** @description The [`BLSToExecutionChange`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/capella/beacon-chain.md#blstoexecutionchange) object from the CL spec. */
-                    message: {
-                      /**
-                       * @description Index of the validator for which credentials will be changed.
-                       * @example 1
-                       */
-                      validator_index: string;
-                      /**
-                       * Format: hex
-                       * @description The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._
-                       * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
-                       */
-                      from_bls_pubkey: string;
-                      /**
-                       * Format: hex
-                       * @description Execution address to which the credentials will be changed.
-                       * @example 0xAbcF8e0d4e9587369b2301D0790347320302cc09
-                       */
-                      to_execution_address: string;
-                    };
-                    /**
-                     * Format: hex
-                     * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-                     */
-                    signature: string;
-                  }[];
-                  blob_kzg_commitments: string[];
-                } & {
-                  execution_payload: {
-                    /**
-                     * Format: hex
-                     * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                     */
-                    parent_hash: string;
-                    /**
-                     * Format: hex
-                     * @description An address on the execution (Ethereum 1) network.
-                     * @example 0xAbcF8e0d4e9587369b2301D0790347320302cc09
-                     */
-                    fee_recipient: string;
-                    /**
-                     * Format: hex
-                     * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                     */
-                    state_root: string;
-                    /**
-                     * Format: hex
-                     * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                     */
-                    receipts_root: string;
-                    /**
-                     * Format: hex
-                     * @example 0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-                     */
-                    logs_bloom: string;
-                    /**
-                     * Format: hex
-                     * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                     */
-                    prev_randao: string;
-                    /** @example 1 */
-                    block_number: string;
-                    /** @example 1 */
-                    gas_limit: string;
-                    /** @example 1 */
-                    gas_used: string;
-                    /** @example 1 */
-                    timestamp: string;
-                    /**
-                     * Format: hex
-                     * @description Extra data on the execution (Ethereum 1) network.
-                     * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                     */
-                    extra_data: string;
-                    /** @example 1 */
-                    base_fee_per_gas: string;
-                    /** @example 1 */
-                    excess_blob_gas: string;
-                    /**
-                     * Format: hex
-                     * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                     */
-                    block_hash: string;
-                  } & {
-                    transactions: string[];
-                    withdrawals: {
-                      /**
-                       * @description The index of the withdrawal.
-                       * @example 1
-                       */
-                      index: string;
-                      /**
-                       * @description The index of the withdrawing validator.
-                       * @example 1
-                       */
-                      validator_index: string;
-                      /**
-                       * Format: hex
-                       * @description An address on the execution (Ethereum 1) network.
-                       * @example 0xAbcF8e0d4e9587369b2301D0790347320302cc09
-                       */
-                      address: string;
-                      /**
-                       * @description The value withdrawn (gwei).
-                       * @example 1
-                       */
-                      amount: string;
-                    }[];
-                  };
-                };
-              };
-              /**
-               * Format: hex
-               * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-               */
-              signature: string;
-            };
-            kzg_proofs: string[];
-            blobs: string[];
-          }> &
-          Partial<{
-            /** @description The [`BeaconBlock`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#beaconblock) object from the CL Capella spec. */
-            message: {
-              /**
-               * @description The slot to which this block corresponds.
-               * @example 1
-               */
-              slot: string;
-              /**
-               * @description Index of validator in validator registry.
-               * @example 1
-               */
-              proposer_index: string;
-              /**
-               * Format: hex
-               * @description The signing Merkle root of the parent `BeaconBlock`.
-               * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-               */
-              parent_root: string;
-              /**
-               * Format: hex
-               * @description The tree hash Merkle root of the `BeaconState` for the `BeaconBlock`.
-               * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-               */
-              state_root: string;
-            } & {
-              body: {
-                /**
-                 * Format: hex
-                 * @description The RanDAO reveal value provided by the validator.
-                 * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-                 */
-                randao_reveal: string;
-                /** @description The [`Eth1Data`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#eth1data) object from the CL spec. */
-                eth1_data: {
-                  /**
-                   * Format: hex
-                   * @description Root of the deposit tree.
-                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                   */
-                  deposit_root: string;
-                  /**
-                   * @description Total number of deposits.
-                   * @example 1
-                   */
-                  deposit_count: string;
-                  /**
-                   * Format: hex
-                   * @description Ethereum 1.x block hash.
-                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                   */
-                  block_hash: string;
-                };
-                /**
-                 * Format: hex
-                 * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                 */
-                graffiti: string;
-                proposer_slashings: {
-                  /** @description The [`SignedBeaconBlockHeader`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#signedbeaconblockheader) object envelope from the CL spec. */
-                  signed_header_1: {
-                    /** @description The [`BeaconBlockHeader`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#beaconblockheader) object from the CL spec. */
-                    message: {
-                      /**
-                       * @description The slot to which this block corresponds.
-                       * @example 1
-                       */
-                      slot: string;
-                      /**
-                       * @description Index of validator in validator registry.
-                       * @example 1
-                       */
-                      proposer_index: string;
-                      /**
-                       * Format: hex
-                       * @description The signing merkle root of the parent `BeaconBlock`.
-                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                       */
-                      parent_root: string;
-                      /**
-                       * Format: hex
-                       * @description The tree hash merkle root of the `BeaconState` for the `BeaconBlock`.
-                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                       */
-                      state_root: string;
-                    } & {
-                      /**
-                       * Format: hex
-                       * @description The tree hash merkle root of the `BeaconBlockBody` for the `BeaconBlock`
-                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                       */
-                      body_root: string;
-                    };
-                    /**
-                     * Format: hex
-                     * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-                     */
-                    signature: string;
-                  };
-                  /** @description The [`SignedBeaconBlockHeader`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#signedbeaconblockheader) object envelope from the CL spec. */
-                  signed_header_2: {
-                    /** @description The [`BeaconBlockHeader`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#beaconblockheader) object from the CL spec. */
-                    message: {
-                      /**
-                       * @description The slot to which this block corresponds.
-                       * @example 1
-                       */
-                      slot: string;
-                      /**
-                       * @description Index of validator in validator registry.
-                       * @example 1
-                       */
-                      proposer_index: string;
-                      /**
-                       * Format: hex
-                       * @description The signing merkle root of the parent `BeaconBlock`.
-                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                       */
-                      parent_root: string;
-                      /**
-                       * Format: hex
-                       * @description The tree hash merkle root of the `BeaconState` for the `BeaconBlock`.
-                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                       */
-                      state_root: string;
-                    } & {
-                      /**
-                       * Format: hex
-                       * @description The tree hash merkle root of the `BeaconBlockBody` for the `BeaconBlock`
-                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                       */
-                      body_root: string;
-                    };
-                    /**
-                     * Format: hex
-                     * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-                     */
-                    signature: string;
-                  };
-                }[];
-                attester_slashings: {
-                  /** @description The [`IndexedAttestation`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#indexedattestation) object from the CL spec. */
-                  attestation_1: {
-                    /** @description Attesting validator indices */
-                    attesting_indices: string[];
-                    /** @description The [`AttestationData`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#attestationdata) object from the CL spec. */
-                    data: {
-                      /** @example 1 */
-                      slot: string;
-                      /** @example 1 */
-                      index: string;
-                      /**
-                       * Format: hex
-                       * @description LMD GHOST vote.
-                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                       */
-                      beacon_block_root: string;
-                      /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
-                      source: {
-                        /** @example 1 */
-                        epoch: string;
-                        /**
-                         * Format: hex
-                         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                         */
-                        root: string;
-                      };
-                      /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
-                      target: {
-                        /** @example 1 */
-                        epoch: string;
-                        /**
-                         * Format: hex
-                         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                         */
-                        root: string;
-                      };
-                    };
-                    /**
-                     * Format: hex
-                     * @description The BLS signature of the `IndexedAttestation`, created by the validator of the attestation.
-                     * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-                     */
-                    signature: string;
-                  };
-                  /** @description The [`IndexedAttestation`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#indexedattestation) object from the CL spec. */
-                  attestation_2: {
-                    /** @description Attesting validator indices */
-                    attesting_indices: string[];
-                    /** @description The [`AttestationData`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#attestationdata) object from the CL spec. */
-                    data: {
-                      /** @example 1 */
-                      slot: string;
-                      /** @example 1 */
-                      index: string;
-                      /**
-                       * Format: hex
-                       * @description LMD GHOST vote.
-                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                       */
-                      beacon_block_root: string;
-                      /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
-                      source: {
-                        /** @example 1 */
-                        epoch: string;
-                        /**
-                         * Format: hex
-                         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                         */
-                        root: string;
-                      };
-                      /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
-                      target: {
-                        /** @example 1 */
-                        epoch: string;
-                        /**
-                         * Format: hex
-                         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                         */
-                        root: string;
-                      };
-                    };
-                    /**
-                     * Format: hex
-                     * @description The BLS signature of the `IndexedAttestation`, created by the validator of the attestation.
-                     * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-                     */
-                    signature: string;
-                  };
-                }[];
-                attestations: {
-                  /**
-                   * Format: hex
-                   * @description Attester aggregation bits.
-                   * @example 0x01
-                   */
-                  aggregation_bits: string;
-                  /** @description The [`AttestationData`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#attestationdata) object from the CL spec. */
-                  data: {
-                    /** @example 1 */
-                    slot: string;
-                    /** @example 1 */
-                    index: string;
-                    /**
-                     * Format: hex
-                     * @description LMD GHOST vote.
-                     * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                     */
-                    beacon_block_root: string;
-                    /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
-                    source: {
-                      /** @example 1 */
-                      epoch: string;
-                      /**
-                       * Format: hex
-                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                       */
-                      root: string;
-                    };
-                    /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
-                    target: {
-                      /** @example 1 */
-                      epoch: string;
-                      /**
-                       * Format: hex
-                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                       */
-                      root: string;
-                    };
-                  };
-                  /**
-                   * Format: hex
-                   * @description BLS aggregate signature.
-                   * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-                   */
-                  signature: string;
-                }[];
-                deposits: {
-                  /** @description Branch in the deposit tree. */
-                  proof: string[];
-                  /** @description The [`DepositData`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#depositdata) object from the CL spec. */
-                  data: {
-                    /**
-                     * Format: hex
-                     * @description The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._
-                     * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
-                     */
-                    pubkey: string;
-                    /**
-                     * Format: hex
-                     * @description The withdrawal credentials.
-                     * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                     */
-                    withdrawal_credentials: string;
-                    /**
-                     * @description Amount in Gwei.
-                     * @example 1
-                     */
-                    amount: string;
-                    /**
-                     * Format: hex
-                     * @description Container self-signature.
-                     * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-                     */
-                    signature: string;
-                  };
-                }[];
-                voluntary_exits: {
-                  /** @description The [`VoluntaryExit`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#voluntaryexit) object from the CL spec. */
-                  message: {
-                    /**
-                     * @description Minimum epoch for processing exit.
-                     * @example 1
-                     */
-                    epoch: string;
-                    /**
-                     * @description Index of the exiting validator.
-                     * @example 1
-                     */
-                    validator_index: string;
-                  };
-                  /**
-                   * Format: hex
-                   * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-                   */
-                  signature: string;
-                }[];
-                /** @description The [`SyncAggregate`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/altair/beacon-chain.md#syncaggregate) object from the CL Altair spec. */
-                sync_aggregate: {
-                  /**
-                   * Format: hex
-                   * @description Aggregation bits of sync
-                   * @example 0x01
-                   */
-                  sync_committee_bits: string;
-                  /**
-                   * Format: hex
-                   * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-                   */
-                  sync_committee_signature: string;
-                };
-                bls_to_execution_changes: {
-                  /** @description The [`BLSToExecutionChange`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/capella/beacon-chain.md#blstoexecutionchange) object from the CL spec. */
-                  message: {
-                    /**
-                     * @description Index of the validator for which credentials will be changed.
-                     * @example 1
-                     */
-                    validator_index: string;
-                    /**
-                     * Format: hex
-                     * @description The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._
-                     * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
-                     */
-                    from_bls_pubkey: string;
-                    /**
-                     * Format: hex
-                     * @description Execution address to which the credentials will be changed.
-                     * @example 0xAbcF8e0d4e9587369b2301D0790347320302cc09
-                     */
-                    to_execution_address: string;
-                  };
-                  /**
-                   * Format: hex
-                   * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-                   */
-                  signature: string;
-                }[];
-              } & {
-                execution_payload: {
-                  /**
-                   * Format: hex
-                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                   */
-                  parent_hash: string;
-                  /**
-                   * Format: hex
-                   * @description An address on the execution (Ethereum 1) network.
-                   * @example 0xAbcF8e0d4e9587369b2301D0790347320302cc09
-                   */
-                  fee_recipient: string;
-                  /**
-                   * Format: hex
-                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                   */
-                  state_root: string;
-                  /**
-                   * Format: hex
-                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                   */
-                  receipts_root: string;
-                  /**
-                   * Format: hex
-                   * @example 0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-                   */
-                  logs_bloom: string;
-                  /**
-                   * Format: hex
-                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                   */
-                  prev_randao: string;
-                  /** @example 1 */
-                  block_number: string;
-                  /** @example 1 */
-                  gas_limit: string;
-                  /** @example 1 */
-                  gas_used: string;
-                  /** @example 1 */
-                  timestamp: string;
-                  /**
-                   * Format: hex
-                   * @description Extra data on the execution (Ethereum 1) network.
-                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                   */
-                  extra_data: string;
-                  /** @example 1 */
-                  base_fee_per_gas: string;
-                  /**
-                   * Format: hex
-                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                   */
-                  block_hash: string;
-                } & {
-                  transactions: string[];
-                  withdrawals: {
-                    /**
-                     * @description The index of the withdrawal.
-                     * @example 1
-                     */
-                    index: string;
-                    /**
-                     * @description The index of the withdrawing validator.
-                     * @example 1
-                     */
-                    validator_index: string;
-                    /**
-                     * Format: hex
-                     * @description An address on the execution (Ethereum 1) network.
-                     * @example 0xAbcF8e0d4e9587369b2301D0790347320302cc09
-                     */
-                    address: string;
-                    /**
-                     * @description The value withdrawn (gwei).
-                     * @example 1
-                     */
-                    amount: string;
-                  }[];
-                };
-              };
-            };
-            /**
-             * Format: hex
-             * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-             */
-            signature: string;
-          }> &
-          Partial<{
-            /** @description The [`BeaconBlock`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#beaconblock) object from the CL Bellatrix spec. */
-            message: {
-              /**
-               * @description The slot to which this block corresponds.
-               * @example 1
-               */
-              slot: string;
-              /**
-               * @description Index of validator in validator registry.
-               * @example 1
-               */
-              proposer_index: string;
-              /**
-               * Format: hex
-               * @description The signing Merkle root of the parent `BeaconBlock`.
-               * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-               */
-              parent_root: string;
-              /**
-               * Format: hex
-               * @description The tree hash Merkle root of the `BeaconState` for the `BeaconBlock`.
-               * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-               */
-              state_root: string;
-            } & {
-              body: {
-                /**
-                 * Format: hex
-                 * @description The RanDAO reveal value provided by the validator.
-                 * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-                 */
-                randao_reveal: string;
-                /** @description The [`Eth1Data`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#eth1data) object from the CL spec. */
-                eth1_data: {
-                  /**
-                   * Format: hex
-                   * @description Root of the deposit tree.
-                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                   */
-                  deposit_root: string;
-                  /**
-                   * @description Total number of deposits.
-                   * @example 1
-                   */
-                  deposit_count: string;
-                  /**
-                   * Format: hex
-                   * @description Ethereum 1.x block hash.
-                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                   */
-                  block_hash: string;
-                };
-                /**
-                 * Format: hex
-                 * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                 */
-                graffiti: string;
-                proposer_slashings: {
-                  /** @description The [`SignedBeaconBlockHeader`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#signedbeaconblockheader) object envelope from the CL spec. */
-                  signed_header_1: {
-                    /** @description The [`BeaconBlockHeader`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#beaconblockheader) object from the CL spec. */
-                    message: {
-                      /**
-                       * @description The slot to which this block corresponds.
-                       * @example 1
-                       */
-                      slot: string;
-                      /**
-                       * @description Index of validator in validator registry.
-                       * @example 1
-                       */
-                      proposer_index: string;
-                      /**
-                       * Format: hex
-                       * @description The signing merkle root of the parent `BeaconBlock`.
-                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                       */
-                      parent_root: string;
-                      /**
-                       * Format: hex
-                       * @description The tree hash merkle root of the `BeaconState` for the `BeaconBlock`.
-                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                       */
-                      state_root: string;
-                    } & {
-                      /**
-                       * Format: hex
-                       * @description The tree hash merkle root of the `BeaconBlockBody` for the `BeaconBlock`
-                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                       */
-                      body_root: string;
-                    };
-                    /**
-                     * Format: hex
-                     * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-                     */
-                    signature: string;
-                  };
-                  /** @description The [`SignedBeaconBlockHeader`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#signedbeaconblockheader) object envelope from the CL spec. */
-                  signed_header_2: {
-                    /** @description The [`BeaconBlockHeader`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#beaconblockheader) object from the CL spec. */
-                    message: {
-                      /**
-                       * @description The slot to which this block corresponds.
-                       * @example 1
-                       */
-                      slot: string;
-                      /**
-                       * @description Index of validator in validator registry.
-                       * @example 1
-                       */
-                      proposer_index: string;
-                      /**
-                       * Format: hex
-                       * @description The signing merkle root of the parent `BeaconBlock`.
-                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                       */
-                      parent_root: string;
-                      /**
-                       * Format: hex
-                       * @description The tree hash merkle root of the `BeaconState` for the `BeaconBlock`.
-                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                       */
-                      state_root: string;
-                    } & {
-                      /**
-                       * Format: hex
-                       * @description The tree hash merkle root of the `BeaconBlockBody` for the `BeaconBlock`
-                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                       */
-                      body_root: string;
-                    };
-                    /**
-                     * Format: hex
-                     * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-                     */
-                    signature: string;
-                  };
-                }[];
-                attester_slashings: {
-                  /** @description The [`IndexedAttestation`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#indexedattestation) object from the CL spec. */
-                  attestation_1: {
-                    /** @description Attesting validator indices */
-                    attesting_indices: string[];
-                    /** @description The [`AttestationData`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#attestationdata) object from the CL spec. */
-                    data: {
-                      /** @example 1 */
-                      slot: string;
-                      /** @example 1 */
-                      index: string;
-                      /**
-                       * Format: hex
-                       * @description LMD GHOST vote.
-                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                       */
-                      beacon_block_root: string;
-                      /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
-                      source: {
-                        /** @example 1 */
-                        epoch: string;
-                        /**
-                         * Format: hex
-                         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                         */
-                        root: string;
-                      };
-                      /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
-                      target: {
-                        /** @example 1 */
-                        epoch: string;
-                        /**
-                         * Format: hex
-                         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                         */
-                        root: string;
-                      };
-                    };
-                    /**
-                     * Format: hex
-                     * @description The BLS signature of the `IndexedAttestation`, created by the validator of the attestation.
-                     * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-                     */
-                    signature: string;
-                  };
-                  /** @description The [`IndexedAttestation`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#indexedattestation) object from the CL spec. */
-                  attestation_2: {
-                    /** @description Attesting validator indices */
-                    attesting_indices: string[];
-                    /** @description The [`AttestationData`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#attestationdata) object from the CL spec. */
-                    data: {
-                      /** @example 1 */
-                      slot: string;
-                      /** @example 1 */
-                      index: string;
-                      /**
-                       * Format: hex
-                       * @description LMD GHOST vote.
-                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                       */
-                      beacon_block_root: string;
-                      /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
-                      source: {
-                        /** @example 1 */
-                        epoch: string;
-                        /**
-                         * Format: hex
-                         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                         */
-                        root: string;
-                      };
-                      /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
-                      target: {
-                        /** @example 1 */
-                        epoch: string;
-                        /**
-                         * Format: hex
-                         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                         */
-                        root: string;
-                      };
-                    };
-                    /**
-                     * Format: hex
-                     * @description The BLS signature of the `IndexedAttestation`, created by the validator of the attestation.
-                     * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-                     */
-                    signature: string;
-                  };
-                }[];
-                attestations: {
-                  /**
-                   * Format: hex
-                   * @description Attester aggregation bits.
-                   * @example 0x01
-                   */
-                  aggregation_bits: string;
-                  /** @description The [`AttestationData`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#attestationdata) object from the CL spec. */
-                  data: {
-                    /** @example 1 */
-                    slot: string;
-                    /** @example 1 */
-                    index: string;
-                    /**
-                     * Format: hex
-                     * @description LMD GHOST vote.
-                     * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                     */
-                    beacon_block_root: string;
-                    /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
-                    source: {
-                      /** @example 1 */
-                      epoch: string;
-                      /**
-                       * Format: hex
-                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                       */
-                      root: string;
-                    };
-                    /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
-                    target: {
-                      /** @example 1 */
-                      epoch: string;
-                      /**
-                       * Format: hex
-                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                       */
-                      root: string;
-                    };
-                  };
-                  /**
-                   * Format: hex
-                   * @description BLS aggregate signature.
-                   * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-                   */
-                  signature: string;
-                }[];
-                deposits: {
-                  /** @description Branch in the deposit tree. */
-                  proof: string[];
-                  /** @description The [`DepositData`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#depositdata) object from the CL spec. */
-                  data: {
-                    /**
-                     * Format: hex
-                     * @description The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._
-                     * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
-                     */
-                    pubkey: string;
-                    /**
-                     * Format: hex
-                     * @description The withdrawal credentials.
-                     * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                     */
-                    withdrawal_credentials: string;
-                    /**
-                     * @description Amount in Gwei.
-                     * @example 1
-                     */
-                    amount: string;
-                    /**
-                     * Format: hex
-                     * @description Container self-signature.
-                     * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-                     */
-                    signature: string;
-                  };
-                }[];
-                voluntary_exits: {
-                  /** @description The [`VoluntaryExit`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#voluntaryexit) object from the CL spec. */
-                  message: {
-                    /**
-                     * @description Minimum epoch for processing exit.
-                     * @example 1
-                     */
-                    epoch: string;
-                    /**
-                     * @description Index of the exiting validator.
-                     * @example 1
-                     */
-                    validator_index: string;
-                  };
-                  /**
-                   * Format: hex
-                   * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-                   */
-                  signature: string;
-                }[];
-                /** @description The [`SyncAggregate`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/altair/beacon-chain.md#syncaggregate) object from the CL Altair spec. */
-                sync_aggregate: {
-                  /**
-                   * Format: hex
-                   * @description Aggregation bits of sync
-                   * @example 0x01
-                   */
-                  sync_committee_bits: string;
-                  /**
-                   * Format: hex
-                   * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-                   */
-                  sync_committee_signature: string;
-                };
-              } & {
-                execution_payload: {
-                  /**
-                   * Format: hex
-                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                   */
-                  parent_hash: string;
-                  /**
-                   * Format: hex
-                   * @description An address on the execution (Ethereum 1) network.
-                   * @example 0xAbcF8e0d4e9587369b2301D0790347320302cc09
-                   */
-                  fee_recipient: string;
-                  /**
-                   * Format: hex
-                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                   */
-                  state_root: string;
-                  /**
-                   * Format: hex
-                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                   */
-                  receipts_root: string;
-                  /**
-                   * Format: hex
-                   * @example 0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-                   */
-                  logs_bloom: string;
-                  /**
-                   * Format: hex
-                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                   */
-                  prev_randao: string;
-                  /** @example 1 */
-                  block_number: string;
-                  /** @example 1 */
-                  gas_limit: string;
-                  /** @example 1 */
-                  gas_used: string;
-                  /** @example 1 */
-                  timestamp: string;
-                  /**
-                   * Format: hex
-                   * @description Extra data on the execution (Ethereum 1) network.
-                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                   */
-                  extra_data: string;
-                  /** @example 1 */
-                  base_fee_per_gas: string;
-                  /**
-                   * Format: hex
-                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                   */
-                  block_hash: string;
-                } & {
-                  transactions: string[];
                 };
               };
             };
@@ -26646,9 +24680,10 @@ export interface operations {
    * The beacon node is also expected to integrate the block into the state, but may broadcast it
    * before doing so, so as to aid timely delivery of the block. Should the block fail full
    * validation, a separate success response code (202) is used to indicate that the block was
-   * successfully broadcast but failed integration. After Deneb, this additionally instructs
-   * the beacon node to broadcast all given blobs. The broadcast behaviour may be adjusted via the
-   * `broadcast_validation` query parameter.
+   * successfully broadcast but failed integration. For Deneb/Electra/Fulu, this additionally instructs
+   * the beacon node to broadcast all given blobs. For Gloas and later, blobs are broadcast as part
+   * of the `ExecutionPayloadEnvelope` and are not submitted with the block. The broadcast behaviour
+   * may be adjusted via the `broadcast_validation` query parameter.
    */
   publishBlockV2: {
     parameters: {
@@ -26683,7 +24718,9 @@ export interface operations {
           | 'bellatrix'
           | 'capella'
           | 'deneb'
-          | 'electra';
+          | 'electra'
+          | 'fulu'
+          | 'gloas';
       };
     };
     responses: {
@@ -26760,239 +24797,151 @@ export interface operations {
     requestBody: {
       content: {
         'application/json': Partial<{
-          /** @description The [`SignedBeaconBlock`](https://github.com/ethereum/consensus-specs/blob/v1.5.0-beta.2/specs/phase0/beacon-chain.md#signedbeaconblock) object envelope from the CL Electra spec. */
-          signed_block: {
-            /** @description The [`BeaconBlock`](https://github.com/ethereum/consensus-specs/blob/v1.5.0-beta.2/specs/phase0/beacon-chain.md#beaconblock) object from the CL Electra spec. */
-            message: {
-              /**
-               * @description The slot to which this block corresponds.
-               * @example 1
-               */
-              slot: string;
-              /**
-               * @description Index of validator in validator registry.
-               * @example 1
-               */
-              proposer_index: string;
+          /** @description The [`BeaconBlock`](https://github.com/ethereum/consensus-specs/blob/v1.5.0/specs/phase0/beacon-chain.md#beaconblock) object from the CL Gloas spec. */
+          message: {
+            /**
+             * @description The slot to which this block corresponds.
+             * @example 1
+             */
+            slot: string;
+            /**
+             * @description Index of validator in validator registry.
+             * @example 1
+             */
+            proposer_index: string;
+            /**
+             * Format: hex
+             * @description The signing Merkle root of the parent `BeaconBlock`.
+             * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+             */
+            parent_root: string;
+            /**
+             * Format: hex
+             * @description The tree hash Merkle root of the `BeaconState` for the `BeaconBlock`.
+             * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+             */
+            state_root: string;
+          } & {
+            /** @description The [`BeaconBlockBody`](https://github.com/ethereum/consensus-specs/blob/v1.7.0-alpha.2/specs/gloas/beacon-chain.md#beaconblockbody) object from the CL Gloas spec. */
+            body: {
               /**
                * Format: hex
-               * @description The signing Merkle root of the parent `BeaconBlock`.
-               * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+               * @description The RANDAO reveal value provided by the validator.
+               * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
                */
-              parent_root: string;
-              /**
-               * Format: hex
-               * @description The tree hash Merkle root of the `BeaconState` for the `BeaconBlock`.
-               * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-               */
-              state_root: string;
-            } & {
-              body: {
-                randao_reveal: string & unknown;
-                /** @description The [`Eth1Data`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#eth1data) object from the CL spec. */
-                eth1_data: {
-                  /**
-                   * Format: hex
-                   * @description Root of the deposit tree.
-                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                   */
-                  deposit_root: string;
-                  /**
-                   * @description Total number of deposits.
-                   * @example 1
-                   */
-                  deposit_count: string;
-                  /**
-                   * Format: hex
-                   * @description Ethereum 1.x block hash.
-                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                   */
-                  block_hash: string;
-                };
+              randao_reveal: string;
+              /** @description The [`Eth1Data`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#eth1data) object from the CL spec. */
+              eth1_data: {
                 /**
                  * Format: hex
+                 * @description Root of the deposit tree.
                  * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
                  */
-                graffiti: string;
-                proposer_slashings: {
-                  /** @description The [`SignedBeaconBlockHeader`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#signedbeaconblockheader) object envelope from the CL spec. */
-                  signed_header_1: {
-                    /** @description The [`BeaconBlockHeader`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#beaconblockheader) object from the CL spec. */
-                    message: {
-                      /**
-                       * @description The slot to which this block corresponds.
-                       * @example 1
-                       */
-                      slot: string;
-                      /**
-                       * @description Index of validator in validator registry.
-                       * @example 1
-                       */
-                      proposer_index: string;
-                      /**
-                       * Format: hex
-                       * @description The signing merkle root of the parent `BeaconBlock`.
-                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                       */
-                      parent_root: string;
-                      /**
-                       * Format: hex
-                       * @description The tree hash merkle root of the `BeaconState` for the `BeaconBlock`.
-                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                       */
-                      state_root: string;
-                    } & {
-                      /**
-                       * Format: hex
-                       * @description The tree hash merkle root of the `BeaconBlockBody` for the `BeaconBlock`
-                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                       */
-                      body_root: string;
-                    };
+                deposit_root: string;
+                /**
+                 * @description Total number of deposits.
+                 * @example 1
+                 */
+                deposit_count: string;
+                /**
+                 * Format: hex
+                 * @description Ethereum 1.x block hash.
+                 * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                 */
+                block_hash: string;
+              };
+              /**
+               * Format: hex
+               * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+               */
+              graffiti: string;
+              proposer_slashings: {
+                /** @description The [`SignedBeaconBlockHeader`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#signedbeaconblockheader) object envelope from the CL spec. */
+                signed_header_1: {
+                  /** @description The [`BeaconBlockHeader`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#beaconblockheader) object from the CL spec. */
+                  message: {
+                    /**
+                     * @description The slot to which this block corresponds.
+                     * @example 1
+                     */
+                    slot: string;
+                    /**
+                     * @description Index of validator in validator registry.
+                     * @example 1
+                     */
+                    proposer_index: string;
                     /**
                      * Format: hex
-                     * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+                     * @description The signing merkle root of the parent `BeaconBlock`.
+                     * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
                      */
-                    signature: string;
-                  };
-                  /** @description The [`SignedBeaconBlockHeader`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#signedbeaconblockheader) object envelope from the CL spec. */
-                  signed_header_2: {
-                    /** @description The [`BeaconBlockHeader`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#beaconblockheader) object from the CL spec. */
-                    message: {
-                      /**
-                       * @description The slot to which this block corresponds.
-                       * @example 1
-                       */
-                      slot: string;
-                      /**
-                       * @description Index of validator in validator registry.
-                       * @example 1
-                       */
-                      proposer_index: string;
-                      /**
-                       * Format: hex
-                       * @description The signing merkle root of the parent `BeaconBlock`.
-                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                       */
-                      parent_root: string;
-                      /**
-                       * Format: hex
-                       * @description The tree hash merkle root of the `BeaconState` for the `BeaconBlock`.
-                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                       */
-                      state_root: string;
-                    } & {
-                      /**
-                       * Format: hex
-                       * @description The tree hash merkle root of the `BeaconBlockBody` for the `BeaconBlock`
-                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                       */
-                      body_root: string;
-                    };
+                    parent_root: string;
                     /**
                      * Format: hex
-                     * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+                     * @description The tree hash merkle root of the `BeaconState` for the `BeaconBlock`.
+                     * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
                      */
-                    signature: string;
-                  };
-                }[];
-                attester_slashings: {
-                  /** @description The [`IndexedAttestation`](https://github.com/ethereum/consensus-specs/blob/v1.5.0-beta.2/specs/electra/beacon-chain.md#indexedattestation) object from the CL spec. */
-                  attestation_1: {
-                    /** @description Attesting validator indices */
-                    attesting_indices: string[];
-                    /** @description The [`AttestationData`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#attestationdata) object from the CL spec. */
-                    data: {
-                      /** @example 1 */
-                      slot: string;
-                      /** @example 1 */
-                      index: string;
-                      /**
-                       * Format: hex
-                       * @description LMD GHOST vote.
-                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                       */
-                      beacon_block_root: string;
-                      /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
-                      source: {
-                        /** @example 1 */
-                        epoch: string;
-                        /**
-                         * Format: hex
-                         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                         */
-                        root: string;
-                      };
-                      /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
-                      target: {
-                        /** @example 1 */
-                        epoch: string;
-                        /**
-                         * Format: hex
-                         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                         */
-                        root: string;
-                      };
-                    };
+                    state_root: string;
+                  } & {
                     /**
                      * Format: hex
-                     * @description The BLS signature of the `IndexedAttestation`, created by the validator of the attestation.
-                     * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+                     * @description The tree hash merkle root of the `BeaconBlockBody` for the `BeaconBlock`
+                     * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
                      */
-                    signature: string;
+                    body_root: string;
                   };
-                  /** @description The [`IndexedAttestation`](https://github.com/ethereum/consensus-specs/blob/v1.5.0-beta.2/specs/electra/beacon-chain.md#indexedattestation) object from the CL spec. */
-                  attestation_2: {
-                    /** @description Attesting validator indices */
-                    attesting_indices: string[];
-                    /** @description The [`AttestationData`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#attestationdata) object from the CL spec. */
-                    data: {
-                      /** @example 1 */
-                      slot: string;
-                      /** @example 1 */
-                      index: string;
-                      /**
-                       * Format: hex
-                       * @description LMD GHOST vote.
-                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                       */
-                      beacon_block_root: string;
-                      /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
-                      source: {
-                        /** @example 1 */
-                        epoch: string;
-                        /**
-                         * Format: hex
-                         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                         */
-                        root: string;
-                      };
-                      /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
-                      target: {
-                        /** @example 1 */
-                        epoch: string;
-                        /**
-                         * Format: hex
-                         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                         */
-                        root: string;
-                      };
-                    };
-                    /**
-                     * Format: hex
-                     * @description The BLS signature of the `IndexedAttestation`, created by the validator of the attestation.
-                     * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-                     */
-                    signature: string;
-                  };
-                }[];
-                attestations: {
                   /**
                    * Format: hex
-                   * @description Attester aggregation bits.
-                   * @example 0x01
+                   * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
                    */
-                  aggregation_bits: string;
+                  signature: string;
+                };
+                /** @description The [`SignedBeaconBlockHeader`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#signedbeaconblockheader) object envelope from the CL spec. */
+                signed_header_2: {
+                  /** @description The [`BeaconBlockHeader`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#beaconblockheader) object from the CL spec. */
+                  message: {
+                    /**
+                     * @description The slot to which this block corresponds.
+                     * @example 1
+                     */
+                    slot: string;
+                    /**
+                     * @description Index of validator in validator registry.
+                     * @example 1
+                     */
+                    proposer_index: string;
+                    /**
+                     * Format: hex
+                     * @description The signing merkle root of the parent `BeaconBlock`.
+                     * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                     */
+                    parent_root: string;
+                    /**
+                     * Format: hex
+                     * @description The tree hash merkle root of the `BeaconState` for the `BeaconBlock`.
+                     * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                     */
+                    state_root: string;
+                  } & {
+                    /**
+                     * Format: hex
+                     * @description The tree hash merkle root of the `BeaconBlockBody` for the `BeaconBlock`
+                     * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                     */
+                    body_root: string;
+                  };
+                  /**
+                   * Format: hex
+                   * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+                   */
+                  signature: string;
+                };
+              }[];
+              attester_slashings: {
+                /** @description The [`IndexedAttestation`](https://github.com/ethereum/consensus-specs/blob/v1.5.0/specs/electra/beacon-chain.md#indexedattestation) object from the CL spec. */
+                attestation_1: {
+                  /** @description Attesting validator indices */
+                  attesting_indices: string[];
                   /** @description The [`AttestationData`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#attestationdata) object from the CL spec. */
                   data: {
                     /** @example 1 */
@@ -27028,277 +24977,1368 @@ export interface operations {
                   };
                   /**
                    * Format: hex
-                   * @description BLS aggregate signature.
+                   * @description The BLS signature of the `IndexedAttestation`, created by the validator of the attestation.
                    * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
                    */
                   signature: string;
-                  /**
-                   * Format: hex
-                   * @description Committee bits.
-                   * @example 0x0000000000000001
-                   */
-                  committee_bits: string;
-                }[];
-                deposits: {
-                  /** @description Branch in the deposit tree. */
-                  proof: string[];
-                  /** @description The [`DepositData`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#depositdata) object from the CL spec. */
+                };
+                /** @description The [`IndexedAttestation`](https://github.com/ethereum/consensus-specs/blob/v1.5.0/specs/electra/beacon-chain.md#indexedattestation) object from the CL spec. */
+                attestation_2: {
+                  /** @description Attesting validator indices */
+                  attesting_indices: string[];
+                  /** @description The [`AttestationData`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#attestationdata) object from the CL spec. */
                   data: {
+                    /** @example 1 */
+                    slot: string;
+                    /** @example 1 */
+                    index: string;
                     /**
                      * Format: hex
-                     * @description The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._
-                     * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
-                     */
-                    pubkey: string;
-                    /**
-                     * Format: hex
-                     * @description The withdrawal credentials.
+                     * @description LMD GHOST vote.
                      * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
                      */
-                    withdrawal_credentials: string;
-                    /**
-                     * @description Amount in Gwei.
-                     * @example 1
-                     */
-                    amount: string;
-                    /**
-                     * Format: hex
-                     * @description Container self-signature.
-                     * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-                     */
-                    signature: string;
+                    beacon_block_root: string;
+                    /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
+                    source: {
+                      /** @example 1 */
+                      epoch: string;
+                      /**
+                       * Format: hex
+                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                       */
+                      root: string;
+                    };
+                    /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
+                    target: {
+                      /** @example 1 */
+                      epoch: string;
+                      /**
+                       * Format: hex
+                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                       */
+                      root: string;
+                    };
                   };
-                }[];
-                voluntary_exits: {
-                  /** @description The [`VoluntaryExit`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#voluntaryexit) object from the CL spec. */
-                  message: {
-                    /**
-                     * @description Minimum epoch for processing exit.
-                     * @example 1
-                     */
+                  /**
+                   * Format: hex
+                   * @description The BLS signature of the `IndexedAttestation`, created by the validator of the attestation.
+                   * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+                   */
+                  signature: string;
+                };
+              }[];
+              attestations: {
+                /**
+                 * Format: hex
+                 * @description Attester aggregation bits.
+                 * @example 0x01
+                 */
+                aggregation_bits: string;
+                /** @description The [`AttestationData`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#attestationdata) object from the CL spec. */
+                data: {
+                  /** @example 1 */
+                  slot: string;
+                  /** @example 1 */
+                  index: string;
+                  /**
+                   * Format: hex
+                   * @description LMD GHOST vote.
+                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                   */
+                  beacon_block_root: string;
+                  /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
+                  source: {
+                    /** @example 1 */
                     epoch: string;
                     /**
-                     * @description Index of the exiting validator.
-                     * @example 1
+                     * Format: hex
+                     * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
                      */
-                    validator_index: string;
+                    root: string;
                   };
-                  /**
-                   * Format: hex
-                   * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-                   */
-                  signature: string;
-                }[];
-                /** @description The [`SyncAggregate`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/altair/beacon-chain.md#syncaggregate) object from the CL Altair spec. */
-                sync_aggregate: {
-                  /**
-                   * Format: hex
-                   * @description Aggregation bits of sync
-                   * @example 0x01
-                   */
-                  sync_committee_bits: string;
-                  /**
-                   * Format: hex
-                   * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-                   */
-                  sync_committee_signature: string;
+                  /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
+                  target: {
+                    /** @example 1 */
+                    epoch: string;
+                    /**
+                     * Format: hex
+                     * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                     */
+                    root: string;
+                  };
                 };
-                bls_to_execution_changes: {
-                  /** @description The [`BLSToExecutionChange`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/capella/beacon-chain.md#blstoexecutionchange) object from the CL spec. */
-                  message: {
-                    /**
-                     * @description Index of the validator for which credentials will be changed.
-                     * @example 1
-                     */
-                    validator_index: string;
-                    /**
-                     * Format: hex
-                     * @description The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._
-                     * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
-                     */
-                    from_bls_pubkey: string;
-                    /**
-                     * Format: hex
-                     * @description Execution address to which the credentials will be changed.
-                     * @example 0xAbcF8e0d4e9587369b2301D0790347320302cc09
-                     */
-                    to_execution_address: string;
-                  };
+                /**
+                 * Format: hex
+                 * @description BLS aggregate signature.
+                 * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+                 */
+                signature: string;
+                /**
+                 * Format: hex
+                 * @description Committee bits.
+                 * @example 0x0000000000000001
+                 */
+                committee_bits: string;
+              }[];
+              deposits: {
+                /** @description Branch in the deposit tree. */
+                proof: string[];
+                /** @description The [`DepositData`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#depositdata) object from the CL spec. */
+                data: {
                   /**
                    * Format: hex
+                   * @description The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._
+                   * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
+                   */
+                  pubkey: string;
+                  /**
+                   * Format: hex
+                   * @description The withdrawal credentials.
+                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                   */
+                  withdrawal_credentials: string;
+                  /**
+                   * @description Amount in Gwei.
+                   * @example 1
+                   */
+                  amount: string;
+                  /**
+                   * Format: hex
+                   * @description Container self-signature.
                    * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
                    */
                   signature: string;
-                }[];
-                blob_kzg_commitments: string[];
-              } & {
-                execution_payload: {
+                };
+              }[];
+              voluntary_exits: {
+                /** @description The [`VoluntaryExit`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#voluntaryexit) object from the CL spec. */
+                message: {
+                  /**
+                   * @description Minimum epoch for processing exit.
+                   * @example 1
+                   */
+                  epoch: string;
+                  /**
+                   * @description Index of the exiting validator.
+                   * @example 1
+                   */
+                  validator_index: string;
+                };
+                /**
+                 * Format: hex
+                 * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+                 */
+                signature: string;
+              }[];
+              /** @description The [`SyncAggregate`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/altair/beacon-chain.md#syncaggregate) object from the CL Altair spec. */
+              sync_aggregate: {
+                /**
+                 * Format: hex
+                 * @description Aggregation bits of sync
+                 * @example 0x01
+                 */
+                sync_committee_bits: string;
+                /**
+                 * Format: hex
+                 * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+                 */
+                sync_committee_signature: string;
+              };
+              bls_to_execution_changes: {
+                /** @description The [`BLSToExecutionChange`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/capella/beacon-chain.md#blstoexecutionchange) object from the CL spec. */
+                message: {
+                  /**
+                   * @description Index of the validator for which credentials will be changed.
+                   * @example 1
+                   */
+                  validator_index: string;
+                  /**
+                   * Format: hex
+                   * @description The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._
+                   * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
+                   */
+                  from_bls_pubkey: string;
+                  /**
+                   * Format: hex
+                   * @description Execution address to which the credentials will be changed.
+                   * @example 0xAbcF8e0d4e9587369b2301D0790347320302cc09
+                   */
+                  to_execution_address: string;
+                };
+                /**
+                 * Format: hex
+                 * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+                 */
+                signature: string;
+              }[];
+              /** @description The [`SignedExecutionPayloadBid`](https://github.com/ethereum/consensus-specs/blob/v1.7.0-alpha.2/specs/gloas/beacon-chain.md#signedexecutionpayloadbid) object from the CL Gloas spec. */
+              signed_execution_payload_bid: {
+                /** @description The [`ExecutionPayloadBid`](https://github.com/ethereum/consensus-specs/blob/v1.7.0-alpha.2/specs/gloas/beacon-chain.md#executionpayloadbid) object from the CL Gloas spec. */
+                message: {
                   /**
                    * Format: hex
                    * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
                    */
-                  parent_hash: string;
+                  parent_block_hash: string;
+                  /**
+                   * Format: hex
+                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                   */
+                  parent_block_root: string;
+                  /**
+                   * Format: hex
+                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                   */
+                  block_hash: string;
+                  /**
+                   * Format: hex
+                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                   */
+                  prev_randao: string;
                   /**
                    * Format: hex
                    * @description An address on the execution (Ethereum 1) network.
                    * @example 0xAbcF8e0d4e9587369b2301D0790347320302cc09
                    */
                   fee_recipient: string;
-                  /**
-                   * Format: hex
-                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                   */
-                  state_root: string;
-                  /**
-                   * Format: hex
-                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                   */
-                  receipts_root: string;
-                  /**
-                   * Format: hex
-                   * @example 0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-                   */
-                  logs_bloom: string;
-                  /**
-                   * Format: hex
-                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                   */
-                  prev_randao: string;
-                  /** @example 1 */
-                  block_number: string;
                   /** @example 1 */
                   gas_limit: string;
                   /** @example 1 */
-                  gas_used: string;
+                  builder_index: string;
                   /** @example 1 */
-                  timestamp: string;
-                  /**
-                   * Format: hex
-                   * @description Extra data on the execution (Ethereum 1) network.
-                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                   */
-                  extra_data: string;
+                  slot: string;
                   /** @example 1 */
-                  base_fee_per_gas: string;
+                  value: string;
                   /** @example 1 */
-                  excess_blob_gas: string;
-                  /**
-                   * Format: hex
-                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                   */
-                  block_hash: string;
-                } & {
-                  transactions: string[];
-                  withdrawals: {
-                    /**
-                     * @description The index of the withdrawal.
-                     * @example 1
-                     */
-                    index: string;
-                    /**
-                     * @description The index of the withdrawing validator.
-                     * @example 1
-                     */
-                    validator_index: string;
-                    /**
-                     * Format: hex
-                     * @description An address on the execution (Ethereum 1) network.
-                     * @example 0xAbcF8e0d4e9587369b2301D0790347320302cc09
-                     */
-                    address: string;
-                    /**
-                     * @description The value withdrawn (gwei).
-                     * @example 1
-                     */
-                    amount: string;
-                  }[];
+                  execution_payment: string;
+                  blob_kzg_commitments: string[];
                 };
-                /** @description The [`ExecutionRequests`](https://github.com/ethereum/consensus-specs/blob/v1.5.0-beta.2/specs/electra/beacon-chain.md#executionrequests) object from the CL Electra spec. */
-                execution_requests: {
-                  deposits: {
+                /**
+                 * Format: hex
+                 * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+                 */
+                signature: string;
+              };
+              /** @description Array of payload attestations from gloas. */
+              payload_attestations: {
+                /**
+                 * Format: hex
+                 * @example 0x01
+                 */
+                aggregation_bits: string;
+                /** @description The [`PayloadAttestationData`](https://github.com/ethereum/consensus-specs/blob/v1.7.0-alpha.2/specs/gloas/beacon-chain.md#payloadattestationdata) object from the CL Gloas spec. */
+                data: {
+                  /**
+                   * Format: hex
+                   * @description Hash tree root of the beacon block associated with this PTC attestation
+                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                   */
+                  beacon_block_root: string;
+                  /**
+                   * @description The slot for which the payload attestation is being made
+                   * @example 1
+                   */
+                  slot: string;
+                  /** @description True if a `SignedExecutionPayloadEnvelope` has been seen referencing this block */
+                  payload_present: boolean;
+                  /** @description True if blob data is available for this block */
+                  blob_data_available: boolean;
+                };
+                /**
+                 * Format: hex
+                 * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+                 */
+                signature: string;
+              }[];
+            };
+          };
+          /**
+           * Format: hex
+           * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+           */
+          signature: string;
+        }> &
+          Partial<{
+            /** @description The [`SignedBeaconBlock`](https://github.com/ethereum/consensus-specs/blob/v1.5.0/specs/phase0/beacon-chain.md#signedbeaconblock) object envelope from the CL Electra spec. */
+            signed_block: {
+              /** @description The [`BeaconBlock`](https://github.com/ethereum/consensus-specs/blob/v1.5.0/specs/phase0/beacon-chain.md#beaconblock) object from the CL Electra spec. */
+              message: {
+                /**
+                 * @description The slot to which this block corresponds.
+                 * @example 1
+                 */
+                slot: string;
+                /**
+                 * @description Index of validator in validator registry.
+                 * @example 1
+                 */
+                proposer_index: string;
+                /**
+                 * Format: hex
+                 * @description The signing Merkle root of the parent `BeaconBlock`.
+                 * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                 */
+                parent_root: string;
+                /**
+                 * Format: hex
+                 * @description The tree hash Merkle root of the `BeaconState` for the `BeaconBlock`.
+                 * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                 */
+                state_root: string;
+              } & {
+                body: {
+                  randao_reveal: string & unknown;
+                  /** @description The [`Eth1Data`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#eth1data) object from the CL spec. */
+                  eth1_data: {
                     /**
                      * Format: hex
-                     * @description The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._
-                     * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
-                     */
-                    pubkey: string;
-                    /**
-                     * Format: hex
-                     * @description The withdrawal credentials.
+                     * @description Root of the deposit tree.
                      * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
                      */
-                    withdrawal_credentials: string;
+                    deposit_root: string;
                     /**
-                     * @description The value to be deposited (gwei).
+                     * @description Total number of deposits.
                      * @example 1
                      */
-                    amount: string;
+                    deposit_count: string;
+                    /**
+                     * Format: hex
+                     * @description Ethereum 1.x block hash.
+                     * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                     */
+                    block_hash: string;
+                  };
+                  /**
+                   * Format: hex
+                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                   */
+                  graffiti: string;
+                  proposer_slashings: {
+                    /** @description The [`SignedBeaconBlockHeader`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#signedbeaconblockheader) object envelope from the CL spec. */
+                    signed_header_1: {
+                      /** @description The [`BeaconBlockHeader`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#beaconblockheader) object from the CL spec. */
+                      message: {
+                        /**
+                         * @description The slot to which this block corresponds.
+                         * @example 1
+                         */
+                        slot: string;
+                        /**
+                         * @description Index of validator in validator registry.
+                         * @example 1
+                         */
+                        proposer_index: string;
+                        /**
+                         * Format: hex
+                         * @description The signing merkle root of the parent `BeaconBlock`.
+                         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                         */
+                        parent_root: string;
+                        /**
+                         * Format: hex
+                         * @description The tree hash merkle root of the `BeaconState` for the `BeaconBlock`.
+                         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                         */
+                        state_root: string;
+                      } & {
+                        /**
+                         * Format: hex
+                         * @description The tree hash merkle root of the `BeaconBlockBody` for the `BeaconBlock`
+                         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                         */
+                        body_root: string;
+                      };
+                      /**
+                       * Format: hex
+                       * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+                       */
+                      signature: string;
+                    };
+                    /** @description The [`SignedBeaconBlockHeader`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#signedbeaconblockheader) object envelope from the CL spec. */
+                    signed_header_2: {
+                      /** @description The [`BeaconBlockHeader`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#beaconblockheader) object from the CL spec. */
+                      message: {
+                        /**
+                         * @description The slot to which this block corresponds.
+                         * @example 1
+                         */
+                        slot: string;
+                        /**
+                         * @description Index of validator in validator registry.
+                         * @example 1
+                         */
+                        proposer_index: string;
+                        /**
+                         * Format: hex
+                         * @description The signing merkle root of the parent `BeaconBlock`.
+                         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                         */
+                        parent_root: string;
+                        /**
+                         * Format: hex
+                         * @description The tree hash merkle root of the `BeaconState` for the `BeaconBlock`.
+                         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                         */
+                        state_root: string;
+                      } & {
+                        /**
+                         * Format: hex
+                         * @description The tree hash merkle root of the `BeaconBlockBody` for the `BeaconBlock`
+                         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                         */
+                        body_root: string;
+                      };
+                      /**
+                       * Format: hex
+                       * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+                       */
+                      signature: string;
+                    };
+                  }[];
+                  attester_slashings: {
+                    /** @description The [`IndexedAttestation`](https://github.com/ethereum/consensus-specs/blob/v1.5.0/specs/electra/beacon-chain.md#indexedattestation) object from the CL spec. */
+                    attestation_1: {
+                      /** @description Attesting validator indices */
+                      attesting_indices: string[];
+                      /** @description The [`AttestationData`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#attestationdata) object from the CL spec. */
+                      data: {
+                        /** @example 1 */
+                        slot: string;
+                        /** @example 1 */
+                        index: string;
+                        /**
+                         * Format: hex
+                         * @description LMD GHOST vote.
+                         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                         */
+                        beacon_block_root: string;
+                        /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
+                        source: {
+                          /** @example 1 */
+                          epoch: string;
+                          /**
+                           * Format: hex
+                           * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                           */
+                          root: string;
+                        };
+                        /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
+                        target: {
+                          /** @example 1 */
+                          epoch: string;
+                          /**
+                           * Format: hex
+                           * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                           */
+                          root: string;
+                        };
+                      };
+                      /**
+                       * Format: hex
+                       * @description The BLS signature of the `IndexedAttestation`, created by the validator of the attestation.
+                       * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+                       */
+                      signature: string;
+                    };
+                    /** @description The [`IndexedAttestation`](https://github.com/ethereum/consensus-specs/blob/v1.5.0/specs/electra/beacon-chain.md#indexedattestation) object from the CL spec. */
+                    attestation_2: {
+                      /** @description Attesting validator indices */
+                      attesting_indices: string[];
+                      /** @description The [`AttestationData`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#attestationdata) object from the CL spec. */
+                      data: {
+                        /** @example 1 */
+                        slot: string;
+                        /** @example 1 */
+                        index: string;
+                        /**
+                         * Format: hex
+                         * @description LMD GHOST vote.
+                         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                         */
+                        beacon_block_root: string;
+                        /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
+                        source: {
+                          /** @example 1 */
+                          epoch: string;
+                          /**
+                           * Format: hex
+                           * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                           */
+                          root: string;
+                        };
+                        /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
+                        target: {
+                          /** @example 1 */
+                          epoch: string;
+                          /**
+                           * Format: hex
+                           * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                           */
+                          root: string;
+                        };
+                      };
+                      /**
+                       * Format: hex
+                       * @description The BLS signature of the `IndexedAttestation`, created by the validator of the attestation.
+                       * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+                       */
+                      signature: string;
+                    };
+                  }[];
+                  attestations: {
+                    /**
+                     * Format: hex
+                     * @description Attester aggregation bits.
+                     * @example 0x01
+                     */
+                    aggregation_bits: string;
+                    /** @description The [`AttestationData`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#attestationdata) object from the CL spec. */
+                    data: {
+                      /** @example 1 */
+                      slot: string;
+                      /** @example 1 */
+                      index: string;
+                      /**
+                       * Format: hex
+                       * @description LMD GHOST vote.
+                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                       */
+                      beacon_block_root: string;
+                      /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
+                      source: {
+                        /** @example 1 */
+                        epoch: string;
+                        /**
+                         * Format: hex
+                         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                         */
+                        root: string;
+                      };
+                      /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
+                      target: {
+                        /** @example 1 */
+                        epoch: string;
+                        /**
+                         * Format: hex
+                         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                         */
+                        root: string;
+                      };
+                    };
+                    /**
+                     * Format: hex
+                     * @description BLS aggregate signature.
+                     * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+                     */
+                    signature: string;
+                    /**
+                     * Format: hex
+                     * @description Committee bits.
+                     * @example 0x0000000000000001
+                     */
+                    committee_bits: string;
+                  }[];
+                  deposits: {
+                    /** @description Branch in the deposit tree. */
+                    proof: string[];
+                    /** @description The [`DepositData`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#depositdata) object from the CL spec. */
+                    data: {
+                      /**
+                       * Format: hex
+                       * @description The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._
+                       * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
+                       */
+                      pubkey: string;
+                      /**
+                       * Format: hex
+                       * @description The withdrawal credentials.
+                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                       */
+                      withdrawal_credentials: string;
+                      /**
+                       * @description Amount in Gwei.
+                       * @example 1
+                       */
+                      amount: string;
+                      /**
+                       * Format: hex
+                       * @description Container self-signature.
+                       * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+                       */
+                      signature: string;
+                    };
+                  }[];
+                  voluntary_exits: {
+                    /** @description The [`VoluntaryExit`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#voluntaryexit) object from the CL spec. */
+                    message: {
+                      /**
+                       * @description Minimum epoch for processing exit.
+                       * @example 1
+                       */
+                      epoch: string;
+                      /**
+                       * @description Index of the exiting validator.
+                       * @example 1
+                       */
+                      validator_index: string;
+                    };
                     /**
                      * Format: hex
                      * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
                      */
                     signature: string;
-                    /**
-                     * @description The index of the deposit request.
-                     * @example 1
-                     */
-                    index: string;
                   }[];
-                  withdrawals: {
+                  /** @description The [`SyncAggregate`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/altair/beacon-chain.md#syncaggregate) object from the CL Altair spec. */
+                  sync_aggregate: {
+                    /**
+                     * Format: hex
+                     * @description Aggregation bits of sync
+                     * @example 0x01
+                     */
+                    sync_committee_bits: string;
+                    /**
+                     * Format: hex
+                     * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+                     */
+                    sync_committee_signature: string;
+                  };
+                  bls_to_execution_changes: {
+                    /** @description The [`BLSToExecutionChange`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/capella/beacon-chain.md#blstoexecutionchange) object from the CL spec. */
+                    message: {
+                      /**
+                       * @description Index of the validator for which credentials will be changed.
+                       * @example 1
+                       */
+                      validator_index: string;
+                      /**
+                       * Format: hex
+                       * @description The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._
+                       * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
+                       */
+                      from_bls_pubkey: string;
+                      /**
+                       * Format: hex
+                       * @description Execution address to which the credentials will be changed.
+                       * @example 0xAbcF8e0d4e9587369b2301D0790347320302cc09
+                       */
+                      to_execution_address: string;
+                    };
+                    /**
+                     * Format: hex
+                     * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+                     */
+                    signature: string;
+                  }[];
+                  blob_kzg_commitments: string[];
+                } & {
+                  execution_payload: {
+                    /**
+                     * Format: hex
+                     * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                     */
+                    parent_hash: string;
                     /**
                      * Format: hex
                      * @description An address on the execution (Ethereum 1) network.
                      * @example 0xAbcF8e0d4e9587369b2301D0790347320302cc09
                      */
-                    source_address: string;
+                    fee_recipient: string;
                     /**
                      * Format: hex
-                     * @description The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._
-                     * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
+                     * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
                      */
-                    validator_pubkey: string;
-                    /**
-                     * @description The value to be withdrawn (gwei).
-                     * @example 1
-                     */
-                    amount: string;
-                  }[];
-                  consolidations: {
+                    state_root: string;
                     /**
                      * Format: hex
-                     * @description An address on the execution (Ethereum 1) network.
-                     * @example 0xAbcF8e0d4e9587369b2301D0790347320302cc09
+                     * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
                      */
-                    source_address: string;
+                    receipts_root: string;
                     /**
                      * Format: hex
-                     * @description The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._
-                     * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
+                     * @example 0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
                      */
-                    source_pubkey: string;
+                    logs_bloom: string;
                     /**
                      * Format: hex
-                     * @description The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._
-                     * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
+                     * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
                      */
-                    target_pubkey: string;
-                  }[];
+                    prev_randao: string;
+                    /** @example 1 */
+                    block_number: string;
+                    /** @example 1 */
+                    gas_limit: string;
+                    /** @example 1 */
+                    gas_used: string;
+                    /** @example 1 */
+                    timestamp: string;
+                    /**
+                     * Format: hex
+                     * @description Extra data on the execution (Ethereum 1) network.
+                     * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                     */
+                    extra_data: string;
+                    /** @example 1 */
+                    base_fee_per_gas: string;
+                    /** @example 1 */
+                    blob_gas_used: string;
+                    /** @example 1 */
+                    excess_blob_gas: string;
+                    /**
+                     * Format: hex
+                     * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                     */
+                    block_hash: string;
+                  } & {
+                    transactions: string[];
+                    withdrawals: {
+                      /**
+                       * @description The index of the withdrawal.
+                       * @example 1
+                       */
+                      index: string;
+                      /**
+                       * @description The index of the withdrawing validator.
+                       * @example 1
+                       */
+                      validator_index: string;
+                      /**
+                       * Format: hex
+                       * @description An address on the execution (Ethereum 1) network.
+                       * @example 0xAbcF8e0d4e9587369b2301D0790347320302cc09
+                       */
+                      address: string;
+                      /**
+                       * @description The value withdrawn (gwei).
+                       * @example 1
+                       */
+                      amount: string;
+                    }[];
+                  };
+                  /** @description The [`ExecutionRequests`](https://github.com/ethereum/consensus-specs/blob/v1.5.0/specs/electra/beacon-chain.md#executionrequests) object from the CL Electra spec. */
+                  execution_requests: {
+                    deposits: {
+                      /**
+                       * Format: hex
+                       * @description The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._
+                       * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
+                       */
+                      pubkey: string;
+                      /**
+                       * Format: hex
+                       * @description The withdrawal credentials.
+                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                       */
+                      withdrawal_credentials: string;
+                      /**
+                       * @description The value to be deposited (gwei).
+                       * @example 1
+                       */
+                      amount: string;
+                      /**
+                       * Format: hex
+                       * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+                       */
+                      signature: string;
+                      /**
+                       * @description The index of the deposit request.
+                       * @example 1
+                       */
+                      index: string;
+                    }[];
+                    withdrawals: {
+                      /**
+                       * Format: hex
+                       * @description An address on the execution (Ethereum 1) network.
+                       * @example 0xAbcF8e0d4e9587369b2301D0790347320302cc09
+                       */
+                      source_address: string;
+                      /**
+                       * Format: hex
+                       * @description The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._
+                       * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
+                       */
+                      validator_pubkey: string;
+                      /**
+                       * @description The value to be withdrawn (gwei).
+                       * @example 1
+                       */
+                      amount: string;
+                    }[];
+                    consolidations: {
+                      /**
+                       * Format: hex
+                       * @description An address on the execution (Ethereum 1) network.
+                       * @example 0xAbcF8e0d4e9587369b2301D0790347320302cc09
+                       */
+                      source_address: string;
+                      /**
+                       * Format: hex
+                       * @description The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._
+                       * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
+                       */
+                      source_pubkey: string;
+                      /**
+                       * Format: hex
+                       * @description The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._
+                       * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
+                       */
+                      target_pubkey: string;
+                    }[];
+                  };
                 };
               };
+              /**
+               * Format: hex
+               * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+               */
+              signature: string;
             };
-            /**
-             * Format: hex
-             * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-             */
-            signature: string;
-          };
-          kzg_proofs: string[];
-          blobs: string[];
-        }> &
+            /** @description Cell proofs of the blobs as defined in EIP-7594 */
+            kzg_proofs: string[];
+            blobs: string[];
+          }> &
           Partial<{
-            /** @description The [`SignedBeaconBlock`](https://github.com/ethereum/consensus-specs/blob/master/specs/phase0/beacon-chain.md#signedbeaconblock) object envelope from the CL Deneb spec. */
+            /** @description The [`SignedBeaconBlock`](https://github.com/ethereum/consensus-specs/blob/v1.5.0/specs/phase0/beacon-chain.md#signedbeaconblock) object envelope from the CL Electra spec. */
             signed_block: {
-              /** @description The [`BeaconBlock`](https://github.com/ethereum/consensus-specs/blob/master/specs/phase0/beacon-chain.md#beaconblock) object from the CL Deneb spec. */
+              /** @description The [`BeaconBlock`](https://github.com/ethereum/consensus-specs/blob/v1.5.0/specs/phase0/beacon-chain.md#beaconblock) object from the CL Electra spec. */
+              message: {
+                /**
+                 * @description The slot to which this block corresponds.
+                 * @example 1
+                 */
+                slot: string;
+                /**
+                 * @description Index of validator in validator registry.
+                 * @example 1
+                 */
+                proposer_index: string;
+                /**
+                 * Format: hex
+                 * @description The signing Merkle root of the parent `BeaconBlock`.
+                 * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                 */
+                parent_root: string;
+                /**
+                 * Format: hex
+                 * @description The tree hash Merkle root of the `BeaconState` for the `BeaconBlock`.
+                 * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                 */
+                state_root: string;
+              } & {
+                body: {
+                  randao_reveal: string & unknown;
+                  /** @description The [`Eth1Data`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#eth1data) object from the CL spec. */
+                  eth1_data: {
+                    /**
+                     * Format: hex
+                     * @description Root of the deposit tree.
+                     * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                     */
+                    deposit_root: string;
+                    /**
+                     * @description Total number of deposits.
+                     * @example 1
+                     */
+                    deposit_count: string;
+                    /**
+                     * Format: hex
+                     * @description Ethereum 1.x block hash.
+                     * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                     */
+                    block_hash: string;
+                  };
+                  /**
+                   * Format: hex
+                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                   */
+                  graffiti: string;
+                  proposer_slashings: {
+                    /** @description The [`SignedBeaconBlockHeader`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#signedbeaconblockheader) object envelope from the CL spec. */
+                    signed_header_1: {
+                      /** @description The [`BeaconBlockHeader`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#beaconblockheader) object from the CL spec. */
+                      message: {
+                        /**
+                         * @description The slot to which this block corresponds.
+                         * @example 1
+                         */
+                        slot: string;
+                        /**
+                         * @description Index of validator in validator registry.
+                         * @example 1
+                         */
+                        proposer_index: string;
+                        /**
+                         * Format: hex
+                         * @description The signing merkle root of the parent `BeaconBlock`.
+                         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                         */
+                        parent_root: string;
+                        /**
+                         * Format: hex
+                         * @description The tree hash merkle root of the `BeaconState` for the `BeaconBlock`.
+                         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                         */
+                        state_root: string;
+                      } & {
+                        /**
+                         * Format: hex
+                         * @description The tree hash merkle root of the `BeaconBlockBody` for the `BeaconBlock`
+                         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                         */
+                        body_root: string;
+                      };
+                      /**
+                       * Format: hex
+                       * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+                       */
+                      signature: string;
+                    };
+                    /** @description The [`SignedBeaconBlockHeader`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#signedbeaconblockheader) object envelope from the CL spec. */
+                    signed_header_2: {
+                      /** @description The [`BeaconBlockHeader`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#beaconblockheader) object from the CL spec. */
+                      message: {
+                        /**
+                         * @description The slot to which this block corresponds.
+                         * @example 1
+                         */
+                        slot: string;
+                        /**
+                         * @description Index of validator in validator registry.
+                         * @example 1
+                         */
+                        proposer_index: string;
+                        /**
+                         * Format: hex
+                         * @description The signing merkle root of the parent `BeaconBlock`.
+                         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                         */
+                        parent_root: string;
+                        /**
+                         * Format: hex
+                         * @description The tree hash merkle root of the `BeaconState` for the `BeaconBlock`.
+                         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                         */
+                        state_root: string;
+                      } & {
+                        /**
+                         * Format: hex
+                         * @description The tree hash merkle root of the `BeaconBlockBody` for the `BeaconBlock`
+                         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                         */
+                        body_root: string;
+                      };
+                      /**
+                       * Format: hex
+                       * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+                       */
+                      signature: string;
+                    };
+                  }[];
+                  attester_slashings: {
+                    /** @description The [`IndexedAttestation`](https://github.com/ethereum/consensus-specs/blob/v1.5.0/specs/electra/beacon-chain.md#indexedattestation) object from the CL spec. */
+                    attestation_1: {
+                      /** @description Attesting validator indices */
+                      attesting_indices: string[];
+                      /** @description The [`AttestationData`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#attestationdata) object from the CL spec. */
+                      data: {
+                        /** @example 1 */
+                        slot: string;
+                        /** @example 1 */
+                        index: string;
+                        /**
+                         * Format: hex
+                         * @description LMD GHOST vote.
+                         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                         */
+                        beacon_block_root: string;
+                        /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
+                        source: {
+                          /** @example 1 */
+                          epoch: string;
+                          /**
+                           * Format: hex
+                           * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                           */
+                          root: string;
+                        };
+                        /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
+                        target: {
+                          /** @example 1 */
+                          epoch: string;
+                          /**
+                           * Format: hex
+                           * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                           */
+                          root: string;
+                        };
+                      };
+                      /**
+                       * Format: hex
+                       * @description The BLS signature of the `IndexedAttestation`, created by the validator of the attestation.
+                       * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+                       */
+                      signature: string;
+                    };
+                    /** @description The [`IndexedAttestation`](https://github.com/ethereum/consensus-specs/blob/v1.5.0/specs/electra/beacon-chain.md#indexedattestation) object from the CL spec. */
+                    attestation_2: {
+                      /** @description Attesting validator indices */
+                      attesting_indices: string[];
+                      /** @description The [`AttestationData`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#attestationdata) object from the CL spec. */
+                      data: {
+                        /** @example 1 */
+                        slot: string;
+                        /** @example 1 */
+                        index: string;
+                        /**
+                         * Format: hex
+                         * @description LMD GHOST vote.
+                         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                         */
+                        beacon_block_root: string;
+                        /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
+                        source: {
+                          /** @example 1 */
+                          epoch: string;
+                          /**
+                           * Format: hex
+                           * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                           */
+                          root: string;
+                        };
+                        /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
+                        target: {
+                          /** @example 1 */
+                          epoch: string;
+                          /**
+                           * Format: hex
+                           * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                           */
+                          root: string;
+                        };
+                      };
+                      /**
+                       * Format: hex
+                       * @description The BLS signature of the `IndexedAttestation`, created by the validator of the attestation.
+                       * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+                       */
+                      signature: string;
+                    };
+                  }[];
+                  attestations: {
+                    /**
+                     * Format: hex
+                     * @description Attester aggregation bits.
+                     * @example 0x01
+                     */
+                    aggregation_bits: string;
+                    /** @description The [`AttestationData`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#attestationdata) object from the CL spec. */
+                    data: {
+                      /** @example 1 */
+                      slot: string;
+                      /** @example 1 */
+                      index: string;
+                      /**
+                       * Format: hex
+                       * @description LMD GHOST vote.
+                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                       */
+                      beacon_block_root: string;
+                      /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
+                      source: {
+                        /** @example 1 */
+                        epoch: string;
+                        /**
+                         * Format: hex
+                         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                         */
+                        root: string;
+                      };
+                      /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
+                      target: {
+                        /** @example 1 */
+                        epoch: string;
+                        /**
+                         * Format: hex
+                         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                         */
+                        root: string;
+                      };
+                    };
+                    /**
+                     * Format: hex
+                     * @description BLS aggregate signature.
+                     * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+                     */
+                    signature: string;
+                    /**
+                     * Format: hex
+                     * @description Committee bits.
+                     * @example 0x0000000000000001
+                     */
+                    committee_bits: string;
+                  }[];
+                  deposits: {
+                    /** @description Branch in the deposit tree. */
+                    proof: string[];
+                    /** @description The [`DepositData`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#depositdata) object from the CL spec. */
+                    data: {
+                      /**
+                       * Format: hex
+                       * @description The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._
+                       * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
+                       */
+                      pubkey: string;
+                      /**
+                       * Format: hex
+                       * @description The withdrawal credentials.
+                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                       */
+                      withdrawal_credentials: string;
+                      /**
+                       * @description Amount in Gwei.
+                       * @example 1
+                       */
+                      amount: string;
+                      /**
+                       * Format: hex
+                       * @description Container self-signature.
+                       * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+                       */
+                      signature: string;
+                    };
+                  }[];
+                  voluntary_exits: {
+                    /** @description The [`VoluntaryExit`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#voluntaryexit) object from the CL spec. */
+                    message: {
+                      /**
+                       * @description Minimum epoch for processing exit.
+                       * @example 1
+                       */
+                      epoch: string;
+                      /**
+                       * @description Index of the exiting validator.
+                       * @example 1
+                       */
+                      validator_index: string;
+                    };
+                    /**
+                     * Format: hex
+                     * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+                     */
+                    signature: string;
+                  }[];
+                  /** @description The [`SyncAggregate`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/altair/beacon-chain.md#syncaggregate) object from the CL Altair spec. */
+                  sync_aggregate: {
+                    /**
+                     * Format: hex
+                     * @description Aggregation bits of sync
+                     * @example 0x01
+                     */
+                    sync_committee_bits: string;
+                    /**
+                     * Format: hex
+                     * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+                     */
+                    sync_committee_signature: string;
+                  };
+                  bls_to_execution_changes: {
+                    /** @description The [`BLSToExecutionChange`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/capella/beacon-chain.md#blstoexecutionchange) object from the CL spec. */
+                    message: {
+                      /**
+                       * @description Index of the validator for which credentials will be changed.
+                       * @example 1
+                       */
+                      validator_index: string;
+                      /**
+                       * Format: hex
+                       * @description The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._
+                       * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
+                       */
+                      from_bls_pubkey: string;
+                      /**
+                       * Format: hex
+                       * @description Execution address to which the credentials will be changed.
+                       * @example 0xAbcF8e0d4e9587369b2301D0790347320302cc09
+                       */
+                      to_execution_address: string;
+                    };
+                    /**
+                     * Format: hex
+                     * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+                     */
+                    signature: string;
+                  }[];
+                  blob_kzg_commitments: string[];
+                } & {
+                  execution_payload: {
+                    /**
+                     * Format: hex
+                     * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                     */
+                    parent_hash: string;
+                    /**
+                     * Format: hex
+                     * @description An address on the execution (Ethereum 1) network.
+                     * @example 0xAbcF8e0d4e9587369b2301D0790347320302cc09
+                     */
+                    fee_recipient: string;
+                    /**
+                     * Format: hex
+                     * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                     */
+                    state_root: string;
+                    /**
+                     * Format: hex
+                     * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                     */
+                    receipts_root: string;
+                    /**
+                     * Format: hex
+                     * @example 0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+                     */
+                    logs_bloom: string;
+                    /**
+                     * Format: hex
+                     * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                     */
+                    prev_randao: string;
+                    /** @example 1 */
+                    block_number: string;
+                    /** @example 1 */
+                    gas_limit: string;
+                    /** @example 1 */
+                    gas_used: string;
+                    /** @example 1 */
+                    timestamp: string;
+                    /**
+                     * Format: hex
+                     * @description Extra data on the execution (Ethereum 1) network.
+                     * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                     */
+                    extra_data: string;
+                    /** @example 1 */
+                    base_fee_per_gas: string;
+                    /** @example 1 */
+                    blob_gas_used: string;
+                    /** @example 1 */
+                    excess_blob_gas: string;
+                    /**
+                     * Format: hex
+                     * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                     */
+                    block_hash: string;
+                  } & {
+                    transactions: string[];
+                    withdrawals: {
+                      /**
+                       * @description The index of the withdrawal.
+                       * @example 1
+                       */
+                      index: string;
+                      /**
+                       * @description The index of the withdrawing validator.
+                       * @example 1
+                       */
+                      validator_index: string;
+                      /**
+                       * Format: hex
+                       * @description An address on the execution (Ethereum 1) network.
+                       * @example 0xAbcF8e0d4e9587369b2301D0790347320302cc09
+                       */
+                      address: string;
+                      /**
+                       * @description The value withdrawn (gwei).
+                       * @example 1
+                       */
+                      amount: string;
+                    }[];
+                  };
+                  /** @description The [`ExecutionRequests`](https://github.com/ethereum/consensus-specs/blob/v1.5.0/specs/electra/beacon-chain.md#executionrequests) object from the CL Electra spec. */
+                  execution_requests: {
+                    deposits: {
+                      /**
+                       * Format: hex
+                       * @description The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._
+                       * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
+                       */
+                      pubkey: string;
+                      /**
+                       * Format: hex
+                       * @description The withdrawal credentials.
+                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                       */
+                      withdrawal_credentials: string;
+                      /**
+                       * @description The value to be deposited (gwei).
+                       * @example 1
+                       */
+                      amount: string;
+                      /**
+                       * Format: hex
+                       * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+                       */
+                      signature: string;
+                      /**
+                       * @description The index of the deposit request.
+                       * @example 1
+                       */
+                      index: string;
+                    }[];
+                    withdrawals: {
+                      /**
+                       * Format: hex
+                       * @description An address on the execution (Ethereum 1) network.
+                       * @example 0xAbcF8e0d4e9587369b2301D0790347320302cc09
+                       */
+                      source_address: string;
+                      /**
+                       * Format: hex
+                       * @description The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._
+                       * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
+                       */
+                      validator_pubkey: string;
+                      /**
+                       * @description The value to be withdrawn (gwei).
+                       * @example 1
+                       */
+                      amount: string;
+                    }[];
+                    consolidations: {
+                      /**
+                       * Format: hex
+                       * @description An address on the execution (Ethereum 1) network.
+                       * @example 0xAbcF8e0d4e9587369b2301D0790347320302cc09
+                       */
+                      source_address: string;
+                      /**
+                       * Format: hex
+                       * @description The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._
+                       * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
+                       */
+                      source_pubkey: string;
+                      /**
+                       * Format: hex
+                       * @description The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._
+                       * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
+                       */
+                      target_pubkey: string;
+                    }[];
+                  };
+                };
+              };
+              /**
+               * Format: hex
+               * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+               */
+              signature: string;
+            };
+            kzg_proofs: string[];
+            blobs: string[];
+          }> &
+          Partial<{
+            /** @description The [`SignedBeaconBlock`](https://github.com/ethereum/consensus-specs/blob/v1.4.0/specs/phase0/beacon-chain.md#signedbeaconblock) object envelope from the CL Deneb spec. */
+            signed_block: {
+              /** @description The [`BeaconBlock`](https://github.com/ethereum/consensus-specs/blob/v1.4.0/specs/phase0/beacon-chain.md#beaconblock) object from the CL Deneb spec. */
               message: {
                 /**
                  * @description The slot to which this block corresponds.
@@ -27710,6 +26750,8 @@ export interface operations {
                     extra_data: string;
                     /** @example 1 */
                     base_fee_per_gas: string;
+                    /** @example 1 */
+                    blob_gas_used: string;
                     /** @example 1 */
                     excess_blob_gas: string;
                     /**
@@ -29307,6 +28349,439 @@ export interface operations {
     };
   };
   /**
+   * Instructs the beacon node to broadcast a signed execution payload bid to the network,
+   * to be gossiped for potential inclusion in block building. A success response (20x) indicates
+   * that the bid passed gossip validation and was successfully broadcast onto the network.
+   */
+  publishExecutionPayloadBid: {
+    parameters: {
+      header: {
+        /** The active consensus version to which the execution payload bid being submitted belongs. */
+        'Eth-Consensus-Version':
+          | 'phase0'
+          | 'altair'
+          | 'bellatrix'
+          | 'capella'
+          | 'deneb'
+          | 'electra'
+          | 'fulu'
+          | 'gloas';
+      };
+    };
+    responses: {
+      /** The bid was validated successfully and has been broadcast. */
+      200: unknown;
+      /** The `SignedExecutionPayloadBid` object is invalid or failed gossip validation */
+      400: {
+        content: {
+          'application/json': {
+            /**
+             * @description Either specific error code in case of invalid request or http status code
+             * @example 404
+             */
+            code: number;
+            /** @description Message describing error */
+            message: string;
+            /** @description Optional stacktraces, sent when node is in debug mode */
+            stacktraces?: string[];
+          };
+        };
+      };
+      /** Supplied content-type is not supported. */
+      415: {
+        content: {
+          'application/json': {
+            /**
+             * @description The media type in "Content-Type" header is unsupported, and the request has been rejected. This occurs when a HTTP request supplies a payload in a content-type that the server is not able to handle.
+             * @example 415
+             */
+            code: number;
+            /** @description Message describing error */
+            message: string;
+            /** @description Optional stacktraces, sent when node is in debug mode */
+            stacktraces?: string[];
+          };
+        };
+      };
+      /** Beacon node internal error. */
+      500: {
+        content: {
+          'application/json': {
+            /**
+             * @description Either specific error code in case of invalid request or http status code
+             * @example 404
+             */
+            code: number;
+            /** @description Message describing error */
+            message: string;
+            /** @description Optional stacktraces, sent when node is in debug mode */
+            stacktraces?: string[];
+          };
+        };
+      };
+    };
+    /** The `SignedExecutionPayloadBid` object to be broadcast. */
+    requestBody: {
+      content: {
+        'application/json': {
+          /** @description The [`ExecutionPayloadBid`](https://github.com/ethereum/consensus-specs/blob/v1.7.0-alpha.2/specs/gloas/beacon-chain.md#executionpayloadbid) object from the CL Gloas spec. */
+          message: {
+            /**
+             * Format: hex
+             * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+             */
+            parent_block_hash: string;
+            /**
+             * Format: hex
+             * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+             */
+            parent_block_root: string;
+            /**
+             * Format: hex
+             * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+             */
+            block_hash: string;
+            /**
+             * Format: hex
+             * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+             */
+            prev_randao: string;
+            /**
+             * Format: hex
+             * @description An address on the execution (Ethereum 1) network.
+             * @example 0xAbcF8e0d4e9587369b2301D0790347320302cc09
+             */
+            fee_recipient: string;
+            /** @example 1 */
+            gas_limit: string;
+            /** @example 1 */
+            builder_index: string;
+            /** @example 1 */
+            slot: string;
+            /** @example 1 */
+            value: string;
+            /** @example 1 */
+            execution_payment: string;
+            blob_kzg_commitments: string[];
+          };
+          /**
+           * Format: hex
+           * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+           */
+          signature: string;
+        };
+        'application/octet-stream': unknown;
+      };
+    };
+  };
+  /**
+   * Retrieves signed execution payload envelope for a given block id.
+   * Depending on `Accept` header it can be returned either as json or as bytes serialized by SSZ.
+   */
+  getSignedExecutionPayloadEnvelope: {
+    parameters: {
+      path: {
+        /**
+         * Block identifier.
+         * Can be one of: "head" (canonical head in node's view), "genesis", "finalized", \<slot\>, \<hex encoded blockRoot with 0x prefix\>.
+         */
+        block_id: string;
+      };
+    };
+    responses: {
+      /** Successful response */
+      200: {
+        headers: {
+          /**
+           * The active consensus version to which the data belongs. Required in response so client can deserialize returned json or ssz data
+           * more effectively.
+           */
+          'Eth-Consensus-Version':
+            | 'phase0'
+            | 'altair'
+            | 'bellatrix'
+            | 'capella'
+            | 'deneb'
+            | 'electra'
+            | 'fulu'
+            | 'gloas';
+        };
+        content: {
+          'application/json': {
+            /**
+             * @example gloas
+             * @enum {string}
+             */
+            version: 'gloas';
+            /**
+             * @description True if the response references an unverified execution payload. Optimistic information may be invalidated at a later time. If the field is not present, assume the False value.
+             * @example false
+             */
+            execution_optimistic: boolean;
+            /**
+             * @description True if the response references the finalized history of the chain, as determined by fork choice. If the field is not present, additional calls are necessary to compare the epoch of the requested information with the finalized checkpoint.
+             * @example false
+             */
+            finalized: boolean;
+            /** @description The [`SignedExecutionPayloadEnvelope`](https://github.com/ethereum/consensus-specs/blob/v1.7.0-alpha.2/specs/gloas/beacon-chain.md#signedexecutionpayloadenvelope) object from the CL Gloas spec. */
+            data: {
+              /** @description The [`ExecutionPayloadEnvelope`](https://github.com/ethereum/consensus-specs/blob/v1.7.0-alpha.2/specs/gloas/beacon-chain.md#executionpayloadenvelope) object from the CL Gloas spec. */
+              message: {
+                payload: {
+                  /**
+                   * Format: hex
+                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                   */
+                  parent_hash: string;
+                  /**
+                   * Format: hex
+                   * @description An address on the execution (Ethereum 1) network.
+                   * @example 0xAbcF8e0d4e9587369b2301D0790347320302cc09
+                   */
+                  fee_recipient: string;
+                  /**
+                   * Format: hex
+                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                   */
+                  state_root: string;
+                  /**
+                   * Format: hex
+                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                   */
+                  receipts_root: string;
+                  /**
+                   * Format: hex
+                   * @example 0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+                   */
+                  logs_bloom: string;
+                  /**
+                   * Format: hex
+                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                   */
+                  prev_randao: string;
+                  /** @example 1 */
+                  block_number: string;
+                  /** @example 1 */
+                  gas_limit: string;
+                  /** @example 1 */
+                  gas_used: string;
+                  /** @example 1 */
+                  timestamp: string;
+                  /**
+                   * Format: hex
+                   * @description Extra data on the execution (Ethereum 1) network.
+                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                   */
+                  extra_data: string;
+                  /** @example 1 */
+                  base_fee_per_gas: string;
+                  /** @example 1 */
+                  blob_gas_used: string;
+                  /** @example 1 */
+                  excess_blob_gas: string;
+                  /**
+                   * Format: hex
+                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                   */
+                  block_hash: string;
+                } & {
+                  transactions: string[];
+                  withdrawals: {
+                    /**
+                     * @description The index of the withdrawal.
+                     * @example 1
+                     */
+                    index: string;
+                    /**
+                     * @description The index of the withdrawing validator.
+                     * @example 1
+                     */
+                    validator_index: string;
+                    /**
+                     * Format: hex
+                     * @description An address on the execution (Ethereum 1) network.
+                     * @example 0xAbcF8e0d4e9587369b2301D0790347320302cc09
+                     */
+                    address: string;
+                    /**
+                     * @description The value withdrawn (gwei).
+                     * @example 1
+                     */
+                    amount: string;
+                  }[];
+                };
+                /** @description The [`ExecutionRequests`](https://github.com/ethereum/consensus-specs/blob/v1.5.0/specs/electra/beacon-chain.md#executionrequests) object from the CL Electra spec. */
+                execution_requests: {
+                  deposits: {
+                    /**
+                     * Format: hex
+                     * @description The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._
+                     * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
+                     */
+                    pubkey: string;
+                    /**
+                     * Format: hex
+                     * @description The withdrawal credentials.
+                     * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                     */
+                    withdrawal_credentials: string;
+                    /**
+                     * @description The value to be deposited (gwei).
+                     * @example 1
+                     */
+                    amount: string;
+                    /**
+                     * Format: hex
+                     * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+                     */
+                    signature: string;
+                    /**
+                     * @description The index of the deposit request.
+                     * @example 1
+                     */
+                    index: string;
+                  }[];
+                  withdrawals: {
+                    /**
+                     * Format: hex
+                     * @description An address on the execution (Ethereum 1) network.
+                     * @example 0xAbcF8e0d4e9587369b2301D0790347320302cc09
+                     */
+                    source_address: string;
+                    /**
+                     * Format: hex
+                     * @description The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._
+                     * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
+                     */
+                    validator_pubkey: string;
+                    /**
+                     * @description The value to be withdrawn (gwei).
+                     * @example 1
+                     */
+                    amount: string;
+                  }[];
+                  consolidations: {
+                    /**
+                     * Format: hex
+                     * @description An address on the execution (Ethereum 1) network.
+                     * @example 0xAbcF8e0d4e9587369b2301D0790347320302cc09
+                     */
+                    source_address: string;
+                    /**
+                     * Format: hex
+                     * @description The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._
+                     * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
+                     */
+                    source_pubkey: string;
+                    /**
+                     * Format: hex
+                     * @description The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._
+                     * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
+                     */
+                    target_pubkey: string;
+                  }[];
+                };
+                /**
+                 * @description Index of the builder that created this execution payload
+                 * @example 1
+                 */
+                builder_index: string;
+                /**
+                 * Format: hex
+                 * @description Root of the beacon block for this payload
+                 * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                 */
+                beacon_block_root: string;
+                /**
+                 * @description Slot number for this execution payload
+                 * @example 1
+                 */
+                slot: string;
+                /**
+                 * Format: hex
+                 * @description Beacon state root after executing this payload
+                 * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                 */
+                state_root: string;
+              };
+              /**
+               * Format: hex
+               * @description BLS signature of the execution payload envelope
+               * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+               */
+              signature: string;
+            };
+          };
+          'application/octet-stream': unknown;
+        };
+      };
+      /** The block ID supplied could not be parsed */
+      400: {
+        content: {
+          'application/json': {
+            /**
+             * @description Either specific error code in case of invalid request or http status code
+             * @example 404
+             */
+            code: number;
+            /** @description Message describing error */
+            message: string;
+            /** @description Optional stacktraces, sent when node is in debug mode */
+            stacktraces?: string[];
+          };
+        };
+      };
+      /** Execution payload envelope not found */
+      404: {
+        content: {
+          'application/json': {
+            /**
+             * @description Either specific error code in case of invalid request or http status code
+             * @example 404
+             */
+            code: number;
+            /** @description Message describing error */
+            message: string;
+            /** @description Optional stacktraces, sent when node is in debug mode */
+            stacktraces?: string[];
+          };
+        };
+      };
+      /** Accepted media type is not supported. */
+      406: {
+        content: {
+          'application/json': {
+            /**
+             * @description The media type in "Accept" header is unsupported, and the request has been rejected. This occurs when the server cannot produce a response in the format accepted by the client.
+             * @example 406
+             */
+            code: number;
+            /** @description Message describing error */
+            message: string;
+            /** @description Optional stacktraces, sent when node is in debug mode */
+            stacktraces?: string[];
+          };
+        };
+      };
+      /** Beacon node internal error. */
+      500: {
+        content: {
+          'application/json': {
+            /**
+             * @description Either specific error code in case of invalid request or http status code
+             * @example 404
+             */
+            code: number;
+            /** @description Message describing error */
+            message: string;
+            /** @description Optional stacktraces, sent when node is in debug mode */
+            stacktraces?: string[];
+          };
+        };
+      };
+    };
+  };
+  /**
    * Retrieves block details for given block id.
    * Depending on `Accept` header it can be returned either as json or as bytes serialized by SSZ
    */
@@ -29334,12 +28809,14 @@ export interface operations {
             | 'bellatrix'
             | 'capella'
             | 'deneb'
-            | 'electra';
+            | 'electra'
+            | 'fulu'
+            | 'gloas';
         };
         content: {
           'application/json': {
             /**
-             * @example electra
+             * @example gloas
              * @enum {string}
              */
             version:
@@ -29348,7 +28825,9 @@ export interface operations {
               | 'bellatrix'
               | 'capella'
               | 'deneb'
-              | 'electra';
+              | 'electra'
+              | 'fulu'
+              | 'gloas';
             /**
              * @description True if the response references an unverified execution payload. Optimistic information may be invalidated at a later time. If the field is not present, assume the False value.
              * @example false
@@ -29360,7 +28839,7 @@ export interface operations {
              */
             finalized: boolean;
             data: Partial<{
-              /** @description The [`BeaconBlock`](https://github.com/ethereum/consensus-specs/blob/v1.5.0-beta.2/specs/phase0/beacon-chain.md#beaconblock) object from the CL Electra spec. */
+              /** @description The [`BeaconBlock`](https://github.com/ethereum/consensus-specs/blob/v1.5.0/specs/phase0/beacon-chain.md#beaconblock) object from the CL Gloas spec. */
               message: {
                 /**
                  * @description The slot to which this block corresponds.
@@ -29385,8 +28864,14 @@ export interface operations {
                  */
                 state_root: string;
               } & {
+                /** @description The [`BeaconBlockBody`](https://github.com/ethereum/consensus-specs/blob/v1.7.0-alpha.2/specs/gloas/beacon-chain.md#beaconblockbody) object from the CL Gloas spec. */
                 body: {
-                  randao_reveal: string & unknown;
+                  /**
+                   * Format: hex
+                   * @description The RANDAO reveal value provided by the validator.
+                   * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+                   */
+                  randao_reveal: string;
                   /** @description The [`Eth1Data`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#eth1data) object from the CL spec. */
                   eth1_data: {
                     /**
@@ -29495,7 +28980,7 @@ export interface operations {
                     };
                   }[];
                   attester_slashings: {
-                    /** @description The [`IndexedAttestation`](https://github.com/ethereum/consensus-specs/blob/v1.5.0-beta.2/specs/electra/beacon-chain.md#indexedattestation) object from the CL spec. */
+                    /** @description The [`IndexedAttestation`](https://github.com/ethereum/consensus-specs/blob/v1.5.0/specs/electra/beacon-chain.md#indexedattestation) object from the CL spec. */
                     attestation_1: {
                       /** @description Attesting validator indices */
                       attesting_indices: string[];
@@ -29539,7 +29024,7 @@ export interface operations {
                        */
                       signature: string;
                     };
-                    /** @description The [`IndexedAttestation`](https://github.com/ethereum/consensus-specs/blob/v1.5.0-beta.2/specs/electra/beacon-chain.md#indexedattestation) object from the CL spec. */
+                    /** @description The [`IndexedAttestation`](https://github.com/ethereum/consensus-specs/blob/v1.5.0/specs/electra/beacon-chain.md#indexedattestation) object from the CL spec. */
                     attestation_2: {
                       /** @description Attesting validator indices */
                       attesting_indices: string[];
@@ -29728,160 +29213,85 @@ export interface operations {
                      */
                     signature: string;
                   }[];
-                  blob_kzg_commitments: string[];
-                } & {
-                  execution_payload: {
-                    /**
-                     * Format: hex
-                     * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                     */
-                    parent_hash: string;
-                    /**
-                     * Format: hex
-                     * @description An address on the execution (Ethereum 1) network.
-                     * @example 0xAbcF8e0d4e9587369b2301D0790347320302cc09
-                     */
-                    fee_recipient: string;
-                    /**
-                     * Format: hex
-                     * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                     */
-                    state_root: string;
-                    /**
-                     * Format: hex
-                     * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                     */
-                    receipts_root: string;
-                    /**
-                     * Format: hex
-                     * @example 0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-                     */
-                    logs_bloom: string;
-                    /**
-                     * Format: hex
-                     * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                     */
-                    prev_randao: string;
-                    /** @example 1 */
-                    block_number: string;
-                    /** @example 1 */
-                    gas_limit: string;
-                    /** @example 1 */
-                    gas_used: string;
-                    /** @example 1 */
-                    timestamp: string;
-                    /**
-                     * Format: hex
-                     * @description Extra data on the execution (Ethereum 1) network.
-                     * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                     */
-                    extra_data: string;
-                    /** @example 1 */
-                    base_fee_per_gas: string;
-                    /** @example 1 */
-                    excess_blob_gas: string;
-                    /**
-                     * Format: hex
-                     * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                     */
-                    block_hash: string;
-                  } & {
-                    transactions: string[];
-                    withdrawals: {
-                      /**
-                       * @description The index of the withdrawal.
-                       * @example 1
-                       */
-                      index: string;
-                      /**
-                       * @description The index of the withdrawing validator.
-                       * @example 1
-                       */
-                      validator_index: string;
+                  /** @description The [`SignedExecutionPayloadBid`](https://github.com/ethereum/consensus-specs/blob/v1.7.0-alpha.2/specs/gloas/beacon-chain.md#signedexecutionpayloadbid) object from the CL Gloas spec. */
+                  signed_execution_payload_bid: {
+                    /** @description The [`ExecutionPayloadBid`](https://github.com/ethereum/consensus-specs/blob/v1.7.0-alpha.2/specs/gloas/beacon-chain.md#executionpayloadbid) object from the CL Gloas spec. */
+                    message: {
                       /**
                        * Format: hex
-                       * @description An address on the execution (Ethereum 1) network.
-                       * @example 0xAbcF8e0d4e9587369b2301D0790347320302cc09
-                       */
-                      address: string;
-                      /**
-                       * @description The value withdrawn (gwei).
-                       * @example 1
-                       */
-                      amount: string;
-                    }[];
-                  };
-                  /** @description The [`ExecutionRequests`](https://github.com/ethereum/consensus-specs/blob/v1.5.0-beta.2/specs/electra/beacon-chain.md#executionrequests) object from the CL Electra spec. */
-                  execution_requests: {
-                    deposits: {
-                      /**
-                       * Format: hex
-                       * @description The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._
-                       * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
-                       */
-                      pubkey: string;
-                      /**
-                       * Format: hex
-                       * @description The withdrawal credentials.
                        * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
                        */
-                      withdrawal_credentials: string;
-                      /**
-                       * @description The value to be deposited (gwei).
-                       * @example 1
-                       */
-                      amount: string;
+                      parent_block_hash: string;
                       /**
                        * Format: hex
-                       * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
                        */
-                      signature: string;
+                      parent_block_root: string;
                       /**
-                       * @description The index of the deposit request.
-                       * @example 1
+                       * Format: hex
+                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
                        */
-                      index: string;
-                    }[];
-                    withdrawals: {
+                      block_hash: string;
+                      /**
+                       * Format: hex
+                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                       */
+                      prev_randao: string;
                       /**
                        * Format: hex
                        * @description An address on the execution (Ethereum 1) network.
                        * @example 0xAbcF8e0d4e9587369b2301D0790347320302cc09
                        */
-                      source_address: string;
-                      /**
-                       * Format: hex
-                       * @description The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._
-                       * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
-                       */
-                      validator_pubkey: string;
-                      /**
-                       * @description The value to be withdrawn (gwei).
-                       * @example 1
-                       */
-                      amount: string;
-                    }[];
-                    consolidations: {
-                      /**
-                       * Format: hex
-                       * @description An address on the execution (Ethereum 1) network.
-                       * @example 0xAbcF8e0d4e9587369b2301D0790347320302cc09
-                       */
-                      source_address: string;
-                      /**
-                       * Format: hex
-                       * @description The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._
-                       * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
-                       */
-                      source_pubkey: string;
-                      /**
-                       * Format: hex
-                       * @description The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._
-                       * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
-                       */
-                      target_pubkey: string;
-                    }[];
+                      fee_recipient: string;
+                      /** @example 1 */
+                      gas_limit: string;
+                      /** @example 1 */
+                      builder_index: string;
+                      /** @example 1 */
+                      slot: string;
+                      /** @example 1 */
+                      value: string;
+                      /** @example 1 */
+                      execution_payment: string;
+                      blob_kzg_commitments: string[];
+                    };
+                    /**
+                     * Format: hex
+                     * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+                     */
+                    signature: string;
                   };
+                  /** @description Array of payload attestations from gloas. */
+                  payload_attestations: {
+                    /**
+                     * Format: hex
+                     * @example 0x01
+                     */
+                    aggregation_bits: string;
+                    /** @description The [`PayloadAttestationData`](https://github.com/ethereum/consensus-specs/blob/v1.7.0-alpha.2/specs/gloas/beacon-chain.md#payloadattestationdata) object from the CL Gloas spec. */
+                    data: {
+                      /**
+                       * Format: hex
+                       * @description Hash tree root of the beacon block associated with this PTC attestation
+                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                       */
+                      beacon_block_root: string;
+                      /**
+                       * @description The slot for which the payload attestation is being made
+                       * @example 1
+                       */
+                      slot: string;
+                      /** @description True if a `SignedExecutionPayloadEnvelope` has been seen referencing this block */
+                      payload_present: boolean;
+                      /** @description True if blob data is available for this block */
+                      blob_data_available: boolean;
+                    };
+                    /**
+                     * Format: hex
+                     * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+                     */
+                    signature: string;
+                  }[];
                 };
               };
               /**
@@ -29891,7 +29301,540 @@ export interface operations {
               signature: string;
             }> &
               Partial<{
-                /** @description The [`BeaconBlock`](https://github.com/ethereum/consensus-specs/blob/master/specs/phase0/beacon-chain.md#beaconblock) object from the CL Deneb spec. */
+                /** @description The [`BeaconBlock`](https://github.com/ethereum/consensus-specs/blob/v1.5.0/specs/phase0/beacon-chain.md#beaconblock) object from the CL Electra spec. */
+                message: {
+                  /**
+                   * @description The slot to which this block corresponds.
+                   * @example 1
+                   */
+                  slot: string;
+                  /**
+                   * @description Index of validator in validator registry.
+                   * @example 1
+                   */
+                  proposer_index: string;
+                  /**
+                   * Format: hex
+                   * @description The signing Merkle root of the parent `BeaconBlock`.
+                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                   */
+                  parent_root: string;
+                  /**
+                   * Format: hex
+                   * @description The tree hash Merkle root of the `BeaconState` for the `BeaconBlock`.
+                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                   */
+                  state_root: string;
+                } & {
+                  body: {
+                    randao_reveal: string & unknown;
+                    /** @description The [`Eth1Data`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#eth1data) object from the CL spec. */
+                    eth1_data: {
+                      /**
+                       * Format: hex
+                       * @description Root of the deposit tree.
+                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                       */
+                      deposit_root: string;
+                      /**
+                       * @description Total number of deposits.
+                       * @example 1
+                       */
+                      deposit_count: string;
+                      /**
+                       * Format: hex
+                       * @description Ethereum 1.x block hash.
+                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                       */
+                      block_hash: string;
+                    };
+                    /**
+                     * Format: hex
+                     * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                     */
+                    graffiti: string;
+                    proposer_slashings: {
+                      /** @description The [`SignedBeaconBlockHeader`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#signedbeaconblockheader) object envelope from the CL spec. */
+                      signed_header_1: {
+                        /** @description The [`BeaconBlockHeader`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#beaconblockheader) object from the CL spec. */
+                        message: {
+                          /**
+                           * @description The slot to which this block corresponds.
+                           * @example 1
+                           */
+                          slot: string;
+                          /**
+                           * @description Index of validator in validator registry.
+                           * @example 1
+                           */
+                          proposer_index: string;
+                          /**
+                           * Format: hex
+                           * @description The signing merkle root of the parent `BeaconBlock`.
+                           * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                           */
+                          parent_root: string;
+                          /**
+                           * Format: hex
+                           * @description The tree hash merkle root of the `BeaconState` for the `BeaconBlock`.
+                           * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                           */
+                          state_root: string;
+                        } & {
+                          /**
+                           * Format: hex
+                           * @description The tree hash merkle root of the `BeaconBlockBody` for the `BeaconBlock`
+                           * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                           */
+                          body_root: string;
+                        };
+                        /**
+                         * Format: hex
+                         * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+                         */
+                        signature: string;
+                      };
+                      /** @description The [`SignedBeaconBlockHeader`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#signedbeaconblockheader) object envelope from the CL spec. */
+                      signed_header_2: {
+                        /** @description The [`BeaconBlockHeader`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#beaconblockheader) object from the CL spec. */
+                        message: {
+                          /**
+                           * @description The slot to which this block corresponds.
+                           * @example 1
+                           */
+                          slot: string;
+                          /**
+                           * @description Index of validator in validator registry.
+                           * @example 1
+                           */
+                          proposer_index: string;
+                          /**
+                           * Format: hex
+                           * @description The signing merkle root of the parent `BeaconBlock`.
+                           * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                           */
+                          parent_root: string;
+                          /**
+                           * Format: hex
+                           * @description The tree hash merkle root of the `BeaconState` for the `BeaconBlock`.
+                           * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                           */
+                          state_root: string;
+                        } & {
+                          /**
+                           * Format: hex
+                           * @description The tree hash merkle root of the `BeaconBlockBody` for the `BeaconBlock`
+                           * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                           */
+                          body_root: string;
+                        };
+                        /**
+                         * Format: hex
+                         * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+                         */
+                        signature: string;
+                      };
+                    }[];
+                    attester_slashings: {
+                      /** @description The [`IndexedAttestation`](https://github.com/ethereum/consensus-specs/blob/v1.5.0/specs/electra/beacon-chain.md#indexedattestation) object from the CL spec. */
+                      attestation_1: {
+                        /** @description Attesting validator indices */
+                        attesting_indices: string[];
+                        /** @description The [`AttestationData`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#attestationdata) object from the CL spec. */
+                        data: {
+                          /** @example 1 */
+                          slot: string;
+                          /** @example 1 */
+                          index: string;
+                          /**
+                           * Format: hex
+                           * @description LMD GHOST vote.
+                           * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                           */
+                          beacon_block_root: string;
+                          /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
+                          source: {
+                            /** @example 1 */
+                            epoch: string;
+                            /**
+                             * Format: hex
+                             * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                             */
+                            root: string;
+                          };
+                          /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
+                          target: {
+                            /** @example 1 */
+                            epoch: string;
+                            /**
+                             * Format: hex
+                             * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                             */
+                            root: string;
+                          };
+                        };
+                        /**
+                         * Format: hex
+                         * @description The BLS signature of the `IndexedAttestation`, created by the validator of the attestation.
+                         * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+                         */
+                        signature: string;
+                      };
+                      /** @description The [`IndexedAttestation`](https://github.com/ethereum/consensus-specs/blob/v1.5.0/specs/electra/beacon-chain.md#indexedattestation) object from the CL spec. */
+                      attestation_2: {
+                        /** @description Attesting validator indices */
+                        attesting_indices: string[];
+                        /** @description The [`AttestationData`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#attestationdata) object from the CL spec. */
+                        data: {
+                          /** @example 1 */
+                          slot: string;
+                          /** @example 1 */
+                          index: string;
+                          /**
+                           * Format: hex
+                           * @description LMD GHOST vote.
+                           * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                           */
+                          beacon_block_root: string;
+                          /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
+                          source: {
+                            /** @example 1 */
+                            epoch: string;
+                            /**
+                             * Format: hex
+                             * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                             */
+                            root: string;
+                          };
+                          /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
+                          target: {
+                            /** @example 1 */
+                            epoch: string;
+                            /**
+                             * Format: hex
+                             * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                             */
+                            root: string;
+                          };
+                        };
+                        /**
+                         * Format: hex
+                         * @description The BLS signature of the `IndexedAttestation`, created by the validator of the attestation.
+                         * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+                         */
+                        signature: string;
+                      };
+                    }[];
+                    attestations: {
+                      /**
+                       * Format: hex
+                       * @description Attester aggregation bits.
+                       * @example 0x01
+                       */
+                      aggregation_bits: string;
+                      /** @description The [`AttestationData`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#attestationdata) object from the CL spec. */
+                      data: {
+                        /** @example 1 */
+                        slot: string;
+                        /** @example 1 */
+                        index: string;
+                        /**
+                         * Format: hex
+                         * @description LMD GHOST vote.
+                         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                         */
+                        beacon_block_root: string;
+                        /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
+                        source: {
+                          /** @example 1 */
+                          epoch: string;
+                          /**
+                           * Format: hex
+                           * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                           */
+                          root: string;
+                        };
+                        /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
+                        target: {
+                          /** @example 1 */
+                          epoch: string;
+                          /**
+                           * Format: hex
+                           * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                           */
+                          root: string;
+                        };
+                      };
+                      /**
+                       * Format: hex
+                       * @description BLS aggregate signature.
+                       * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+                       */
+                      signature: string;
+                      /**
+                       * Format: hex
+                       * @description Committee bits.
+                       * @example 0x0000000000000001
+                       */
+                      committee_bits: string;
+                    }[];
+                    deposits: {
+                      /** @description Branch in the deposit tree. */
+                      proof: string[];
+                      /** @description The [`DepositData`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#depositdata) object from the CL spec. */
+                      data: {
+                        /**
+                         * Format: hex
+                         * @description The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._
+                         * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
+                         */
+                        pubkey: string;
+                        /**
+                         * Format: hex
+                         * @description The withdrawal credentials.
+                         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                         */
+                        withdrawal_credentials: string;
+                        /**
+                         * @description Amount in Gwei.
+                         * @example 1
+                         */
+                        amount: string;
+                        /**
+                         * Format: hex
+                         * @description Container self-signature.
+                         * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+                         */
+                        signature: string;
+                      };
+                    }[];
+                    voluntary_exits: {
+                      /** @description The [`VoluntaryExit`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#voluntaryexit) object from the CL spec. */
+                      message: {
+                        /**
+                         * @description Minimum epoch for processing exit.
+                         * @example 1
+                         */
+                        epoch: string;
+                        /**
+                         * @description Index of the exiting validator.
+                         * @example 1
+                         */
+                        validator_index: string;
+                      };
+                      /**
+                       * Format: hex
+                       * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+                       */
+                      signature: string;
+                    }[];
+                    /** @description The [`SyncAggregate`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/altair/beacon-chain.md#syncaggregate) object from the CL Altair spec. */
+                    sync_aggregate: {
+                      /**
+                       * Format: hex
+                       * @description Aggregation bits of sync
+                       * @example 0x01
+                       */
+                      sync_committee_bits: string;
+                      /**
+                       * Format: hex
+                       * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+                       */
+                      sync_committee_signature: string;
+                    };
+                    bls_to_execution_changes: {
+                      /** @description The [`BLSToExecutionChange`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/capella/beacon-chain.md#blstoexecutionchange) object from the CL spec. */
+                      message: {
+                        /**
+                         * @description Index of the validator for which credentials will be changed.
+                         * @example 1
+                         */
+                        validator_index: string;
+                        /**
+                         * Format: hex
+                         * @description The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._
+                         * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
+                         */
+                        from_bls_pubkey: string;
+                        /**
+                         * Format: hex
+                         * @description Execution address to which the credentials will be changed.
+                         * @example 0xAbcF8e0d4e9587369b2301D0790347320302cc09
+                         */
+                        to_execution_address: string;
+                      };
+                      /**
+                       * Format: hex
+                       * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+                       */
+                      signature: string;
+                    }[];
+                    blob_kzg_commitments: string[];
+                  } & {
+                    execution_payload: {
+                      /**
+                       * Format: hex
+                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                       */
+                      parent_hash: string;
+                      /**
+                       * Format: hex
+                       * @description An address on the execution (Ethereum 1) network.
+                       * @example 0xAbcF8e0d4e9587369b2301D0790347320302cc09
+                       */
+                      fee_recipient: string;
+                      /**
+                       * Format: hex
+                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                       */
+                      state_root: string;
+                      /**
+                       * Format: hex
+                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                       */
+                      receipts_root: string;
+                      /**
+                       * Format: hex
+                       * @example 0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+                       */
+                      logs_bloom: string;
+                      /**
+                       * Format: hex
+                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                       */
+                      prev_randao: string;
+                      /** @example 1 */
+                      block_number: string;
+                      /** @example 1 */
+                      gas_limit: string;
+                      /** @example 1 */
+                      gas_used: string;
+                      /** @example 1 */
+                      timestamp: string;
+                      /**
+                       * Format: hex
+                       * @description Extra data on the execution (Ethereum 1) network.
+                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                       */
+                      extra_data: string;
+                      /** @example 1 */
+                      base_fee_per_gas: string;
+                      /** @example 1 */
+                      blob_gas_used: string;
+                      /** @example 1 */
+                      excess_blob_gas: string;
+                      /**
+                       * Format: hex
+                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                       */
+                      block_hash: string;
+                    } & {
+                      transactions: string[];
+                      withdrawals: {
+                        /**
+                         * @description The index of the withdrawal.
+                         * @example 1
+                         */
+                        index: string;
+                        /**
+                         * @description The index of the withdrawing validator.
+                         * @example 1
+                         */
+                        validator_index: string;
+                        /**
+                         * Format: hex
+                         * @description An address on the execution (Ethereum 1) network.
+                         * @example 0xAbcF8e0d4e9587369b2301D0790347320302cc09
+                         */
+                        address: string;
+                        /**
+                         * @description The value withdrawn (gwei).
+                         * @example 1
+                         */
+                        amount: string;
+                      }[];
+                    };
+                    /** @description The [`ExecutionRequests`](https://github.com/ethereum/consensus-specs/blob/v1.5.0/specs/electra/beacon-chain.md#executionrequests) object from the CL Electra spec. */
+                    execution_requests: {
+                      deposits: {
+                        /**
+                         * Format: hex
+                         * @description The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._
+                         * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
+                         */
+                        pubkey: string;
+                        /**
+                         * Format: hex
+                         * @description The withdrawal credentials.
+                         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                         */
+                        withdrawal_credentials: string;
+                        /**
+                         * @description The value to be deposited (gwei).
+                         * @example 1
+                         */
+                        amount: string;
+                        /**
+                         * Format: hex
+                         * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+                         */
+                        signature: string;
+                        /**
+                         * @description The index of the deposit request.
+                         * @example 1
+                         */
+                        index: string;
+                      }[];
+                      withdrawals: {
+                        /**
+                         * Format: hex
+                         * @description An address on the execution (Ethereum 1) network.
+                         * @example 0xAbcF8e0d4e9587369b2301D0790347320302cc09
+                         */
+                        source_address: string;
+                        /**
+                         * Format: hex
+                         * @description The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._
+                         * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
+                         */
+                        validator_pubkey: string;
+                        /**
+                         * @description The value to be withdrawn (gwei).
+                         * @example 1
+                         */
+                        amount: string;
+                      }[];
+                      consolidations: {
+                        /**
+                         * Format: hex
+                         * @description An address on the execution (Ethereum 1) network.
+                         * @example 0xAbcF8e0d4e9587369b2301D0790347320302cc09
+                         */
+                        source_address: string;
+                        /**
+                         * Format: hex
+                         * @description The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._
+                         * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
+                         */
+                        source_pubkey: string;
+                        /**
+                         * Format: hex
+                         * @description The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._
+                         * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
+                         */
+                        target_pubkey: string;
+                      }[];
+                    };
+                  };
+                };
+                /**
+                 * Format: hex
+                 * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+                 */
+                signature: string;
+              }> &
+              Partial<{
+                /** @description The [`BeaconBlock`](https://github.com/ethereum/consensus-specs/blob/v1.4.0/specs/phase0/beacon-chain.md#beaconblock) object from the CL Deneb spec. */
                 message: {
                   /**
                    * @description The slot to which this block corresponds.
@@ -30303,6 +30246,8 @@ export interface operations {
                       extra_data: string;
                       /** @example 1 */
                       base_fee_per_gas: string;
+                      /** @example 1 */
+                      blob_gas_used: string;
                       /** @example 1 */
                       excess_blob_gas: string;
                       /**
@@ -32050,132 +31995,6 @@ export interface operations {
     };
   };
   /** Retrieves attestation included in requested block. */
-  getBlockAttestations: {
-    parameters: {
-      path: {
-        /**
-         * Block identifier.
-         * Can be one of: "head" (canonical head in node's view), "genesis", "finalized", \<slot\>, \<hex encoded blockRoot with 0x prefix\>.
-         */
-        block_id: string;
-      };
-    };
-    responses: {
-      /** Success */
-      200: {
-        content: {
-          'application/json': {
-            /**
-             * @description True if the response references an unverified execution payload. Optimistic information may be invalidated at a later time. If the field is not present, assume the False value.
-             * @example false
-             */
-            execution_optimistic: boolean;
-            /**
-             * @description True if the response references the finalized history of the chain, as determined by fork choice. If the field is not present, additional calls are necessary to compare the epoch of the requested information with the finalized checkpoint.
-             * @example false
-             */
-            finalized: boolean;
-            data: {
-              /**
-               * Format: hex
-               * @description Attester aggregation bits.
-               * @example 0x01
-               */
-              aggregation_bits: string;
-              /** @description The [`AttestationData`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#attestationdata) object from the CL spec. */
-              data: {
-                /** @example 1 */
-                slot: string;
-                /** @example 1 */
-                index: string;
-                /**
-                 * Format: hex
-                 * @description LMD GHOST vote.
-                 * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                 */
-                beacon_block_root: string;
-                /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
-                source: {
-                  /** @example 1 */
-                  epoch: string;
-                  /**
-                   * Format: hex
-                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                   */
-                  root: string;
-                };
-                /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
-                target: {
-                  /** @example 1 */
-                  epoch: string;
-                  /**
-                   * Format: hex
-                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                   */
-                  root: string;
-                };
-              };
-              /**
-               * Format: hex
-               * @description BLS aggregate signature.
-               * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-               */
-              signature: string;
-            }[];
-          };
-        };
-      };
-      /** The block ID supplied could not be parsed */
-      400: {
-        content: {
-          'application/json': {
-            /**
-             * @description Either specific error code in case of invalid request or http status code
-             * @example 404
-             */
-            code: number;
-            /** @description Message describing error */
-            message: string;
-            /** @description Optional stacktraces, sent when node is in debug mode */
-            stacktraces?: string[];
-          };
-        };
-      };
-      /** Block not found */
-      404: {
-        content: {
-          'application/json': {
-            /**
-             * @description Either specific error code in case of invalid request or http status code
-             * @example 404
-             */
-            code: number;
-            /** @description Message describing error */
-            message: string;
-            /** @description Optional stacktraces, sent when node is in debug mode */
-            stacktraces?: string[];
-          };
-        };
-      };
-      /** Beacon node internal error. */
-      500: {
-        content: {
-          'application/json': {
-            /**
-             * @description Either specific error code in case of invalid request or http status code
-             * @example 404
-             */
-            code: number;
-            /** @description Message describing error */
-            message: string;
-            /** @description Optional stacktraces, sent when node is in debug mode */
-            stacktraces?: string[];
-          };
-        };
-      };
-    };
-  };
-  /** Retrieves attestation included in requested block. */
   getBlockAttestationsV2: {
     parameters: {
       path: {
@@ -32200,12 +32019,14 @@ export interface operations {
             | 'bellatrix'
             | 'capella'
             | 'deneb'
-            | 'electra';
+            | 'electra'
+            | 'fulu'
+            | 'gloas';
         };
         content: {
           'application/json': {
             /**
-             * @example electra
+             * @example fulu
              * @enum {string}
              */
             version:
@@ -32214,7 +32035,8 @@ export interface operations {
               | 'bellatrix'
               | 'capella'
               | 'deneb'
-              | 'electra';
+              | 'electra'
+              | 'fulu';
             /**
              * @description True if the response references an unverified execution payload. Optimistic information may be invalidated at a later time. If the field is not present, assume the False value.
              * @example false
@@ -32383,13 +32205,16 @@ export interface operations {
     };
   };
   /**
-   * Retrieves blob sidecars for a given block id.
+   * Retrieves blobs for a given block id.
    * Depending on `Accept` header it can be returned either as json or as bytes serialized by SSZ.
    *
-   * If the `indices` parameter is specified, only the blob sidecars with the specified indices will be returned. There are no guarantees
-   * for the returned blob sidecars in terms of ordering.
+   * If the `versioned_hashes` parameter is specified, only the blobs for the specified versioned hashes will be returned. Blobs are
+   * returned as an ordered list matching the order of their corresponding KZG commitments in the block.
+   *
+   * After the Fulu fork, only supernodes (which custody all data columns) are required to return blobs. Clients may implement
+   * blob reconstruction logic for non-super nodes.
    */
-  getBlobSidecars: {
+  getBlobs: {
     parameters: {
       path: {
         /**
@@ -32399,7 +32224,114 @@ export interface operations {
         block_id: string;
       };
       query: {
-        /** Array of indices for blob sidecars to request for in the specified block. Returns all blob sidecars in the block if not specified. */
+        /** Array of versioned hashes for blobs to request for in the specified block. Returns all blobs in the block if not specified. */
+        versioned_hashes?: string[];
+      };
+    };
+    responses: {
+      /** Successful response */
+      200: {
+        content: {
+          'application/json': {
+            /**
+             * @description True if the response references an unverified execution payload. Optimistic information may be invalidated at a later time. If the field is not present, assume the False value.
+             * @example false
+             */
+            execution_optimistic: boolean;
+            /**
+             * @description True if the response references the finalized history of the chain, as determined by fork choice. If the field is not present, additional calls are necessary to compare the epoch of the requested information with the finalized checkpoint.
+             * @example false
+             */
+            finalized: boolean;
+            data: string[];
+          };
+          'application/octet-stream': unknown;
+        };
+      };
+      /** The block ID supplied could not be parsed */
+      400: {
+        content: {
+          'application/json': {
+            /**
+             * @description Either specific error code in case of invalid request or http status code
+             * @example 404
+             */
+            code: number;
+            /** @description Message describing error */
+            message: string;
+            /** @description Optional stacktraces, sent when node is in debug mode */
+            stacktraces?: string[];
+          };
+        };
+      };
+      /** Block not found */
+      404: {
+        content: {
+          'application/json': {
+            /**
+             * @description Either specific error code in case of invalid request or http status code
+             * @example 404
+             */
+            code: number;
+            /** @description Message describing error */
+            message: string;
+            /** @description Optional stacktraces, sent when node is in debug mode */
+            stacktraces?: string[];
+          };
+        };
+      };
+      /** Accepted media type is not supported. */
+      406: {
+        content: {
+          'application/json': {
+            /**
+             * @description The media type in "Accept" header is unsupported, and the request has been rejected. This occurs when the server cannot produce a response in the format accepted by the client.
+             * @example 406
+             */
+            code: number;
+            /** @description Message describing error */
+            message: string;
+            /** @description Optional stacktraces, sent when node is in debug mode */
+            stacktraces?: string[];
+          };
+        };
+      };
+      /** Beacon node internal error. */
+      500: {
+        content: {
+          'application/json': {
+            /**
+             * @description Either specific error code in case of invalid request or http status code
+             * @example 404
+             */
+            code: number;
+            /** @description Message describing error */
+            message: string;
+            /** @description Optional stacktraces, sent when node is in debug mode */
+            stacktraces?: string[];
+          };
+        };
+      };
+    };
+  };
+  /**
+   * Retrieves data column sidecars for a given block id.
+   * Depending on `Accept` header it can be returned either as json or as bytes serialized by SSZ.
+   *
+   * If the `indices` parameter is specified, only the data column sidecars with the specified indices will be returned. There are no guarantees
+   * for the returned data column sidecars in terms of ordering.
+   */
+  getDebugDataColumnSidecars: {
+    parameters: {
+      path: {
+        /**
+         * Block identifier.
+         * Can be one of: "head" (canonical head in node's view), "genesis", "finalized", \<slot\>, \<hex encoded blockRoot with 0x prefix\>.
+         */
+        block_id: string;
+      };
+      query: {
+        /** Array of indices for data column sidecars to request for in the specified block. This endpoint will only return columns that the node is actually custodying. If not specified, returns all data column sidecars that this node is custodying in the block. */
         indices?: string[];
       };
     };
@@ -32417,15 +32349,17 @@ export interface operations {
             | 'bellatrix'
             | 'capella'
             | 'deneb'
-            | 'electra';
+            | 'electra'
+            | 'fulu'
+            | 'gloas';
         };
         content: {
           'application/json': {
             /**
-             * @example electra
+             * @example gloas
              * @enum {string}
              */
-            version: 'deneb' | 'electra';
+            version: 'fulu' | 'gloas';
             /**
              * @description True if the response references an unverified execution payload. Optimistic information may be invalidated at a later time. If the field is not present, assume the False value.
              * @example false
@@ -32440,85 +32374,24 @@ export interface operations {
               {
                 /** @example 1 */
                 index: string;
+                column: string[];
+                kzg_proofs: string[];
+                /** @example 1 */
+                slot: string;
                 /**
                  * Format: hex
-                 * @description A blob is `FIELD_ELEMENTS_PER_BLOB * size_of(BLSFieldElement) = 4096 * 32 = 131072` bytes (`DATA`) representing a Blob as defined in Deneb
+                 * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
                  */
-                blob: string;
-                /**
-                 * Format: hex
-                 * @description A G1 curve point. Same as BLS standard "is valid pubkey" check but also allows `0x00..00` for point-at-infinity
-                 * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
-                 */
-                kzg_commitment: string;
-                /**
-                 * Format: hex
-                 * @description A G1 curve point. Used for verifying that the `KZGCommitment` for a given `Blob` is correct.
-                 */
-                kzg_proof: string;
-                /** @description The [`SignedBeaconBlockHeader`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#signedbeaconblockheader) object envelope from the CL spec. */
-                signed_block_header: {
-                  /** @description The [`BeaconBlockHeader`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#beaconblockheader) object from the CL spec. */
-                  message: {
-                    /**
-                     * @description The slot to which this block corresponds.
-                     * @example 1
-                     */
-                    slot: string;
-                    /**
-                     * @description Index of validator in validator registry.
-                     * @example 1
-                     */
-                    proposer_index: string;
-                    /**
-                     * Format: hex
-                     * @description The signing merkle root of the parent `BeaconBlock`.
-                     * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                     */
-                    parent_root: string;
-                    /**
-                     * Format: hex
-                     * @description The tree hash merkle root of the `BeaconState` for the `BeaconBlock`.
-                     * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                     */
-                    state_root: string;
-                  } & {
-                    /**
-                     * Format: hex
-                     * @description The tree hash merkle root of the `BeaconBlockBody` for the `BeaconBlock`
-                     * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                     */
-                    body_root: string;
-                  };
-                  /**
-                   * Format: hex
-                   * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-                   */
-                  signature: string;
-                };
-                kzg_commitment_inclusion_proof: string[];
+                beacon_block_root: string;
               }[]
             > &
               Partial<
                 {
                   /** @example 1 */
                   index: string;
-                  /**
-                   * Format: hex
-                   * @description A blob is `FIELD_ELEMENTS_PER_BLOB * size_of(BLSFieldElement) = 4096 * 32 = 131072` bytes (`DATA`) representing a Blob as defined in Deneb
-                   */
-                  blob: string;
-                  /**
-                   * Format: hex
-                   * @description A G1 curve point. Same as BLS standard "is valid pubkey" check but also allows `0x00..00` for point-at-infinity
-                   * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
-                   */
-                  kzg_commitment: string;
-                  /**
-                   * Format: hex
-                   * @description A G1 curve point. Used for verifying that the `KZGCommitment` for a given `Blob` is correct.
-                   */
-                  kzg_proof: string;
+                  column: string[];
+                  kzg_commitments: string[];
+                  kzg_proofs: string[];
                   /** @description The [`SignedBeaconBlockHeader`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#signedbeaconblockheader) object envelope from the CL spec. */
                   signed_block_header: {
                     /** @description The [`BeaconBlockHeader`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#beaconblockheader) object from the CL spec. */
@@ -32559,7 +32432,7 @@ export interface operations {
                      */
                     signature: string;
                   };
-                  kzg_commitment_inclusion_proof: string[];
+                  kzg_commitments_inclusion_proof: string[];
                 }[]
               >;
           };
@@ -32727,87 +32600,6 @@ export interface operations {
     requestBody: {
       content: {
         'application/json': string[];
-      };
-    };
-  };
-  /**
-   * Retrieve [EIP-4881](https://eips.ethereum.org/EIPS/eip-4881) Deposit Tree Snapshot.
-   * Depending on `Accept` header it can be returned either as json or as bytes serialized by SSZ
-   */
-  getDepositSnapshot: {
-    responses: {
-      /** Success */
-      200: {
-        content: {
-          'application/json': {
-            data: {
-              finalized: string[];
-              /**
-               * Format: hex
-               * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-               */
-              deposit_root: string;
-              /** @example 1 */
-              deposit_count: string;
-              /**
-               * Format: hex
-               * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-               */
-              execution_block_hash: string;
-              /** @example 1 */
-              execution_block_height: string;
-            };
-          };
-          'application/octet-stream': unknown;
-        };
-      };
-      /** No Finalized Snapshot Available */
-      404: {
-        content: {
-          'application/json': {
-            /**
-             * @description Either specific error code in case of invalid request or http status code
-             * @example 404
-             */
-            code: number;
-            /** @description Message describing error */
-            message: string;
-            /** @description Optional stacktraces, sent when node is in debug mode */
-            stacktraces?: string[];
-          };
-        };
-      };
-      /** Accepted media type is not supported. */
-      406: {
-        content: {
-          'application/json': {
-            /**
-             * @description The media type in "Accept" header is unsupported, and the request has been rejected. This occurs when the server cannot produce a response in the format accepted by the client.
-             * @example 406
-             */
-            code: number;
-            /** @description Message describing error */
-            message: string;
-            /** @description Optional stacktraces, sent when node is in debug mode */
-            stacktraces?: string[];
-          };
-        };
-      };
-      /** Beacon node internal error. */
-      500: {
-        content: {
-          'application/json': {
-            /**
-             * @description Either specific error code in case of invalid request or http status code
-             * @example 404
-             */
-            code: number;
-            /** @description Message describing error */
-            message: string;
-            /** @description Optional stacktraces, sent when node is in debug mode */
-            stacktraces?: string[];
-          };
-        };
       };
     };
   };
@@ -33104,12 +32896,14 @@ export interface operations {
             | 'bellatrix'
             | 'capella'
             | 'deneb'
-            | 'electra';
+            | 'electra'
+            | 'fulu'
+            | 'gloas';
         };
         content: {
           'application/json': {
             /**
-             * @example electra
+             * @example fulu
              * @enum {string}
              */
             version:
@@ -33118,7 +32912,8 @@ export interface operations {
               | 'bellatrix'
               | 'capella'
               | 'deneb'
-              | 'electra';
+              | 'electra'
+              | 'fulu';
             /**
              * @description True if the response references an unverified execution payload. Optimistic information may be invalidated at a later time. If the field is not present, assume the False value.
              * @example false
@@ -33130,7 +32925,7 @@ export interface operations {
              */
             finalized: boolean;
             data: Partial<{
-              /** @description A variant of the [`BeaconBlock`](https://github.com/ethereum/consensus-specs/blob/v1.5.0-beta.2/specs/phase0/beacon-chain.md#beaconblock) object from the CL Electra spec, which contains a `BlindedBeaconBlockBody` rather than a `BeaconBlockBody`. */
+              /** @description A variant of the [`BeaconBlock`](https://github.com/ethereum/consensus-specs/blob/v1.5.0/specs/phase0/beacon-chain.md#beaconblock) object from the CL Electra spec, which contains a `BlindedBeaconBlockBody` rather than a `BeaconBlockBody`. */
               message: {
                 /**
                  * @description The slot to which this block corresponds.
@@ -33155,7 +32950,7 @@ export interface operations {
                  */
                 state_root: string;
               } & {
-                /** @description A variant of the [`BeaconBlockBody`](https://github.com/ethereum/consensus-specs/blob/v1.5.0-beta.2/specs/electra/beacon-chain.md#beaconblockbody) object from the CL Electra spec, which contains a transactions root rather than a full transactions list. */
+                /** @description A variant of the [`BeaconBlockBody`](https://github.com/ethereum/consensus-specs/blob/v1.5.0/specs/electra/beacon-chain.md#beaconblockbody) object from the CL Electra spec, which contains a transactions root rather than a full transactions list. */
                 body: {
                   randao_reveal: string & unknown;
                   /** @description The [`Eth1Data`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#eth1data) object from the CL spec. */
@@ -33266,7 +33061,7 @@ export interface operations {
                     };
                   }[];
                   attester_slashings: {
-                    /** @description The [`IndexedAttestation`](https://github.com/ethereum/consensus-specs/blob/v1.5.0-beta.2/specs/electra/beacon-chain.md#indexedattestation) object from the CL spec. */
+                    /** @description The [`IndexedAttestation`](https://github.com/ethereum/consensus-specs/blob/v1.5.0/specs/electra/beacon-chain.md#indexedattestation) object from the CL spec. */
                     attestation_1: {
                       /** @description Attesting validator indices */
                       attesting_indices: string[];
@@ -33310,7 +33105,7 @@ export interface operations {
                        */
                       signature: string;
                     };
-                    /** @description The [`IndexedAttestation`](https://github.com/ethereum/consensus-specs/blob/v1.5.0-beta.2/specs/electra/beacon-chain.md#indexedattestation) object from the CL spec. */
+                    /** @description The [`IndexedAttestation`](https://github.com/ethereum/consensus-specs/blob/v1.5.0/specs/electra/beacon-chain.md#indexedattestation) object from the CL spec. */
                     attestation_2: {
                       /** @description Attesting validator indices */
                       attesting_indices: string[];
@@ -33501,7 +33296,7 @@ export interface operations {
                   }[];
                   blob_kzg_commitments: string[];
                 } & {
-                  /** @description The [`ExecutionPayloadHeader`](https://github.com/ethereum/consensus-specs/blob/master/specs/deneb/beacon-chain.md#executionpayloadheader) object from the CL Deneb spec. */
+                  /** @description The [`ExecutionPayloadHeader`](https://github.com/ethereum/consensus-specs/blob/v1.4.0/specs/deneb/beacon-chain.md#executionpayloadheader) object from the CL Deneb spec. */
                   execution_payload_header: {
                     /**
                      * Format: hex
@@ -33551,6 +33346,8 @@ export interface operations {
                     /** @example 1 */
                     base_fee_per_gas: string;
                     /** @example 1 */
+                    blob_gas_used: string;
+                    /** @example 1 */
                     excess_blob_gas: string;
                     /**
                      * Format: hex
@@ -33569,7 +33366,7 @@ export interface operations {
                      */
                     withdrawals_root: string;
                   };
-                  /** @description The [`ExecutionRequests`](https://github.com/ethereum/consensus-specs/blob/v1.5.0-beta.2/specs/electra/beacon-chain.md#executionrequests) object from the CL Electra spec. */
+                  /** @description The [`ExecutionRequests`](https://github.com/ethereum/consensus-specs/blob/v1.5.0/specs/electra/beacon-chain.md#executionrequests) object from the CL Electra spec. */
                   execution_requests: {
                     deposits: {
                       /**
@@ -33649,7 +33446,7 @@ export interface operations {
               signature: string;
             }> &
               Partial<{
-                /** @description A variant of the [`BeaconBlock`](https://github.com/ethereum/consensus-specs/blob/master/specs/phase0/beacon-chain.md#beaconblock) object from the CL Deneb spec, which contains a `BlindedBeaconBlockBody` rather than a `BeaconBlockBody`. */
+                /** @description A variant of the [`BeaconBlock`](https://github.com/ethereum/consensus-specs/blob/v1.4.0/specs/phase0/beacon-chain.md#beaconblock) object from the CL Deneb spec, which contains a `BlindedBeaconBlockBody` rather than a `BeaconBlockBody`. */
                 message: {
                   /**
                    * @description The slot to which this block corresponds.
@@ -33674,7 +33471,7 @@ export interface operations {
                    */
                   state_root: string;
                 } & {
-                  /** @description A variant of the [`BeaconBlockBody`](https://github.com/ethereum/consensus-specs/blob/master/specs/deneb/beacon-chain.md#beaconblockbody) object from the CL Deneb spec, which contains a transactions root rather than a full transactions list. */
+                  /** @description A variant of the [`BeaconBlockBody`](https://github.com/ethereum/consensus-specs/blob/v1.4.0/specs/deneb/beacon-chain.md#beaconblockbody) object from the CL Deneb spec, which contains a transactions root rather than a full transactions list. */
                   body: {
                     randao_reveal: string & unknown;
                     /** @description The [`Eth1Data`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#eth1data) object from the CL spec. */
@@ -34014,7 +33811,7 @@ export interface operations {
                     }[];
                     blob_kzg_commitments: string[];
                   } & {
-                    /** @description The [`ExecutionPayloadHeader`](https://github.com/ethereum/consensus-specs/blob/master/specs/deneb/beacon-chain.md#executionpayloadheader) object from the CL Deneb spec. */
+                    /** @description The [`ExecutionPayloadHeader`](https://github.com/ethereum/consensus-specs/blob/v1.4.0/specs/deneb/beacon-chain.md#executionpayloadheader) object from the CL Deneb spec. */
                     execution_payload_header: {
                       /**
                        * Format: hex
@@ -34063,6 +33860,8 @@ export interface operations {
                       extra_data: string;
                       /** @example 1 */
                       base_fee_per_gas: string;
+                      /** @example 1 */
+                      blob_gas_used: string;
                       /** @example 1 */
                       excess_blob_gas: string;
                       /**
@@ -35732,12 +35531,14 @@ export interface operations {
             | 'bellatrix'
             | 'capella'
             | 'deneb'
-            | 'electra';
+            | 'electra'
+            | 'fulu'
+            | 'gloas';
         };
         content: {
           'application/json': {
             /**
-             * @example electra
+             * @example gloas
              * @enum {string}
              */
             version:
@@ -35746,7 +35547,9 @@ export interface operations {
               | 'bellatrix'
               | 'capella'
               | 'deneb'
-              | 'electra';
+              | 'electra'
+              | 'fulu'
+              | 'gloas';
             data: Partial<{
               header: {
                 /** @description The [`BeaconBlockHeader`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#beaconblockheader) object from the CL spec. */
@@ -35781,7 +35584,7 @@ export interface operations {
                    */
                   body_root: string;
                 };
-                /** @description The [`ExecutionPayloadHeader`](https://github.com/ethereum/consensus-specs/blob/master/specs/deneb/beacon-chain.md#executionpayloadheader) object from the CL Deneb spec. */
+                /** @description The [`ExecutionPayloadHeader`](https://github.com/ethereum/consensus-specs/blob/v1.4.0/specs/deneb/beacon-chain.md#executionpayloadheader) object from the CL Deneb spec. */
                 execution: {
                   /**
                    * Format: hex
@@ -35830,6 +35633,8 @@ export interface operations {
                   extra_data: string;
                   /** @example 1 */
                   base_fee_per_gas: string;
+                  /** @example 1 */
+                  blob_gas_used: string;
                   /** @example 1 */
                   excess_blob_gas: string;
                   /**
@@ -35896,7 +35701,7 @@ export interface operations {
                      */
                     body_root: string;
                   };
-                  /** @description The [`ExecutionPayloadHeader`](https://github.com/ethereum/consensus-specs/blob/master/specs/deneb/beacon-chain.md#executionpayloadheader) object from the CL Deneb spec. */
+                  /** @description The [`ExecutionPayloadHeader`](https://github.com/ethereum/consensus-specs/blob/v1.4.0/specs/deneb/beacon-chain.md#executionpayloadheader) object from the CL Deneb spec. */
                   execution: {
                     /**
                      * Format: hex
@@ -35945,6 +35750,8 @@ export interface operations {
                     extra_data: string;
                     /** @example 1 */
                     base_fee_per_gas: string;
+                    /** @example 1 */
+                    blob_gas_used: string;
                     /** @example 1 */
                     excess_blob_gas: string;
                     /**
@@ -36225,7 +36032,7 @@ export interface operations {
         content: {
           'application/json': {
             /**
-             * @example electra
+             * @example gloas
              * @enum {string}
              */
             version:
@@ -36234,7 +36041,9 @@ export interface operations {
               | 'bellatrix'
               | 'capella'
               | 'deneb'
-              | 'electra';
+              | 'electra'
+              | 'fulu'
+              | 'gloas';
             data: Partial<{
               attested_header: {
                 /** @description The [`BeaconBlockHeader`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#beaconblockheader) object from the CL spec. */
@@ -36269,7 +36078,7 @@ export interface operations {
                    */
                   body_root: string;
                 };
-                /** @description The [`ExecutionPayloadHeader`](https://github.com/ethereum/consensus-specs/blob/master/specs/deneb/beacon-chain.md#executionpayloadheader) object from the CL Deneb spec. */
+                /** @description The [`ExecutionPayloadHeader`](https://github.com/ethereum/consensus-specs/blob/v1.4.0/specs/deneb/beacon-chain.md#executionpayloadheader) object from the CL Deneb spec. */
                 execution: {
                   /**
                    * Format: hex
@@ -36318,6 +36127,8 @@ export interface operations {
                   extra_data: string;
                   /** @example 1 */
                   base_fee_per_gas: string;
+                  /** @example 1 */
+                  blob_gas_used: string;
                   /** @example 1 */
                   excess_blob_gas: string;
                   /**
@@ -36382,7 +36193,7 @@ export interface operations {
                    */
                   body_root: string;
                 };
-                /** @description The [`ExecutionPayloadHeader`](https://github.com/ethereum/consensus-specs/blob/master/specs/deneb/beacon-chain.md#executionpayloadheader) object from the CL Deneb spec. */
+                /** @description The [`ExecutionPayloadHeader`](https://github.com/ethereum/consensus-specs/blob/v1.4.0/specs/deneb/beacon-chain.md#executionpayloadheader) object from the CL Deneb spec. */
                 execution: {
                   /**
                    * Format: hex
@@ -36431,6 +36242,8 @@ export interface operations {
                   extra_data: string;
                   /** @example 1 */
                   base_fee_per_gas: string;
+                  /** @example 1 */
+                  blob_gas_used: string;
                   /** @example 1 */
                   excess_blob_gas: string;
                   /**
@@ -36504,7 +36317,7 @@ export interface operations {
                      */
                     body_root: string;
                   };
-                  /** @description The [`ExecutionPayloadHeader`](https://github.com/ethereum/consensus-specs/blob/master/specs/deneb/beacon-chain.md#executionpayloadheader) object from the CL Deneb spec. */
+                  /** @description The [`ExecutionPayloadHeader`](https://github.com/ethereum/consensus-specs/blob/v1.4.0/specs/deneb/beacon-chain.md#executionpayloadheader) object from the CL Deneb spec. */
                   execution: {
                     /**
                      * Format: hex
@@ -36553,6 +36366,8 @@ export interface operations {
                     extra_data: string;
                     /** @example 1 */
                     base_fee_per_gas: string;
+                    /** @example 1 */
+                    blob_gas_used: string;
                     /** @example 1 */
                     excess_blob_gas: string;
                     /**
@@ -36617,7 +36432,7 @@ export interface operations {
                      */
                     body_root: string;
                   };
-                  /** @description The [`ExecutionPayloadHeader`](https://github.com/ethereum/consensus-specs/blob/master/specs/deneb/beacon-chain.md#executionpayloadheader) object from the CL Deneb spec. */
+                  /** @description The [`ExecutionPayloadHeader`](https://github.com/ethereum/consensus-specs/blob/v1.4.0/specs/deneb/beacon-chain.md#executionpayloadheader) object from the CL Deneb spec. */
                   execution: {
                     /**
                      * Format: hex
@@ -36666,6 +36481,8 @@ export interface operations {
                     extra_data: string;
                     /** @example 1 */
                     base_fee_per_gas: string;
+                    /** @example 1 */
+                    blob_gas_used: string;
                     /** @example 1 */
                     excess_blob_gas: string;
                     /**
@@ -37108,12 +36925,14 @@ export interface operations {
             | 'bellatrix'
             | 'capella'
             | 'deneb'
-            | 'electra';
+            | 'electra'
+            | 'fulu'
+            | 'gloas';
         };
         content: {
           'application/json': {
             /**
-             * @example electra
+             * @example gloas
              * @enum {string}
              */
             version:
@@ -37122,7 +36941,9 @@ export interface operations {
               | 'bellatrix'
               | 'capella'
               | 'deneb'
-              | 'electra';
+              | 'electra'
+              | 'fulu'
+              | 'gloas';
             data: Partial<{
               attested_header: {
                 /** @description The [`BeaconBlockHeader`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#beaconblockheader) object from the CL spec. */
@@ -37157,7 +36978,7 @@ export interface operations {
                    */
                   body_root: string;
                 };
-                /** @description The [`ExecutionPayloadHeader`](https://github.com/ethereum/consensus-specs/blob/master/specs/deneb/beacon-chain.md#executionpayloadheader) object from the CL Deneb spec. */
+                /** @description The [`ExecutionPayloadHeader`](https://github.com/ethereum/consensus-specs/blob/v1.4.0/specs/deneb/beacon-chain.md#executionpayloadheader) object from the CL Deneb spec. */
                 execution: {
                   /**
                    * Format: hex
@@ -37206,6 +37027,8 @@ export interface operations {
                   extra_data: string;
                   /** @example 1 */
                   base_fee_per_gas: string;
+                  /** @example 1 */
+                  blob_gas_used: string;
                   /** @example 1 */
                   excess_blob_gas: string;
                   /**
@@ -37260,7 +37083,7 @@ export interface operations {
                    */
                   body_root: string;
                 };
-                /** @description The [`ExecutionPayloadHeader`](https://github.com/ethereum/consensus-specs/blob/master/specs/deneb/beacon-chain.md#executionpayloadheader) object from the CL Deneb spec. */
+                /** @description The [`ExecutionPayloadHeader`](https://github.com/ethereum/consensus-specs/blob/v1.4.0/specs/deneb/beacon-chain.md#executionpayloadheader) object from the CL Deneb spec. */
                 execution: {
                   /**
                    * Format: hex
@@ -37309,6 +37132,8 @@ export interface operations {
                   extra_data: string;
                   /** @example 1 */
                   base_fee_per_gas: string;
+                  /** @example 1 */
+                  blob_gas_used: string;
                   /** @example 1 */
                   excess_blob_gas: string;
                   /**
@@ -37382,7 +37207,7 @@ export interface operations {
                      */
                     body_root: string;
                   };
-                  /** @description The [`ExecutionPayloadHeader`](https://github.com/ethereum/consensus-specs/blob/master/specs/deneb/beacon-chain.md#executionpayloadheader) object from the CL Deneb spec. */
+                  /** @description The [`ExecutionPayloadHeader`](https://github.com/ethereum/consensus-specs/blob/v1.4.0/specs/deneb/beacon-chain.md#executionpayloadheader) object from the CL Deneb spec. */
                   execution: {
                     /**
                      * Format: hex
@@ -37431,6 +37256,8 @@ export interface operations {
                     extra_data: string;
                     /** @example 1 */
                     base_fee_per_gas: string;
+                    /** @example 1 */
+                    blob_gas_used: string;
                     /** @example 1 */
                     excess_blob_gas: string;
                     /**
@@ -37485,7 +37312,7 @@ export interface operations {
                      */
                     body_root: string;
                   };
-                  /** @description The [`ExecutionPayloadHeader`](https://github.com/ethereum/consensus-specs/blob/master/specs/deneb/beacon-chain.md#executionpayloadheader) object from the CL Deneb spec. */
+                  /** @description The [`ExecutionPayloadHeader`](https://github.com/ethereum/consensus-specs/blob/v1.4.0/specs/deneb/beacon-chain.md#executionpayloadheader) object from the CL Deneb spec. */
                   execution: {
                     /**
                      * Format: hex
@@ -37534,6 +37361,8 @@ export interface operations {
                     extra_data: string;
                     /** @example 1 */
                     base_fee_per_gas: string;
+                    /** @example 1 */
+                    blob_gas_used: string;
                     /** @example 1 */
                     excess_blob_gas: string;
                     /**
@@ -37956,12 +37785,14 @@ export interface operations {
             | 'bellatrix'
             | 'capella'
             | 'deneb'
-            | 'electra';
+            | 'electra'
+            | 'fulu'
+            | 'gloas';
         };
         content: {
           'application/json': {
             /**
-             * @example electra
+             * @example gloas
              * @enum {string}
              */
             version:
@@ -37970,7 +37801,9 @@ export interface operations {
               | 'bellatrix'
               | 'capella'
               | 'deneb'
-              | 'electra';
+              | 'electra'
+              | 'fulu'
+              | 'gloas';
             data: Partial<{
               attested_header: {
                 /** @description The [`BeaconBlockHeader`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#beaconblockheader) object from the CL spec. */
@@ -38005,7 +37838,7 @@ export interface operations {
                    */
                   body_root: string;
                 };
-                /** @description The [`ExecutionPayloadHeader`](https://github.com/ethereum/consensus-specs/blob/master/specs/deneb/beacon-chain.md#executionpayloadheader) object from the CL Deneb spec. */
+                /** @description The [`ExecutionPayloadHeader`](https://github.com/ethereum/consensus-specs/blob/v1.4.0/specs/deneb/beacon-chain.md#executionpayloadheader) object from the CL Deneb spec. */
                 execution: {
                   /**
                    * Format: hex
@@ -38054,6 +37887,8 @@ export interface operations {
                   extra_data: string;
                   /** @example 1 */
                   base_fee_per_gas: string;
+                  /** @example 1 */
+                  blob_gas_used: string;
                   /** @example 1 */
                   excess_blob_gas: string;
                   /**
@@ -38126,7 +37961,7 @@ export interface operations {
                      */
                     body_root: string;
                   };
-                  /** @description The [`ExecutionPayloadHeader`](https://github.com/ethereum/consensus-specs/blob/master/specs/deneb/beacon-chain.md#executionpayloadheader) object from the CL Deneb spec. */
+                  /** @description The [`ExecutionPayloadHeader`](https://github.com/ethereum/consensus-specs/blob/v1.4.0/specs/deneb/beacon-chain.md#executionpayloadheader) object from the CL Deneb spec. */
                   execution: {
                     /**
                      * Format: hex
@@ -38175,6 +38010,8 @@ export interface operations {
                     extra_data: string;
                     /** @example 1 */
                     base_fee_per_gas: string;
+                    /** @example 1 */
+                    blob_gas_used: string;
                     /** @example 1 */
                     excess_blob_gas: string;
                     /**
@@ -38439,213 +38276,6 @@ export interface operations {
     };
   };
   /** Retrieves attestations known by the node but not necessarily incorporated into any block */
-  getPoolAttestations: {
-    parameters: {
-      query: {
-        slot?: string;
-        committee_index?: string;
-      };
-    };
-    responses: {
-      /** Successful response */
-      200: {
-        content: {
-          'application/json': {
-            data: {
-              /**
-               * Format: hex
-               * @description Attester aggregation bits.
-               * @example 0x01
-               */
-              aggregation_bits: string;
-              /** @description The [`AttestationData`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#attestationdata) object from the CL spec. */
-              data: {
-                /** @example 1 */
-                slot: string;
-                /** @example 1 */
-                index: string;
-                /**
-                 * Format: hex
-                 * @description LMD GHOST vote.
-                 * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                 */
-                beacon_block_root: string;
-                /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
-                source: {
-                  /** @example 1 */
-                  epoch: string;
-                  /**
-                   * Format: hex
-                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                   */
-                  root: string;
-                };
-                /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
-                target: {
-                  /** @example 1 */
-                  epoch: string;
-                  /**
-                   * Format: hex
-                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                   */
-                  root: string;
-                };
-              };
-              /**
-               * Format: hex
-               * @description BLS aggregate signature.
-               * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-               */
-              signature: string;
-            }[];
-          };
-        };
-      };
-      /** The slot or committee index could not be parsed */
-      400: {
-        content: {
-          'application/json': {
-            /**
-             * @description Either specific error code in case of invalid request or http status code
-             * @example 404
-             */
-            code: number;
-            /** @description Message describing error */
-            message: string;
-            /** @description Optional stacktraces, sent when node is in debug mode */
-            stacktraces?: string[];
-          };
-        };
-      };
-      /** Beacon node internal error. */
-      500: {
-        content: {
-          'application/json': {
-            /**
-             * @description Either specific error code in case of invalid request or http status code
-             * @example 404
-             */
-            code: number;
-            /** @description Message describing error */
-            message: string;
-            /** @description Optional stacktraces, sent when node is in debug mode */
-            stacktraces?: string[];
-          };
-        };
-      };
-    };
-  };
-  /**
-   * Submits Attestation objects to the node.  Each attestation in the request body is processed individually.
-   *
-   * If an attestation is validated successfully the node MUST publish that attestation on the appropriate subnet.
-   *
-   * If one or more attestations fail validation the node MUST return a 400 error with details of which attestations have failed, and why.
-   */
-  submitPoolAttestations: {
-    responses: {
-      /** Attestations are stored in pool and broadcast on appropriate subnet */
-      200: unknown;
-      /** Errors with one or more attestations */
-      400: {
-        content: {
-          'application/json': {
-            /**
-             * @description Either specific error code in case of invalid request or http status code
-             * @example 400
-             */
-            code: number;
-            /**
-             * @description Message describing error
-             * @example some failures
-             */
-            message: string;
-            /** @description List of individual items that have failed */
-            failures: {
-              /**
-               * @description Index of item in the request list that caused the error
-               * @example 3
-               */
-              index: number;
-              /**
-               * @description Message describing error
-               * @example invalid signature
-               */
-              message: string;
-            }[];
-          };
-        };
-      };
-      /** Beacon node internal error. */
-      500: {
-        content: {
-          'application/json': {
-            /**
-             * @description Either specific error code in case of invalid request or http status code
-             * @example 404
-             */
-            code: number;
-            /** @description Message describing error */
-            message: string;
-            /** @description Optional stacktraces, sent when node is in debug mode */
-            stacktraces?: string[];
-          };
-        };
-      };
-    };
-    requestBody: {
-      content: {
-        'application/json': {
-          /**
-           * Format: hex
-           * @description Attester aggregation bits.
-           * @example 0x01
-           */
-          aggregation_bits: string;
-          /** @description The [`AttestationData`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#attestationdata) object from the CL spec. */
-          data: {
-            /** @example 1 */
-            slot: string;
-            /** @example 1 */
-            index: string;
-            /**
-             * Format: hex
-             * @description LMD GHOST vote.
-             * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-             */
-            beacon_block_root: string;
-            /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
-            source: {
-              /** @example 1 */
-              epoch: string;
-              /**
-               * Format: hex
-               * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-               */
-              root: string;
-            };
-            /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
-            target: {
-              /** @example 1 */
-              epoch: string;
-              /**
-               * Format: hex
-               * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-               */
-              root: string;
-            };
-          };
-          /**
-           * Format: hex
-           * @description BLS aggregate signature.
-           * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-           */
-          signature: string;
-        }[];
-      };
-    };
-  };
-  /** Retrieves attestations known by the node but not necessarily incorporated into any block */
   getPoolAttestationsV2: {
     parameters: {
       query: {
@@ -38667,12 +38297,14 @@ export interface operations {
             | 'bellatrix'
             | 'capella'
             | 'deneb'
-            | 'electra';
+            | 'electra'
+            | 'fulu'
+            | 'gloas';
         };
         content: {
           'application/json': {
             /**
-             * @example electra
+             * @example fulu
              * @enum {string}
              */
             version:
@@ -38681,7 +38313,8 @@ export interface operations {
               | 'bellatrix'
               | 'capella'
               | 'deneb'
-              | 'electra';
+              | 'electra'
+              | 'fulu';
             data: Partial<
               {
                 /**
@@ -38842,7 +38475,9 @@ export interface operations {
           | 'bellatrix'
           | 'capella'
           | 'deneb'
-          | 'electra';
+          | 'electra'
+          | 'fulu'
+          | 'gloas';
       };
     };
     responses: {
@@ -38875,6 +38510,22 @@ export interface operations {
                */
               message: string;
             }[];
+          };
+        };
+      };
+      /** Supplied content-type is not supported. */
+      415: {
+        content: {
+          'application/json': {
+            /**
+             * @description The media type in "Content-Type" header is unsupported, and the request has been rejected. This occurs when a HTTP request supplies a payload in a content-type that the server is not able to handle.
+             * @example 415
+             */
+            code: number;
+            /** @description Message describing error */
+            message: string;
+            /** @description Optional stacktraces, sent when node is in debug mode */
+            stacktraces?: string[];
           };
         };
       };
@@ -38996,133 +38647,77 @@ export interface operations {
                */
               signature: string;
             }[];
+        'application/octet-stream': unknown;
       };
     };
   };
-  /** Retrieves attester slashings known by the node but not necessarily incorporated into any block */
-  getPoolAttesterSlashings: {
+  /** Retrieves payload attestations known by the node but not necessarily incorporated into any block */
+  getPoolPayloadAttestations: {
+    parameters: {
+      query: {
+        slot?: string;
+      };
+    };
     responses: {
       /** Successful response */
       200: {
-        content: {
-          'application/json': {
-            data: {
-              /** @description The [`IndexedAttestation`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#indexedattestation) object from the CL spec. */
-              attestation_1: {
-                /** @description Attesting validator indices */
-                attesting_indices: string[];
-                /** @description The [`AttestationData`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#attestationdata) object from the CL spec. */
-                data: {
-                  /** @example 1 */
-                  slot: string;
-                  /** @example 1 */
-                  index: string;
-                  /**
-                   * Format: hex
-                   * @description LMD GHOST vote.
-                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                   */
-                  beacon_block_root: string;
-                  /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
-                  source: {
-                    /** @example 1 */
-                    epoch: string;
-                    /**
-                     * Format: hex
-                     * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                     */
-                    root: string;
-                  };
-                  /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
-                  target: {
-                    /** @example 1 */
-                    epoch: string;
-                    /**
-                     * Format: hex
-                     * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                     */
-                    root: string;
-                  };
-                };
-                /**
-                 * Format: hex
-                 * @description The BLS signature of the `IndexedAttestation`, created by the validator of the attestation.
-                 * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-                 */
-                signature: string;
-              };
-              /** @description The [`IndexedAttestation`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#indexedattestation) object from the CL spec. */
-              attestation_2: {
-                /** @description Attesting validator indices */
-                attesting_indices: string[];
-                /** @description The [`AttestationData`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#attestationdata) object from the CL spec. */
-                data: {
-                  /** @example 1 */
-                  slot: string;
-                  /** @example 1 */
-                  index: string;
-                  /**
-                   * Format: hex
-                   * @description LMD GHOST vote.
-                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                   */
-                  beacon_block_root: string;
-                  /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
-                  source: {
-                    /** @example 1 */
-                    epoch: string;
-                    /**
-                     * Format: hex
-                     * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                     */
-                    root: string;
-                  };
-                  /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
-                  target: {
-                    /** @example 1 */
-                    epoch: string;
-                    /**
-                     * Format: hex
-                     * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                     */
-                    root: string;
-                  };
-                };
-                /**
-                 * Format: hex
-                 * @description The BLS signature of the `IndexedAttestation`, created by the validator of the attestation.
-                 * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-                 */
-                signature: string;
-              };
-            }[];
-          };
+        headers: {
+          /**
+           * The active consensus version to which the data belongs. Required in response so client can deserialize returned json or ssz data
+           * more effectively.
+           */
+          'Eth-Consensus-Version':
+            | 'phase0'
+            | 'altair'
+            | 'bellatrix'
+            | 'capella'
+            | 'deneb'
+            | 'electra'
+            | 'fulu'
+            | 'gloas';
         };
-      };
-      /** Beacon node internal error. */
-      500: {
         content: {
           'application/json': {
             /**
-             * @description Either specific error code in case of invalid request or http status code
-             * @example 404
+             * @example gloas
+             * @enum {string}
              */
-            code: number;
-            /** @description Message describing error */
-            message: string;
-            /** @description Optional stacktraces, sent when node is in debug mode */
-            stacktraces?: string[];
+            version: 'gloas';
+            data: {
+              /**
+               * Format: hex
+               * @example 0x01
+               */
+              aggregation_bits: string;
+              /** @description The [`PayloadAttestationData`](https://github.com/ethereum/consensus-specs/blob/v1.7.0-alpha.2/specs/gloas/beacon-chain.md#payloadattestationdata) object from the CL Gloas spec. */
+              data: {
+                /**
+                 * Format: hex
+                 * @description Hash tree root of the beacon block associated with this PTC attestation
+                 * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                 */
+                beacon_block_root: string;
+                /**
+                 * @description The slot for which the payload attestation is being made
+                 * @example 1
+                 */
+                slot: string;
+                /** @description True if a `SignedExecutionPayloadEnvelope` has been seen referencing this block */
+                payload_present: boolean;
+                /** @description True if blob data is available for this block */
+                blob_data_available: boolean;
+              };
+              /**
+               * Format: hex
+               * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+               */
+              signature: string;
+            }[];
           };
+          'application/octet-stream': unknown;
         };
       };
-    };
-  };
-  /** Submits AttesterSlashing object to node's pool and if passes validation node MUST broadcast it to network. */
-  submitPoolAttesterSlashings: {
-    responses: {
-      /** Success */
-      200: unknown;
-      /** Invalid attester slashing */
+      /** The slot could not be parsed */
       400: {
         content: {
           'application/json': {
@@ -39155,98 +38750,134 @@ export interface operations {
         };
       };
     };
+  };
+  /**
+   * Submits payload attestation messages to the beacon node.
+   *
+   * The beacon node will validate each payload attestation message according to the gossip validation rules
+   * and, if valid, store it in the pool and broadcast it globally to the network.
+   *
+   * A success response indicates that the payload attestation message passed validation and was
+   * successfully stored and broadcast.
+   *
+   * If one or more payload attestation messages fail validation, the node MUST return a 400 error with details of which messages have failed, and why.
+   */
+  submitPayloadAttestationMessages: {
+    parameters: {
+      header: {
+        /** The active consensus version to which the payload attestation message being submitted belongs. */
+        'Eth-Consensus-Version':
+          | 'phase0'
+          | 'altair'
+          | 'bellatrix'
+          | 'capella'
+          | 'deneb'
+          | 'electra'
+          | 'fulu'
+          | 'gloas';
+      };
+    };
+    responses: {
+      /** Payload attestation messages are stored in pool and broadcasted to the network */
+      200: unknown;
+      /** Errors with one or more payload attestation messages */
+      400: {
+        content: {
+          'application/json': {
+            /**
+             * @description Either specific error code in case of invalid request or http status code
+             * @example 400
+             */
+            code: number;
+            /**
+             * @description Message describing error
+             * @example some failures
+             */
+            message: string;
+            /** @description List of individual items that have failed */
+            failures: {
+              /**
+               * @description Index of item in the request list that caused the error
+               * @example 3
+               */
+              index: number;
+              /**
+               * @description Message describing error
+               * @example invalid signature
+               */
+              message: string;
+            }[];
+          };
+        };
+      };
+      /** Supplied content-type is not supported. */
+      415: {
+        content: {
+          'application/json': {
+            /**
+             * @description The media type in "Content-Type" header is unsupported, and the request has been rejected. This occurs when a HTTP request supplies a payload in a content-type that the server is not able to handle.
+             * @example 415
+             */
+            code: number;
+            /** @description Message describing error */
+            message: string;
+            /** @description Optional stacktraces, sent when node is in debug mode */
+            stacktraces?: string[];
+          };
+        };
+      };
+      /** Beacon node internal error. */
+      500: {
+        content: {
+          'application/json': {
+            /**
+             * @description Either specific error code in case of invalid request or http status code
+             * @example 404
+             */
+            code: number;
+            /** @description Message describing error */
+            message: string;
+            /** @description Optional stacktraces, sent when node is in debug mode */
+            stacktraces?: string[];
+          };
+        };
+      };
+    };
+    /** Array of `PayloadAttestationMessage` objects to be submitted. */
     requestBody: {
       content: {
         'application/json': {
-          /** @description The [`IndexedAttestation`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#indexedattestation) object from the CL spec. */
-          attestation_1: {
-            /** @description Attesting validator indices */
-            attesting_indices: string[];
-            /** @description The [`AttestationData`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#attestationdata) object from the CL spec. */
-            data: {
-              /** @example 1 */
-              slot: string;
-              /** @example 1 */
-              index: string;
-              /**
-               * Format: hex
-               * @description LMD GHOST vote.
-               * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-               */
-              beacon_block_root: string;
-              /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
-              source: {
-                /** @example 1 */
-                epoch: string;
-                /**
-                 * Format: hex
-                 * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                 */
-                root: string;
-              };
-              /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
-              target: {
-                /** @example 1 */
-                epoch: string;
-                /**
-                 * Format: hex
-                 * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                 */
-                root: string;
-              };
-            };
+          /**
+           * @description Index of the validator submitting the payload attestation
+           * @example 1
+           */
+          validator_index: string;
+          /** @description The [`PayloadAttestationData`](https://github.com/ethereum/consensus-specs/blob/v1.7.0-alpha.2/specs/gloas/beacon-chain.md#payloadattestationdata) object from the CL Gloas spec. */
+          data: {
             /**
              * Format: hex
-             * @description The BLS signature of the `IndexedAttestation`, created by the validator of the attestation.
-             * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+             * @description Hash tree root of the beacon block associated with this PTC attestation
+             * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
              */
-            signature: string;
-          };
-          /** @description The [`IndexedAttestation`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#indexedattestation) object from the CL spec. */
-          attestation_2: {
-            /** @description Attesting validator indices */
-            attesting_indices: string[];
-            /** @description The [`AttestationData`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#attestationdata) object from the CL spec. */
-            data: {
-              /** @example 1 */
-              slot: string;
-              /** @example 1 */
-              index: string;
-              /**
-               * Format: hex
-               * @description LMD GHOST vote.
-               * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-               */
-              beacon_block_root: string;
-              /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
-              source: {
-                /** @example 1 */
-                epoch: string;
-                /**
-                 * Format: hex
-                 * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                 */
-                root: string;
-              };
-              /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
-              target: {
-                /** @example 1 */
-                epoch: string;
-                /**
-                 * Format: hex
-                 * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                 */
-                root: string;
-              };
-            };
+            beacon_block_root: string;
             /**
-             * Format: hex
-             * @description The BLS signature of the `IndexedAttestation`, created by the validator of the attestation.
-             * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+             * @description The slot for which the payload attestation is being made
+             * @example 1
              */
-            signature: string;
+            slot: string;
+            /** @description True if a `SignedExecutionPayloadEnvelope` has been seen referencing this block */
+            payload_present: boolean;
+            /** @description True if blob data is available for this block */
+            blob_data_available: boolean;
           };
-        };
+          /**
+           * Format: hex
+           * @description BLS signature of the payload attestation data
+           * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+           */
+          signature: string;
+        }[];
+        'application/octet-stream': unknown;
       };
     };
   };
@@ -39266,12 +38897,14 @@ export interface operations {
             | 'bellatrix'
             | 'capella'
             | 'deneb'
-            | 'electra';
+            | 'electra'
+            | 'fulu'
+            | 'gloas';
         };
         content: {
           'application/json': {
             /**
-             * @example electra
+             * @example fulu
              * @enum {string}
              */
             version:
@@ -39280,10 +38913,11 @@ export interface operations {
               | 'bellatrix'
               | 'capella'
               | 'deneb'
-              | 'electra';
+              | 'electra'
+              | 'fulu';
             data: Partial<
               {
-                /** @description The [`IndexedAttestation`](https://github.com/ethereum/consensus-specs/blob/v1.5.0-beta.2/specs/electra/beacon-chain.md#indexedattestation) object from the CL spec. */
+                /** @description The [`IndexedAttestation`](https://github.com/ethereum/consensus-specs/blob/v1.5.0/specs/electra/beacon-chain.md#indexedattestation) object from the CL spec. */
                 attestation_1: {
                   /** @description Attesting validator indices */
                   attesting_indices: string[];
@@ -39327,7 +38961,7 @@ export interface operations {
                    */
                   signature: string;
                 };
-                /** @description The [`IndexedAttestation`](https://github.com/ethereum/consensus-specs/blob/v1.5.0-beta.2/specs/electra/beacon-chain.md#indexedattestation) object from the CL spec. */
+                /** @description The [`IndexedAttestation`](https://github.com/ethereum/consensus-specs/blob/v1.5.0/specs/electra/beacon-chain.md#indexedattestation) object from the CL spec. */
                 attestation_2: {
                   /** @description Attesting validator indices */
                   attesting_indices: string[];
@@ -39497,7 +39131,9 @@ export interface operations {
           | 'bellatrix'
           | 'capella'
           | 'deneb'
-          | 'electra';
+          | 'electra'
+          | 'fulu'
+          | 'gloas';
       };
     };
     responses: {
@@ -39539,7 +39175,7 @@ export interface operations {
     requestBody: {
       content: {
         'application/json': Partial<{
-          /** @description The [`IndexedAttestation`](https://github.com/ethereum/consensus-specs/blob/v1.5.0-beta.2/specs/electra/beacon-chain.md#indexedattestation) object from the CL spec. */
+          /** @description The [`IndexedAttestation`](https://github.com/ethereum/consensus-specs/blob/v1.5.0/specs/electra/beacon-chain.md#indexedattestation) object from the CL spec. */
           attestation_1: {
             /** @description Attesting validator indices */
             attesting_indices: string[];
@@ -39583,7 +39219,7 @@ export interface operations {
              */
             signature: string;
           };
-          /** @description The [`IndexedAttestation`](https://github.com/ethereum/consensus-specs/blob/v1.5.0-beta.2/specs/electra/beacon-chain.md#indexedattestation) object from the CL spec. */
+          /** @description The [`IndexedAttestation`](https://github.com/ethereum/consensus-specs/blob/v1.5.0/specs/electra/beacon-chain.md#indexedattestation) object from the CL spec. */
           attestation_2: {
             /** @description Attesting validator indices */
             attesting_indices: string[];
@@ -40288,132 +39924,6 @@ export interface operations {
     };
   };
   /**
-   * Get the withdrawals computed from the specified state, that will be included in the block
-   * that gets built on the specified state.
-   */
-  getNextWithdrawals: {
-    parameters: {
-      path: {
-        /**
-         * State identifier.
-         * Can be one of: "head" (canonical head in node's view), "genesis", "finalized", "justified", \<slot\>, \<hex encoded stateRoot with 0x prefix\>.
-         */
-        state_id: string;
-      };
-      query: {
-        /** The slot that a block is being built for, with the specified state as the parent. Defaults to the slot after the parent state if not specified. */
-        proposal_slot?: string;
-      };
-    };
-    responses: {
-      /** Success */
-      200: {
-        content: {
-          'application/json': {
-            /**
-             * @description True if the response references an unverified execution payload. Optimistic information may be invalidated at a later time. If the field is not present, assume the False value.
-             * @example false
-             */
-            execution_optimistic: boolean;
-            /**
-             * @description True if the response references the finalized history of the chain, as determined by fork choice. If the field is not present, additional calls are necessary to compare the epoch of the requested information with the finalized checkpoint.
-             * @example false
-             */
-            finalized: boolean;
-            data: {
-              /**
-               * @description The index of the withdrawal.
-               * @example 1
-               */
-              index: string;
-              /**
-               * @description The index of the withdrawing validator.
-               * @example 1
-               */
-              validator_index: string;
-              /**
-               * Format: hex
-               * @description An address on the execution (Ethereum 1) network.
-               * @example 0xAbcF8e0d4e9587369b2301D0790347320302cc09
-               */
-              address: string;
-              /**
-               * @description The value withdrawn (gwei).
-               * @example 1
-               */
-              amount: string;
-            }[];
-          };
-          'application/octet-stream': unknown;
-        };
-      };
-      /** An error occurred preparing the withdrawals from the specified state for the proposal slot. */
-      400: {
-        content: {
-          'application/json': {
-            /**
-             * @description Either specific error code in case of invalid request or http status code
-             * @example 404
-             */
-            code: number;
-            /** @description Message describing error */
-            message: string;
-            /** @description Optional stacktraces, sent when node is in debug mode */
-            stacktraces?: string[];
-          };
-        };
-      };
-      /** State not found */
-      404: {
-        content: {
-          'application/json': {
-            /**
-             * @description Either specific error code in case of invalid request or http status code
-             * @example 404
-             */
-            code: number;
-            /** @description Message describing error */
-            message: string;
-            /** @description Optional stacktraces, sent when node is in debug mode */
-            stacktraces?: string[];
-          };
-        };
-      };
-      /** Accepted media type is not supported. */
-      406: {
-        content: {
-          'application/json': {
-            /**
-             * @description The media type in "Accept" header is unsupported, and the request has been rejected. This occurs when the server cannot produce a response in the format accepted by the client.
-             * @example 406
-             */
-            code: number;
-            /** @description Message describing error */
-            message: string;
-            /** @description Optional stacktraces, sent when node is in debug mode */
-            stacktraces?: string[];
-          };
-        };
-      };
-      /** Beacon node internal error. */
-      500: {
-        content: {
-          'application/json': {
-            /**
-             * @description Either specific error code in case of invalid request or http status code
-             * @example 404
-             */
-            code: number;
-            /** @description Message describing error */
-            message: string;
-            /** @description Optional stacktraces, sent when node is in debug mode */
-            stacktraces?: string[];
-          };
-        };
-      };
-    };
-  };
-  /**
    * Returns full BeaconState object for given stateId.
    * Depending on `Accept` header it can be returned either as json or as bytes serialized by SSZ
    */
@@ -40441,12 +39951,14 @@ export interface operations {
             | 'bellatrix'
             | 'capella'
             | 'deneb'
-            | 'electra';
+            | 'electra'
+            | 'fulu'
+            | 'gloas';
         };
         content: {
           'application/json': {
             /**
-             * @example electra
+             * @example fulu
              * @enum {string}
              */
             version:
@@ -40455,7 +39967,8 @@ export interface operations {
               | 'bellatrix'
               | 'capella'
               | 'deneb'
-              | 'electra';
+              | 'electra'
+              | 'fulu';
             /**
              * @description True if the response references an unverified execution payload. Optimistic information may be invalidated at a later time. If the field is not present, assume the False value.
              * @example false
@@ -40682,7 +40195,7 @@ export interface operations {
                  */
                 aggregate_pubkey: string;
               };
-              /** @description The [`ExecutionPayloadHeader`](https://github.com/ethereum/consensus-specs/blob/master/specs/deneb/beacon-chain.md#executionpayloadheader) object from the CL Deneb spec. */
+              /** @description The [`ExecutionPayloadHeader`](https://github.com/ethereum/consensus-specs/blob/v1.4.0/specs/deneb/beacon-chain.md#executionpayloadheader) object from the CL Deneb spec. */
               latest_execution_payload_header: {
                 /**
                  * Format: hex
@@ -40731,6 +40244,8 @@ export interface operations {
                 extra_data: string;
                 /** @example 1 */
                 base_fee_per_gas: string;
+                /** @example 1 */
+                blob_gas_used: string;
                 /** @example 1 */
                 excess_blob_gas: string;
                 /**
@@ -40837,6 +40352,7 @@ export interface operations {
                  */
                 target_index: string;
               }[];
+              proposer_lookahead: string[];
             }> &
               Partial<{
                 /** @example 1 */
@@ -41054,7 +40570,7 @@ export interface operations {
                    */
                   aggregate_pubkey: string;
                 };
-                /** @description The [`ExecutionPayloadHeader`](https://github.com/ethereum/consensus-specs/blob/master/specs/deneb/beacon-chain.md#executionpayloadheader) object from the CL Deneb spec. */
+                /** @description The [`ExecutionPayloadHeader`](https://github.com/ethereum/consensus-specs/blob/v1.4.0/specs/deneb/beacon-chain.md#executionpayloadheader) object from the CL Deneb spec. */
                 latest_execution_payload_header: {
                   /**
                    * Format: hex
@@ -41103,6 +40619,382 @@ export interface operations {
                   extra_data: string;
                   /** @example 1 */
                   base_fee_per_gas: string;
+                  /** @example 1 */
+                  blob_gas_used: string;
+                  /** @example 1 */
+                  excess_blob_gas: string;
+                  /**
+                   * Format: hex
+                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                   */
+                  block_hash: string;
+                } & {
+                  /**
+                   * Format: hex
+                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                   */
+                  transactions_root: string;
+                  /**
+                   * Format: hex
+                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                   */
+                  withdrawals_root: string;
+                };
+                /** @example 1 */
+                next_withdrawal_index: string;
+                /** @example 1 */
+                next_withdrawal_validator_index: string;
+                /** @description Variable length list, maximum 16777216 items */
+                historical_summaries: {
+                  /**
+                   * Format: hex
+                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                   */
+                  block_summary_root: string;
+                  /**
+                   * Format: hex
+                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                   */
+                  state_summary_root: string;
+                }[];
+                /** @example 1 */
+                deposit_requests_start_index: string;
+                /** @example 1 */
+                deposit_balance_to_consume: string;
+                /** @example 1 */
+                exit_balance_to_consume: string;
+                /** @example 1 */
+                earliest_exit_epoch: string;
+                /** @example 1 */
+                consolidation_balance_to_consume: string;
+                /** @example 1 */
+                earliest_consolidation_epoch: string;
+                pending_deposits: {
+                  /**
+                   * Format: hex
+                   * @description The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._
+                   * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
+                   */
+                  pubkey: string;
+                  /**
+                   * Format: hex
+                   * @description The withdrawal credentials.
+                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                   */
+                  withdrawal_credentials: string;
+                  /**
+                   * @description The value to be deposited (gwei).
+                   * @example 1
+                   */
+                  amount: string;
+                  /**
+                   * Format: hex
+                   * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+                   */
+                  signature: string;
+                  /**
+                   * @description The slot at which the deposit request was processed.
+                   * @example 1
+                   */
+                  slot: string;
+                }[];
+                pending_partial_withdrawals: {
+                  /**
+                   * @description Index of validator in validator registry.
+                   * @example 1
+                   */
+                  validator_index: string;
+                  /**
+                   * @description The value to be withdrawn (gwei).
+                   * @example 1
+                   */
+                  amount: string;
+                  /**
+                   * @description The epoch when the amount is withdrawable.
+                   * @example 1
+                   */
+                  withdrawable_epoch: string;
+                }[];
+                pending_consolidations: {
+                  /**
+                   * @description Index of validator to consolidate from.
+                   * @example 1
+                   */
+                  source_index: string;
+                  /**
+                   * @description Index of validator to consolidate to.
+                   * @example 1
+                   */
+                  target_index: string;
+                }[];
+              }> &
+              Partial<{
+                /** @example 1 */
+                genesis_time: string;
+                /**
+                 * Format: hex
+                 * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                 */
+                genesis_validators_root: string;
+                /** @example 1 */
+                slot: string;
+                /** @description The [`Fork`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#fork) object from the CL spec. */
+                fork: {
+                  /**
+                   * Format: hex
+                   * @description a fork version number
+                   * @example 0x00000000
+                   */
+                  previous_version: string;
+                  /**
+                   * Format: hex
+                   * @description a fork version number
+                   * @example 0x00000000
+                   */
+                  current_version: string;
+                  /** @example 1 */
+                  epoch: string;
+                };
+                /** @description The [`BeaconBlockHeader`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#beaconblockheader) object from the CL spec. */
+                latest_block_header: {
+                  /**
+                   * @description The slot to which this block corresponds.
+                   * @example 1
+                   */
+                  slot: string;
+                  /**
+                   * @description Index of validator in validator registry.
+                   * @example 1
+                   */
+                  proposer_index: string;
+                  /**
+                   * Format: hex
+                   * @description The signing merkle root of the parent `BeaconBlock`.
+                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                   */
+                  parent_root: string;
+                  /**
+                   * Format: hex
+                   * @description The tree hash merkle root of the `BeaconState` for the `BeaconBlock`.
+                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                   */
+                  state_root: string;
+                } & {
+                  /**
+                   * Format: hex
+                   * @description The tree hash merkle root of the `BeaconBlockBody` for the `BeaconBlock`
+                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                   */
+                  body_root: string;
+                };
+                /** @description Fixed length of 8192 items */
+                block_roots: string[];
+                /** @description Fixed length of 8192 items */
+                state_roots: string[];
+                /** @description Variable length list, maximum 16777216 items. Frozen in Capella, replaced by historical_summaries. */
+                historical_roots: string[];
+                /** @description The [`Eth1Data`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#eth1data) object from the CL spec. */
+                eth1_data: {
+                  /**
+                   * Format: hex
+                   * @description Root of the deposit tree.
+                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                   */
+                  deposit_root: string;
+                  /**
+                   * @description Total number of deposits.
+                   * @example 1
+                   */
+                  deposit_count: string;
+                  /**
+                   * Format: hex
+                   * @description Ethereum 1.x block hash.
+                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                   */
+                  block_hash: string;
+                };
+                /** @description Fixed length of 1024 items */
+                eth1_data_votes: {
+                  /**
+                   * Format: hex
+                   * @description Root of the deposit tree.
+                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                   */
+                  deposit_root: string;
+                  /**
+                   * @description Total number of deposits.
+                   * @example 1
+                   */
+                  deposit_count: string;
+                  /**
+                   * Format: hex
+                   * @description Ethereum 1.x block hash.
+                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                   */
+                  block_hash: string;
+                }[];
+                /** @example 1 */
+                eth1_deposit_index: string;
+                /** @description Variable length list, maximum 1099511627776 items */
+                validators: {
+                  /**
+                   * Format: hex
+                   * @description The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._
+                   * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
+                   */
+                  pubkey: string;
+                  /**
+                   * Format: hex
+                   * @description Root of withdrawal credentials
+                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                   */
+                  withdrawal_credentials: string;
+                  /**
+                   * @description Balance at stake in Gwei.
+                   * @example 1
+                   */
+                  effective_balance: string;
+                  /**
+                   * @description Was validator slashed (not longer active).
+                   * @example false
+                   */
+                  slashed: boolean;
+                  /**
+                   * @description When criteria for activation were met.
+                   * @example 1
+                   */
+                  activation_eligibility_epoch: string;
+                  /**
+                   * @description Epoch when validator activated. 'FAR_FUTURE_EPOCH' if not activated
+                   * @example 1
+                   */
+                  activation_epoch: string;
+                  /**
+                   * @description Epoch when validator exited. 'FAR_FUTURE_EPOCH' if not exited.
+                   * @example 1
+                   */
+                  exit_epoch: string;
+                  /**
+                   * @description When validator can withdraw or transfer funds. 'FAR_FUTURE_EPOCH' if not defined
+                   * @example 1
+                   */
+                  withdrawable_epoch: string;
+                }[];
+                /** @description Validator balances in gwei. Variable length list, maximum 1099511627776 items */
+                balances: string[];
+                /** @description Fixed length of 65536 items */
+                randao_mixes: string[];
+                /** @description Per-epoch sums of slashed effective balances. Fixed length of 8192 items */
+                slashings: string[];
+                previous_epoch_participation: string[];
+                current_epoch_participation: string[];
+                /**
+                 * Format: hex
+                 * @description Bit set for every recent justified epoch
+                 * @example 0x01
+                 */
+                justification_bits: string;
+                /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
+                previous_justified_checkpoint: {
+                  /** @example 1 */
+                  epoch: string;
+                  /**
+                   * Format: hex
+                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                   */
+                  root: string;
+                };
+                /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
+                current_justified_checkpoint: {
+                  /** @example 1 */
+                  epoch: string;
+                  /**
+                   * Format: hex
+                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                   */
+                  root: string;
+                };
+                /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
+                finalized_checkpoint: {
+                  /** @example 1 */
+                  epoch: string;
+                  /**
+                   * Format: hex
+                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                   */
+                  root: string;
+                };
+                /** @description Per-validator inactivity scores. Introduced in Altair. Variable length list, maximum 1099511627776 items */
+                inactivity_scores: string[];
+                current_sync_committee: {
+                  pubkeys: string[];
+                  /**
+                   * Format: hex
+                   * @description The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._
+                   * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
+                   */
+                  aggregate_pubkey: string;
+                };
+                next_sync_committee: {
+                  pubkeys: string[];
+                  /**
+                   * Format: hex
+                   * @description The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._
+                   * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
+                   */
+                  aggregate_pubkey: string;
+                };
+                /** @description The [`ExecutionPayloadHeader`](https://github.com/ethereum/consensus-specs/blob/v1.4.0/specs/deneb/beacon-chain.md#executionpayloadheader) object from the CL Deneb spec. */
+                latest_execution_payload_header: {
+                  /**
+                   * Format: hex
+                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                   */
+                  parent_hash: string;
+                  /**
+                   * Format: hex
+                   * @description An address on the execution (Ethereum 1) network.
+                   * @example 0xAbcF8e0d4e9587369b2301D0790347320302cc09
+                   */
+                  fee_recipient: string;
+                  /**
+                   * Format: hex
+                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                   */
+                  state_root: string;
+                  /**
+                   * Format: hex
+                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                   */
+                  receipts_root: string;
+                  /**
+                   * Format: hex
+                   * @example 0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+                   */
+                  logs_bloom: string;
+                  /**
+                   * Format: hex
+                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                   */
+                  prev_randao: string;
+                  /** @example 1 */
+                  block_number: string;
+                  /** @example 1 */
+                  gas_limit: string;
+                  /** @example 1 */
+                  gas_used: string;
+                  /** @example 1 */
+                  timestamp: string;
+                  /**
+                   * Format: hex
+                   * @description Extra data on the execution (Ethereum 1) network.
+                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                   */
+                  extra_data: string;
+                  /** @example 1 */
+                  base_fee_per_gas: string;
+                  /** @example 1 */
+                  blob_gas_used: string;
                   /** @example 1 */
                   excess_blob_gas: string;
                   /**
@@ -42448,15 +42340,20 @@ export interface operations {
                 /**
                  * Format: hex
                  * @description Bitvector representing the node's persistent attestation subnet subscriptions.
-                 * @example 0x0000000000000000
+                 * @example 0x01
                  */
                 attnets: string;
                 /**
                  * Format: hex
                  * @description Bitvector representing the node's sync committee subnet subscriptions. This metadata is not present in phase0, but will be present in Altair.
-                 * @example 0x0f
+                 * @example 0x01
                  */
                 syncnets?: string;
+                /**
+                 * @description Uint64 representing the node's custody group count. The metadata is present from the Fulu fork.
+                 * @example 1
+                 */
+                custody_group_count?: string;
               };
             };
           };
@@ -42706,6 +42603,122 @@ export interface operations {
       };
     };
   };
+  /**
+   * Retrieves structured information about the version of the beacon node
+   * and its attached execution client in the same format as used on the
+   * [Engine API](https://github.com/ethereum/execution-apis/blob/dc4dbca37ef8697d782f431af19120beaf5517f5/src/engine/identification.md).
+   *
+   * Version information about the execution client may not be available
+   * at all times and is therefore optional.
+   *
+   * If the beacon node receives multiple values from `engine_getClientVersionV1`, the
+   * first value should be returned on this endpoint.
+   */
+  getNodeVersionV2: {
+    responses: {
+      /** Request successful */
+      200: {
+        content: {
+          'application/json': {
+            data: {
+              /** @description A structure which uniquely identifies a client implementation and its version. Mirrors the client version specification in the [Engine API](https://github.com/ethereum/execution-apis/blob/dc4dbca37ef8697d782f431af19120beaf5517f5/src/engine/identification.md). */
+              beacon_node: {
+                /**
+                 * @description A two-character client code that uniquely maps to a client name as defined in the [Engine API](https://github.com/ethereum/execution-apis/blob/dc4dbca37ef8697d782f431af19120beaf5517f5/src/engine/identification.md#clientcode).
+                 * @example LS
+                 * @enum {string}
+                 */
+                code:
+                  | 'BU'
+                  | 'EJ'
+                  | 'EG'
+                  | 'GE'
+                  | 'GR'
+                  | 'LH'
+                  | 'LS'
+                  | 'NM'
+                  | 'NB'
+                  | 'TE'
+                  | 'TK'
+                  | 'PM'
+                  | 'RH';
+                /**
+                 * @description Human-readable name of the client, e.g. `Lighthouse` or `go-ethereum`.
+                 * @example Lodestar
+                 */
+                name: string;
+                /**
+                 * @description The version string of the current implementation e.g. `v4.6.0` or `1.0.0-alpha.1` or `1.0.0+20130313144700`.
+                 * @example v1.23.4
+                 */
+                version: string;
+                /**
+                 * Format: hex
+                 * @description 4 bytes - first four bytes of the latest commit hash of this build e.g. `0xfa4ff922`.
+                 * @example 0xfa4ff922
+                 */
+                commit: string;
+              };
+              /** @description A structure which uniquely identifies a client implementation and its version. Mirrors the client version specification in the [Engine API](https://github.com/ethereum/execution-apis/blob/dc4dbca37ef8697d782f431af19120beaf5517f5/src/engine/identification.md). */
+              execution_client?: {
+                /**
+                 * @description A two-character client code that uniquely maps to a client name as defined in the [Engine API](https://github.com/ethereum/execution-apis/blob/dc4dbca37ef8697d782f431af19120beaf5517f5/src/engine/identification.md#clientcode).
+                 * @example LS
+                 * @enum {string}
+                 */
+                code:
+                  | 'BU'
+                  | 'EJ'
+                  | 'EG'
+                  | 'GE'
+                  | 'GR'
+                  | 'LH'
+                  | 'LS'
+                  | 'NM'
+                  | 'NB'
+                  | 'TE'
+                  | 'TK'
+                  | 'PM'
+                  | 'RH';
+                /**
+                 * @description Human-readable name of the client, e.g. `Lighthouse` or `go-ethereum`.
+                 * @example Lodestar
+                 */
+                name: string;
+                /**
+                 * @description The version string of the current implementation e.g. `v4.6.0` or `1.0.0-alpha.1` or `1.0.0+20130313144700`.
+                 * @example v1.23.4
+                 */
+                version: string;
+                /**
+                 * Format: hex
+                 * @description 4 bytes - first four bytes of the latest commit hash of this build e.g. `0xfa4ff922`.
+                 * @example 0xfa4ff922
+                 */
+                commit: string;
+              };
+            };
+          };
+        };
+      };
+      /** Beacon node internal error. */
+      500: {
+        content: {
+          'application/json': {
+            /**
+             * @description Either specific error code in case of invalid request or http status code
+             * @example 404
+             */
+            code: number;
+            /** @description Message describing error */
+            message: string;
+            /** @description Optional stacktraces, sent when node is in debug mode */
+            stacktraces?: string[];
+          };
+        };
+      };
+    };
+  };
   /** Requests the beacon node to describe if it's currently syncing or not, and if it is, what block it is up to. */
   getSyncingStatus: {
     responses: {
@@ -42824,6 +42837,7 @@ export interface operations {
    * Values are returned with following format:
    *   - any value starting with 0x in the spec is returned as a hex string
    *   - numeric values are returned as a quoted integer
+   *   - array values are returned as a JSON array
    */
   getSpec: {
     responses: {
@@ -42842,7 +42856,17 @@ export interface operations {
              *   "DEPOSIT_NETWORK_ID": "1",
              *   "DOMAIN_AGGREGATE_AND_PROOF": "0x06000000",
              *   "INACTIVITY_PENALTY_QUOTIENT": "67108864",
-             *   "INACTIVITY_PENALTY_QUOTIENT_ALTAIR": "50331648"
+             *   "INACTIVITY_PENALTY_QUOTIENT_ALTAIR": "50331648",
+             *   "BLOB_SCHEDULE": [
+             *     {
+             *       "EPOCH": "269568",
+             *       "MAX_BLOBS_PER_BLOCK": "6"
+             *     },
+             *     {
+             *       "EPOCH": "364032",
+             *       "MAX_BLOBS_PER_BLOCK": "9"
+             *     }
+             *   ]
              * }
              */
             data: { [key: string]: unknown };
@@ -43138,6 +43162,115 @@ export interface operations {
       };
     };
   };
+  /**
+   * Request beacon node to provide all validators that are scheduled to propose a block in the given epoch.
+   * Duties should only need to be checked once per epoch, however a chain reorganization could occur that results in a change of duties. For full safety, you should monitor head events and confirm the dependent root in this response matches. After Fulu, different checks need to be performed as the dependent root changes due to deterministic proposer lookahead.
+   *
+   * Before Fulu:
+   * - event.current_duty_dependent_root when `compute_epoch_at_slot(event.slot) == epoch`
+   * - event.block otherwise
+   * - dependent_root value is `get_block_root_at_slot(state, compute_start_slot_at_epoch(epoch) - 1)`
+   *
+   * After Fulu:
+   * - event.previous_duty_dependent_root when `compute_epoch_at_slot(event.slot) == epoch`
+   * - event.block otherwise
+   * - dependent_root value is `get_block_root_at_slot(state, compute_start_slot_at_epoch(epoch - 1) - 1)`
+   *
+   * The dependent_root value is the genesis block root in the case of underflow.
+   */
+  getProposerDutiesV2: {
+    parameters: {
+      path: {
+        epoch: string;
+      };
+    };
+    responses: {
+      /** Success response */
+      200: {
+        content: {
+          'application/json': {
+            /**
+             * Format: hex
+             * @description The block root that this response is dependent on.
+             * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+             */
+            dependent_root: string;
+            /**
+             * @description True if the response references an unverified execution payload. Optimistic information may be invalidated at a later time. If the field is not present, assume the False value.
+             * @example false
+             */
+            execution_optimistic: boolean;
+            data: {
+              /**
+               * Format: hex
+               * @description The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._
+               * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
+               */
+              pubkey: string;
+              /**
+               * @description Index of validator in validator registry.
+               * @example 1
+               */
+              validator_index: string;
+              /**
+               * @description The slot at which the validator must propose block.
+               * @example 1
+               */
+              slot: string;
+            }[];
+          };
+        };
+      };
+      /** Invalid epoch */
+      400: {
+        content: {
+          'application/json': {
+            /**
+             * @description Either specific error code in case of invalid request or http status code
+             * @example 404
+             */
+            code: number;
+            /** @description Message describing error */
+            message: string;
+            /** @description Optional stacktraces, sent when node is in debug mode */
+            stacktraces?: string[];
+          };
+        };
+      };
+      /** Beacon node internal error. */
+      500: {
+        content: {
+          'application/json': {
+            /**
+             * @description Either specific error code in case of invalid request or http status code
+             * @example 404
+             */
+            code: number;
+            /** @description Message describing error */
+            message: string;
+            /** @description Optional stacktraces, sent when node is in debug mode */
+            stacktraces?: string[];
+          };
+        };
+      };
+      /** Beacon node is currently syncing, try again later. */
+      503: {
+        content: {
+          'application/json': {
+            /**
+             * @description Either specific error code in case of invalid request or http status code
+             * @example 404
+             */
+            code: number;
+            /** @description Message describing error */
+            message: string;
+            /** @description Optional stacktraces, sent when node is in debug mode */
+            stacktraces?: string[];
+          };
+        };
+      };
+    };
+  };
   /** Requests the beacon node to provide a set of sync committee duties for a particular epoch. */
   getSyncCommitteeDuties: {
     parameters: {
@@ -43231,6 +43364,115 @@ export interface operations {
     };
   };
   /**
+   * Requests the beacon node to provide a set of Payload Timeliness Committee (PTC) duties, which should be performed by validators, for a particular epoch.
+   * Duties should only need to be checked once per epoch, however a chain reorganization (of > MIN_SEED_LOOKAHEAD epochs) could occur, resulting in a change of duties. For full safety, you should monitor head events and confirm the dependent root in this response matches:
+   * - event.previous_duty_dependent_root when `compute_epoch_at_slot(event.slot) == epoch`
+   * - event.current_duty_dependent_root when `compute_epoch_at_slot(event.slot) + 1 == epoch`
+   * - event.block otherwise
+   *
+   * The dependent_root value is `get_block_root_at_slot(state, compute_start_slot_at_epoch(epoch - 1) - 1)` or the genesis block root in the case of underflow.
+   */
+  getPtcDuties: {
+    parameters: {
+      path: {
+        /** Epoch for which to obtain PTC duties. Must not be greater than the next epoch */
+        epoch: string;
+      };
+    };
+    responses: {
+      /** Success response */
+      200: {
+        content: {
+          'application/json': {
+            /**
+             * Format: hex
+             * @description The block root that this response is dependent on.
+             * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+             */
+            dependent_root: string;
+            /**
+             * @description True if the response references an unverified execution payload. Optimistic information may be invalidated at a later time. If the field is not present, assume the False value.
+             * @example false
+             */
+            execution_optimistic: boolean;
+            data: {
+              /**
+               * Format: hex
+               * @description The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._
+               * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
+               */
+              pubkey: string;
+              /**
+               * @description Index of validator in validator registry.
+               * @example 1
+               */
+              validator_index: string;
+              /**
+               * @description The slot at which the validator must perform PTC duties.
+               * @example 1
+               */
+              slot: string;
+            }[];
+          };
+        };
+      };
+      /** Invalid epoch or index */
+      400: {
+        content: {
+          'application/json': {
+            /**
+             * @description Either specific error code in case of invalid request or http status code
+             * @example 404
+             */
+            code: number;
+            /** @description Message describing error */
+            message: string;
+            /** @description Optional stacktraces, sent when node is in debug mode */
+            stacktraces?: string[];
+          };
+        };
+      };
+      /** Beacon node internal error. */
+      500: {
+        content: {
+          'application/json': {
+            /**
+             * @description Either specific error code in case of invalid request or http status code
+             * @example 404
+             */
+            code: number;
+            /** @description Message describing error */
+            message: string;
+            /** @description Optional stacktraces, sent when node is in debug mode */
+            stacktraces?: string[];
+          };
+        };
+      };
+      /** Beacon node is currently syncing, try again later. */
+      503: {
+        content: {
+          'application/json': {
+            /**
+             * @description Either specific error code in case of invalid request or http status code
+             * @example 404
+             */
+            code: number;
+            /** @description Message describing error */
+            message: string;
+            /** @description Optional stacktraces, sent when node is in debug mode */
+            stacktraces?: string[];
+          };
+        };
+      };
+    };
+    /** An array of the validator indices for which to obtain the duties. */
+    requestBody: {
+      content: {
+        'application/json': string[];
+      };
+    };
+  };
+  /**
    * Requests a beacon node to produce a valid block, which can then be signed by a validator. The
    * returned block may be blinded or unblinded, depending on the current state of the network as
    * decided by the execution and beacon nodes.
@@ -43240,7 +43482,7 @@ export interface operations {
    * header from an MEV relay.
    *
    * Metadata in the response indicates the type of block produced, and the supported types of block
-   * will be added to as forks progress.
+   * are for all pre-Gloas forks.  This endpoint is not forwards compatible after the Gloas fork.
    */
   produceBlockV3: {
     parameters: {
@@ -43303,7 +43545,9 @@ export interface operations {
             | 'bellatrix'
             | 'capella'
             | 'deneb'
-            | 'electra';
+            | 'electra'
+            | 'fulu'
+            | 'gloas';
           /** Required in response so client can deserialize returned json or ssz data to the correct object. */
           'Eth-Execution-Payload-Blinded': boolean;
           /**
@@ -43323,7 +43567,7 @@ export interface operations {
         content: {
           'application/json': {
             /**
-             * @example electra
+             * @example fulu
              * @enum {string}
              */
             version:
@@ -43332,7 +43576,8 @@ export interface operations {
               | 'bellatrix'
               | 'capella'
               | 'deneb'
-              | 'electra';
+              | 'electra'
+              | 'fulu';
             /** @example false */
             execution_payload_blinded: boolean;
             /** @example 12345 */
@@ -43340,7 +43585,7 @@ export interface operations {
             /** @example 12345 */
             consensus_block_value: string;
             data: Partial<{
-              /** @description The [`BeaconBlock`](https://github.com/ethereum/consensus-specs/blob/v1.5.0-beta.2/specs/phase0/beacon-chain.md#beaconblock) object from the CL Electra spec. */
+              /** @description The [`BeaconBlock`](https://github.com/ethereum/consensus-specs/blob/v1.5.0/specs/phase0/beacon-chain.md#beaconblock) object from the CL Electra spec. */
               block: {
                 /**
                  * @description The slot to which this block corresponds.
@@ -43475,7 +43720,7 @@ export interface operations {
                     };
                   }[];
                   attester_slashings: {
-                    /** @description The [`IndexedAttestation`](https://github.com/ethereum/consensus-specs/blob/v1.5.0-beta.2/specs/electra/beacon-chain.md#indexedattestation) object from the CL spec. */
+                    /** @description The [`IndexedAttestation`](https://github.com/ethereum/consensus-specs/blob/v1.5.0/specs/electra/beacon-chain.md#indexedattestation) object from the CL spec. */
                     attestation_1: {
                       /** @description Attesting validator indices */
                       attesting_indices: string[];
@@ -43519,7 +43764,7 @@ export interface operations {
                        */
                       signature: string;
                     };
-                    /** @description The [`IndexedAttestation`](https://github.com/ethereum/consensus-specs/blob/v1.5.0-beta.2/specs/electra/beacon-chain.md#indexedattestation) object from the CL spec. */
+                    /** @description The [`IndexedAttestation`](https://github.com/ethereum/consensus-specs/blob/v1.5.0/specs/electra/beacon-chain.md#indexedattestation) object from the CL spec. */
                     attestation_2: {
                       /** @description Attesting validator indices */
                       attesting_indices: string[];
@@ -43759,6 +44004,8 @@ export interface operations {
                     /** @example 1 */
                     base_fee_per_gas: string;
                     /** @example 1 */
+                    blob_gas_used: string;
+                    /** @example 1 */
                     excess_blob_gas: string;
                     /**
                      * Format: hex
@@ -43791,7 +44038,7 @@ export interface operations {
                       amount: string;
                     }[];
                   };
-                  /** @description The [`ExecutionRequests`](https://github.com/ethereum/consensus-specs/blob/v1.5.0-beta.2/specs/electra/beacon-chain.md#executionrequests) object from the CL Electra spec. */
+                  /** @description The [`ExecutionRequests`](https://github.com/ethereum/consensus-specs/blob/v1.5.0/specs/electra/beacon-chain.md#executionrequests) object from the CL Electra spec. */
                   execution_requests: {
                     deposits: {
                       /**
@@ -43864,11 +44111,13 @@ export interface operations {
                   };
                 };
               };
+              /** @description Cell proofs of the blobs as defined in EIP-7594 */
               kzg_proofs: string[];
               blobs: string[];
             }> &
-              Partial<
-                {
+              Partial<{
+                /** @description The [`BeaconBlock`](https://github.com/ethereum/consensus-specs/blob/v1.5.0/specs/phase0/beacon-chain.md#beaconblock) object from the CL Electra spec. */
+                block: {
                   /**
                    * @description The slot to which this block corresponds.
                    * @example 1
@@ -43892,7 +44141,6 @@ export interface operations {
                    */
                   state_root: string;
                 } & {
-                  /** @description A variant of the [`BeaconBlockBody`](https://github.com/ethereum/consensus-specs/blob/v1.5.0-beta.2/specs/electra/beacon-chain.md#beaconblockbody) object from the CL Electra spec, which contains a transactions root rather than a full transactions list. */
                   body: {
                     randao_reveal: string & unknown;
                     /** @description The [`Eth1Data`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#eth1data) object from the CL spec. */
@@ -44003,7 +44251,7 @@ export interface operations {
                       };
                     }[];
                     attester_slashings: {
-                      /** @description The [`IndexedAttestation`](https://github.com/ethereum/consensus-specs/blob/v1.5.0-beta.2/specs/electra/beacon-chain.md#indexedattestation) object from the CL spec. */
+                      /** @description The [`IndexedAttestation`](https://github.com/ethereum/consensus-specs/blob/v1.5.0/specs/electra/beacon-chain.md#indexedattestation) object from the CL spec. */
                       attestation_1: {
                         /** @description Attesting validator indices */
                         attesting_indices: string[];
@@ -44047,7 +44295,7 @@ export interface operations {
                          */
                         signature: string;
                       };
-                      /** @description The [`IndexedAttestation`](https://github.com/ethereum/consensus-specs/blob/v1.5.0-beta.2/specs/electra/beacon-chain.md#indexedattestation) object from the CL spec. */
+                      /** @description The [`IndexedAttestation`](https://github.com/ethereum/consensus-specs/blob/v1.5.0/specs/electra/beacon-chain.md#indexedattestation) object from the CL spec. */
                       attestation_2: {
                         /** @description Attesting validator indices */
                         attesting_indices: string[];
@@ -44238,7 +44486,537 @@ export interface operations {
                     }[];
                     blob_kzg_commitments: string[];
                   } & {
-                    /** @description The [`ExecutionPayloadHeader`](https://github.com/ethereum/consensus-specs/blob/master/specs/deneb/beacon-chain.md#executionpayloadheader) object from the CL Deneb spec. */
+                    execution_payload: {
+                      /**
+                       * Format: hex
+                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                       */
+                      parent_hash: string;
+                      /**
+                       * Format: hex
+                       * @description An address on the execution (Ethereum 1) network.
+                       * @example 0xAbcF8e0d4e9587369b2301D0790347320302cc09
+                       */
+                      fee_recipient: string;
+                      /**
+                       * Format: hex
+                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                       */
+                      state_root: string;
+                      /**
+                       * Format: hex
+                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                       */
+                      receipts_root: string;
+                      /**
+                       * Format: hex
+                       * @example 0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+                       */
+                      logs_bloom: string;
+                      /**
+                       * Format: hex
+                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                       */
+                      prev_randao: string;
+                      /** @example 1 */
+                      block_number: string;
+                      /** @example 1 */
+                      gas_limit: string;
+                      /** @example 1 */
+                      gas_used: string;
+                      /** @example 1 */
+                      timestamp: string;
+                      /**
+                       * Format: hex
+                       * @description Extra data on the execution (Ethereum 1) network.
+                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                       */
+                      extra_data: string;
+                      /** @example 1 */
+                      base_fee_per_gas: string;
+                      /** @example 1 */
+                      blob_gas_used: string;
+                      /** @example 1 */
+                      excess_blob_gas: string;
+                      /**
+                       * Format: hex
+                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                       */
+                      block_hash: string;
+                    } & {
+                      transactions: string[];
+                      withdrawals: {
+                        /**
+                         * @description The index of the withdrawal.
+                         * @example 1
+                         */
+                        index: string;
+                        /**
+                         * @description The index of the withdrawing validator.
+                         * @example 1
+                         */
+                        validator_index: string;
+                        /**
+                         * Format: hex
+                         * @description An address on the execution (Ethereum 1) network.
+                         * @example 0xAbcF8e0d4e9587369b2301D0790347320302cc09
+                         */
+                        address: string;
+                        /**
+                         * @description The value withdrawn (gwei).
+                         * @example 1
+                         */
+                        amount: string;
+                      }[];
+                    };
+                    /** @description The [`ExecutionRequests`](https://github.com/ethereum/consensus-specs/blob/v1.5.0/specs/electra/beacon-chain.md#executionrequests) object from the CL Electra spec. */
+                    execution_requests: {
+                      deposits: {
+                        /**
+                         * Format: hex
+                         * @description The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._
+                         * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
+                         */
+                        pubkey: string;
+                        /**
+                         * Format: hex
+                         * @description The withdrawal credentials.
+                         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                         */
+                        withdrawal_credentials: string;
+                        /**
+                         * @description The value to be deposited (gwei).
+                         * @example 1
+                         */
+                        amount: string;
+                        /**
+                         * Format: hex
+                         * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+                         */
+                        signature: string;
+                        /**
+                         * @description The index of the deposit request.
+                         * @example 1
+                         */
+                        index: string;
+                      }[];
+                      withdrawals: {
+                        /**
+                         * Format: hex
+                         * @description An address on the execution (Ethereum 1) network.
+                         * @example 0xAbcF8e0d4e9587369b2301D0790347320302cc09
+                         */
+                        source_address: string;
+                        /**
+                         * Format: hex
+                         * @description The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._
+                         * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
+                         */
+                        validator_pubkey: string;
+                        /**
+                         * @description The value to be withdrawn (gwei).
+                         * @example 1
+                         */
+                        amount: string;
+                      }[];
+                      consolidations: {
+                        /**
+                         * Format: hex
+                         * @description An address on the execution (Ethereum 1) network.
+                         * @example 0xAbcF8e0d4e9587369b2301D0790347320302cc09
+                         */
+                        source_address: string;
+                        /**
+                         * Format: hex
+                         * @description The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._
+                         * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
+                         */
+                        source_pubkey: string;
+                        /**
+                         * Format: hex
+                         * @description The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._
+                         * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
+                         */
+                        target_pubkey: string;
+                      }[];
+                    };
+                  };
+                };
+                kzg_proofs: string[];
+                blobs: string[];
+              }> &
+              Partial<
+                {
+                  /**
+                   * @description The slot to which this block corresponds.
+                   * @example 1
+                   */
+                  slot: string;
+                  /**
+                   * @description Index of validator in validator registry.
+                   * @example 1
+                   */
+                  proposer_index: string;
+                  /**
+                   * Format: hex
+                   * @description The signing Merkle root of the parent `BeaconBlock`.
+                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                   */
+                  parent_root: string;
+                  /**
+                   * Format: hex
+                   * @description The tree hash Merkle root of the `BeaconState` for the `BeaconBlock`.
+                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                   */
+                  state_root: string;
+                } & {
+                  /** @description A variant of the [`BeaconBlockBody`](https://github.com/ethereum/consensus-specs/blob/v1.5.0/specs/electra/beacon-chain.md#beaconblockbody) object from the CL Electra spec, which contains a transactions root rather than a full transactions list. */
+                  body: {
+                    randao_reveal: string & unknown;
+                    /** @description The [`Eth1Data`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#eth1data) object from the CL spec. */
+                    eth1_data: {
+                      /**
+                       * Format: hex
+                       * @description Root of the deposit tree.
+                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                       */
+                      deposit_root: string;
+                      /**
+                       * @description Total number of deposits.
+                       * @example 1
+                       */
+                      deposit_count: string;
+                      /**
+                       * Format: hex
+                       * @description Ethereum 1.x block hash.
+                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                       */
+                      block_hash: string;
+                    };
+                    /**
+                     * Format: hex
+                     * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                     */
+                    graffiti: string;
+                    proposer_slashings: {
+                      /** @description The [`SignedBeaconBlockHeader`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#signedbeaconblockheader) object envelope from the CL spec. */
+                      signed_header_1: {
+                        /** @description The [`BeaconBlockHeader`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#beaconblockheader) object from the CL spec. */
+                        message: {
+                          /**
+                           * @description The slot to which this block corresponds.
+                           * @example 1
+                           */
+                          slot: string;
+                          /**
+                           * @description Index of validator in validator registry.
+                           * @example 1
+                           */
+                          proposer_index: string;
+                          /**
+                           * Format: hex
+                           * @description The signing merkle root of the parent `BeaconBlock`.
+                           * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                           */
+                          parent_root: string;
+                          /**
+                           * Format: hex
+                           * @description The tree hash merkle root of the `BeaconState` for the `BeaconBlock`.
+                           * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                           */
+                          state_root: string;
+                        } & {
+                          /**
+                           * Format: hex
+                           * @description The tree hash merkle root of the `BeaconBlockBody` for the `BeaconBlock`
+                           * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                           */
+                          body_root: string;
+                        };
+                        /**
+                         * Format: hex
+                         * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+                         */
+                        signature: string;
+                      };
+                      /** @description The [`SignedBeaconBlockHeader`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#signedbeaconblockheader) object envelope from the CL spec. */
+                      signed_header_2: {
+                        /** @description The [`BeaconBlockHeader`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#beaconblockheader) object from the CL spec. */
+                        message: {
+                          /**
+                           * @description The slot to which this block corresponds.
+                           * @example 1
+                           */
+                          slot: string;
+                          /**
+                           * @description Index of validator in validator registry.
+                           * @example 1
+                           */
+                          proposer_index: string;
+                          /**
+                           * Format: hex
+                           * @description The signing merkle root of the parent `BeaconBlock`.
+                           * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                           */
+                          parent_root: string;
+                          /**
+                           * Format: hex
+                           * @description The tree hash merkle root of the `BeaconState` for the `BeaconBlock`.
+                           * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                           */
+                          state_root: string;
+                        } & {
+                          /**
+                           * Format: hex
+                           * @description The tree hash merkle root of the `BeaconBlockBody` for the `BeaconBlock`
+                           * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                           */
+                          body_root: string;
+                        };
+                        /**
+                         * Format: hex
+                         * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+                         */
+                        signature: string;
+                      };
+                    }[];
+                    attester_slashings: {
+                      /** @description The [`IndexedAttestation`](https://github.com/ethereum/consensus-specs/blob/v1.5.0/specs/electra/beacon-chain.md#indexedattestation) object from the CL spec. */
+                      attestation_1: {
+                        /** @description Attesting validator indices */
+                        attesting_indices: string[];
+                        /** @description The [`AttestationData`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#attestationdata) object from the CL spec. */
+                        data: {
+                          /** @example 1 */
+                          slot: string;
+                          /** @example 1 */
+                          index: string;
+                          /**
+                           * Format: hex
+                           * @description LMD GHOST vote.
+                           * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                           */
+                          beacon_block_root: string;
+                          /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
+                          source: {
+                            /** @example 1 */
+                            epoch: string;
+                            /**
+                             * Format: hex
+                             * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                             */
+                            root: string;
+                          };
+                          /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
+                          target: {
+                            /** @example 1 */
+                            epoch: string;
+                            /**
+                             * Format: hex
+                             * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                             */
+                            root: string;
+                          };
+                        };
+                        /**
+                         * Format: hex
+                         * @description The BLS signature of the `IndexedAttestation`, created by the validator of the attestation.
+                         * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+                         */
+                        signature: string;
+                      };
+                      /** @description The [`IndexedAttestation`](https://github.com/ethereum/consensus-specs/blob/v1.5.0/specs/electra/beacon-chain.md#indexedattestation) object from the CL spec. */
+                      attestation_2: {
+                        /** @description Attesting validator indices */
+                        attesting_indices: string[];
+                        /** @description The [`AttestationData`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#attestationdata) object from the CL spec. */
+                        data: {
+                          /** @example 1 */
+                          slot: string;
+                          /** @example 1 */
+                          index: string;
+                          /**
+                           * Format: hex
+                           * @description LMD GHOST vote.
+                           * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                           */
+                          beacon_block_root: string;
+                          /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
+                          source: {
+                            /** @example 1 */
+                            epoch: string;
+                            /**
+                             * Format: hex
+                             * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                             */
+                            root: string;
+                          };
+                          /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
+                          target: {
+                            /** @example 1 */
+                            epoch: string;
+                            /**
+                             * Format: hex
+                             * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                             */
+                            root: string;
+                          };
+                        };
+                        /**
+                         * Format: hex
+                         * @description The BLS signature of the `IndexedAttestation`, created by the validator of the attestation.
+                         * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+                         */
+                        signature: string;
+                      };
+                    }[];
+                    attestations: {
+                      /**
+                       * Format: hex
+                       * @description Attester aggregation bits.
+                       * @example 0x01
+                       */
+                      aggregation_bits: string;
+                      /** @description The [`AttestationData`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#attestationdata) object from the CL spec. */
+                      data: {
+                        /** @example 1 */
+                        slot: string;
+                        /** @example 1 */
+                        index: string;
+                        /**
+                         * Format: hex
+                         * @description LMD GHOST vote.
+                         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                         */
+                        beacon_block_root: string;
+                        /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
+                        source: {
+                          /** @example 1 */
+                          epoch: string;
+                          /**
+                           * Format: hex
+                           * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                           */
+                          root: string;
+                        };
+                        /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
+                        target: {
+                          /** @example 1 */
+                          epoch: string;
+                          /**
+                           * Format: hex
+                           * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                           */
+                          root: string;
+                        };
+                      };
+                      /**
+                       * Format: hex
+                       * @description BLS aggregate signature.
+                       * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+                       */
+                      signature: string;
+                      /**
+                       * Format: hex
+                       * @description Committee bits.
+                       * @example 0x0000000000000001
+                       */
+                      committee_bits: string;
+                    }[];
+                    deposits: {
+                      /** @description Branch in the deposit tree. */
+                      proof: string[];
+                      /** @description The [`DepositData`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#depositdata) object from the CL spec. */
+                      data: {
+                        /**
+                         * Format: hex
+                         * @description The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._
+                         * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
+                         */
+                        pubkey: string;
+                        /**
+                         * Format: hex
+                         * @description The withdrawal credentials.
+                         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                         */
+                        withdrawal_credentials: string;
+                        /**
+                         * @description Amount in Gwei.
+                         * @example 1
+                         */
+                        amount: string;
+                        /**
+                         * Format: hex
+                         * @description Container self-signature.
+                         * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+                         */
+                        signature: string;
+                      };
+                    }[];
+                    voluntary_exits: {
+                      /** @description The [`VoluntaryExit`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#voluntaryexit) object from the CL spec. */
+                      message: {
+                        /**
+                         * @description Minimum epoch for processing exit.
+                         * @example 1
+                         */
+                        epoch: string;
+                        /**
+                         * @description Index of the exiting validator.
+                         * @example 1
+                         */
+                        validator_index: string;
+                      };
+                      /**
+                       * Format: hex
+                       * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+                       */
+                      signature: string;
+                    }[];
+                    /** @description The [`SyncAggregate`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/altair/beacon-chain.md#syncaggregate) object from the CL Altair spec. */
+                    sync_aggregate: {
+                      /**
+                       * Format: hex
+                       * @description Aggregation bits of sync
+                       * @example 0x01
+                       */
+                      sync_committee_bits: string;
+                      /**
+                       * Format: hex
+                       * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+                       */
+                      sync_committee_signature: string;
+                    };
+                    bls_to_execution_changes: {
+                      /** @description The [`BLSToExecutionChange`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/capella/beacon-chain.md#blstoexecutionchange) object from the CL spec. */
+                      message: {
+                        /**
+                         * @description Index of the validator for which credentials will be changed.
+                         * @example 1
+                         */
+                        validator_index: string;
+                        /**
+                         * Format: hex
+                         * @description The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._
+                         * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
+                         */
+                        from_bls_pubkey: string;
+                        /**
+                         * Format: hex
+                         * @description Execution address to which the credentials will be changed.
+                         * @example 0xAbcF8e0d4e9587369b2301D0790347320302cc09
+                         */
+                        to_execution_address: string;
+                      };
+                      /**
+                       * Format: hex
+                       * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+                       */
+                      signature: string;
+                    }[];
+                    blob_kzg_commitments: string[];
+                  } & {
+                    /** @description The [`ExecutionPayloadHeader`](https://github.com/ethereum/consensus-specs/blob/v1.4.0/specs/deneb/beacon-chain.md#executionpayloadheader) object from the CL Deneb spec. */
                     execution_payload_header: {
                       /**
                        * Format: hex
@@ -44288,6 +45066,8 @@ export interface operations {
                       /** @example 1 */
                       base_fee_per_gas: string;
                       /** @example 1 */
+                      blob_gas_used: string;
+                      /** @example 1 */
                       excess_blob_gas: string;
                       /**
                        * Format: hex
@@ -44306,7 +45086,7 @@ export interface operations {
                        */
                       withdrawals_root: string;
                     };
-                    /** @description The [`ExecutionRequests`](https://github.com/ethereum/consensus-specs/blob/v1.5.0-beta.2/specs/electra/beacon-chain.md#executionrequests) object from the CL Electra spec. */
+                    /** @description The [`ExecutionRequests`](https://github.com/ethereum/consensus-specs/blob/v1.5.0/specs/electra/beacon-chain.md#executionrequests) object from the CL Electra spec. */
                     execution_requests: {
                       deposits: {
                         /**
@@ -44381,7 +45161,7 @@ export interface operations {
                 }
               > &
               Partial<{
-                /** @description The [`BeaconBlock`](https://github.com/ethereum/consensus-specs/blob/master/specs/phase0/beacon-chain.md#beaconblock) object from the CL Deneb spec. */
+                /** @description The [`BeaconBlock`](https://github.com/ethereum/consensus-specs/blob/v1.4.0/specs/phase0/beacon-chain.md#beaconblock) object from the CL Deneb spec. */
                 block: {
                   /**
                    * @description The slot to which this block corresponds.
@@ -44794,6 +45574,8 @@ export interface operations {
                       /** @example 1 */
                       base_fee_per_gas: string;
                       /** @example 1 */
+                      blob_gas_used: string;
+                      /** @example 1 */
                       excess_blob_gas: string;
                       /**
                        * Format: hex
@@ -44856,7 +45638,7 @@ export interface operations {
                    */
                   state_root: string;
                 } & {
-                  /** @description A variant of the [`BeaconBlockBody`](https://github.com/ethereum/consensus-specs/blob/master/specs/deneb/beacon-chain.md#beaconblockbody) object from the CL Deneb spec, which contains a transactions root rather than a full transactions list. */
+                  /** @description A variant of the [`BeaconBlockBody`](https://github.com/ethereum/consensus-specs/blob/v1.4.0/specs/deneb/beacon-chain.md#beaconblockbody) object from the CL Deneb spec, which contains a transactions root rather than a full transactions list. */
                   body: {
                     randao_reveal: string & unknown;
                     /** @description The [`Eth1Data`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#eth1data) object from the CL spec. */
@@ -45196,7 +45978,7 @@ export interface operations {
                     }[];
                     blob_kzg_commitments: string[];
                   } & {
-                    /** @description The [`ExecutionPayloadHeader`](https://github.com/ethereum/consensus-specs/blob/master/specs/deneb/beacon-chain.md#executionpayloadheader) object from the CL Deneb spec. */
+                    /** @description The [`ExecutionPayloadHeader`](https://github.com/ethereum/consensus-specs/blob/v1.4.0/specs/deneb/beacon-chain.md#executionpayloadheader) object from the CL Deneb spec. */
                     execution_payload_header: {
                       /**
                        * Format: hex
@@ -45245,6 +46027,8 @@ export interface operations {
                       extra_data: string;
                       /** @example 1 */
                       base_fee_per_gas: string;
+                      /** @example 1 */
+                      blob_gas_used: string;
                       /** @example 1 */
                       excess_blob_gas: string;
                       /**
@@ -47706,7 +48490,12 @@ export interface operations {
     };
   };
   /**
-   * Requests that the beacon node produce an AttestationData.
+   * Requests that the beacon node produce an `AttestationData`.
+   *
+   * For `slot`s in Electra and later, this `AttestationData` must have an `index` of `0`.
+   *
+   * For `slot`s in Gloas and later, the `index` in `AttestationData` is used to signal
+   * payload availability which is determined and set by the beacon node.
    *
    * A 503 error must be returned if the block identified by the response
    * `beacon_block_root` is optimistic (i.e. the attestation attests to a block
@@ -47717,8 +48506,13 @@ export interface operations {
       query: {
         /** The slot for which an attestation data should be created. */
         slot: string;
-        /** The committee index for which an attestation data should be created. */
-        committee_index: string;
+        /**
+         * @deprecated The committee index for which an attestation data should be created. For `slot`s in
+         * Electra and later, this parameter MAY always be set to 0.
+         * For `slot`s in Gloas and later, this parameter SHOULD be omitted, as the Beacon node
+         * SHOULD be setting the index based on network rules.
+         */
+        committee_index?: string;
       };
     };
     responses: {
@@ -47760,6 +48554,7 @@ export interface operations {
               };
             };
           };
+          'application/octet-stream': unknown;
         };
       };
       /** Invalid request syntax. */
@@ -47769,6 +48564,22 @@ export interface operations {
             /**
              * @description Either specific error code in case of invalid request or http status code
              * @example 400
+             */
+            code: number;
+            /** @description Message describing error */
+            message: string;
+            /** @description Optional stacktraces, sent when node is in debug mode */
+            stacktraces?: string[];
+          };
+        };
+      };
+      /** Accepted media type is not supported. */
+      406: {
+        content: {
+          'application/json': {
+            /**
+             * @description The media type in "Accept" header is unsupported, and the request has been rejected. This occurs when the server cannot produce a response in the format accepted by the client.
+             * @example 406
              */
             code: number;
             /** @description Message describing error */
@@ -47813,77 +48624,65 @@ export interface operations {
     };
   };
   /**
-   * Aggregates all attestations matching given attestation data root and slot.
+   * Requests that the beacon node produce a `PayloadAttestationData`.
    *
-   * A 503 error must be returned if the block identified by the response
-   * `beacon_block_root` is optimistic (i.e. the aggregated attestation attests
-   * to a block that has not been fully verified by an execution engine).
+   * This endpoint is used by PTC validators to obtain the data structure they need to attest to
+   * regarding payload presence and blob data availability for a specific slot.
    *
-   * A 404 error must be returned if no attestation is available for the requested
-   * `attestation_data_root`.
+   * A 503 error must be returned if the beacon node is currently syncing.
    */
-  getAggregatedAttestation: {
+  producePayloadAttestationData: {
     parameters: {
-      query: {
-        /** HashTreeRoot of AttestationData that validator wants aggregated */
-        attestation_data_root: string;
+      path: {
+        /** The slot for which payload attestation data should be created. */
         slot: string;
       };
     };
     responses: {
-      /** Returns aggregated `Attestation` object with same `AttestationData` root. */
+      /** Success response */
       200: {
+        headers: {
+          /**
+           * The active consensus version to which the data belongs. Required in response so client can deserialize returned json or ssz data
+           * more effectively.
+           */
+          'Eth-Consensus-Version':
+            | 'phase0'
+            | 'altair'
+            | 'bellatrix'
+            | 'capella'
+            | 'deneb'
+            | 'electra'
+            | 'fulu'
+            | 'gloas';
+        };
         content: {
           'application/json': {
-            /** @description The [`Attestation`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#attestation) object from the CL spec. */
+            /**
+             * @example gloas
+             * @enum {string}
+             */
+            version: 'gloas';
+            /** @description The [`PayloadAttestationData`](https://github.com/ethereum/consensus-specs/blob/v1.7.0-alpha.2/specs/gloas/beacon-chain.md#payloadattestationdata) object from the CL Gloas spec. */
             data: {
               /**
                * Format: hex
-               * @description Attester aggregation bits.
-               * @example 0x01
+               * @description Hash tree root of the beacon block associated with this PTC attestation
+               * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
                */
-              aggregation_bits: string;
-              /** @description The [`AttestationData`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#attestationdata) object from the CL spec. */
-              data: {
-                /** @example 1 */
-                slot: string;
-                /** @example 1 */
-                index: string;
-                /**
-                 * Format: hex
-                 * @description LMD GHOST vote.
-                 * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                 */
-                beacon_block_root: string;
-                /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
-                source: {
-                  /** @example 1 */
-                  epoch: string;
-                  /**
-                   * Format: hex
-                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                   */
-                  root: string;
-                };
-                /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
-                target: {
-                  /** @example 1 */
-                  epoch: string;
-                  /**
-                   * Format: hex
-                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                   */
-                  root: string;
-                };
-              };
+              beacon_block_root: string;
               /**
-               * Format: hex
-               * @description BLS aggregate signature.
-               * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+               * @description The slot for which the payload attestation is being made
+               * @example 1
                */
-              signature: string;
+              slot: string;
+              /** @description True if a `SignedExecutionPayloadEnvelope` has been seen referencing this block */
+              payload_present: boolean;
+              /** @description True if blob data is available for this block */
+              blob_data_available: boolean;
             };
           };
+          'application/octet-stream': unknown;
         };
       };
       /** Invalid request syntax. */
@@ -47902,8 +48701,24 @@ export interface operations {
           };
         };
       };
-      /** Not found */
-      404: {
+      /** Accepted media type is not supported. */
+      406: {
+        content: {
+          'application/json': {
+            /**
+             * @description The media type in "Accept" header is unsupported, and the request has been rejected. This occurs when the server cannot produce a response in the format accepted by the client.
+             * @example 406
+             */
+            code: number;
+            /** @description Message describing error */
+            message: string;
+            /** @description Optional stacktraces, sent when node is in debug mode */
+            stacktraces?: string[];
+          };
+        };
+      };
+      /** Beacon node internal error. */
+      500: {
         content: {
           'application/json': {
             /**
@@ -47918,8 +48733,8 @@ export interface operations {
           };
         };
       };
-      /** Beacon node internal error. */
-      500: {
+      /** Beacon node is currently syncing, try again later. */
+      503: {
         content: {
           'application/json': {
             /**
@@ -47969,12 +48784,14 @@ export interface operations {
             | 'bellatrix'
             | 'capella'
             | 'deneb'
-            | 'electra';
+            | 'electra'
+            | 'fulu'
+            | 'gloas';
         };
         content: {
           'application/json': {
             /**
-             * @example electra
+             * @example fulu
              * @enum {string}
              */
             version:
@@ -47983,7 +48800,8 @@ export interface operations {
               | 'bellatrix'
               | 'capella'
               | 'deneb'
-              | 'electra';
+              | 'electra'
+              | 'fulu';
             data: Partial<{
               /**
                * Format: hex
@@ -48085,6 +48903,7 @@ export interface operations {
                 signature: string;
               }>;
           };
+          'application/octet-stream': unknown;
         };
       };
       /** Invalid request syntax. */
@@ -48119,36 +48938,13 @@ export interface operations {
           };
         };
       };
-      /** Beacon node internal error. */
-      500: {
+      /** Accepted media type is not supported. */
+      406: {
         content: {
           'application/json': {
             /**
-             * @description Either specific error code in case of invalid request or http status code
-             * @example 404
-             */
-            code: number;
-            /** @description Message describing error */
-            message: string;
-            /** @description Optional stacktraces, sent when node is in debug mode */
-            stacktraces?: string[];
-          };
-        };
-      };
-    };
-  };
-  /** Verifies given aggregate and proofs and publishes them on appropriate gossipsub topic. */
-  publishAggregateAndProofs: {
-    responses: {
-      /** Successful response */
-      200: unknown;
-      /** Invalid request syntax. */
-      400: {
-        content: {
-          'application/json': {
-            /**
-             * @description Either specific error code in case of invalid request or http status code
-             * @example 400
+             * @description The media type in "Accept" header is unsupported, and the request has been rejected. This occurs when the server cannot produce a response in the format accepted by the client.
+             * @example 406
              */
             code: number;
             /** @description Message describing error */
@@ -48173,75 +48969,6 @@ export interface operations {
             stacktraces?: string[];
           };
         };
-      };
-    };
-    requestBody: {
-      content: {
-        'application/json': {
-          message: {
-            /** @example 1 */
-            aggregator_index: string;
-            /** @description The [`Attestation`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#attestation) object from the CL spec. */
-            aggregate: {
-              /**
-               * Format: hex
-               * @description Attester aggregation bits.
-               * @example 0x01
-               */
-              aggregation_bits: string;
-              /** @description The [`AttestationData`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#attestationdata) object from the CL spec. */
-              data: {
-                /** @example 1 */
-                slot: string;
-                /** @example 1 */
-                index: string;
-                /**
-                 * Format: hex
-                 * @description LMD GHOST vote.
-                 * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                 */
-                beacon_block_root: string;
-                /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
-                source: {
-                  /** @example 1 */
-                  epoch: string;
-                  /**
-                   * Format: hex
-                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                   */
-                  root: string;
-                };
-                /** @description The [`Checkpoint`](https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#checkpoint) object from the CL spec. */
-                target: {
-                  /** @example 1 */
-                  epoch: string;
-                  /**
-                   * Format: hex
-                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
-                   */
-                  root: string;
-                };
-              };
-              /**
-               * Format: hex
-               * @description BLS aggregate signature.
-               * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-               */
-              signature: string;
-            };
-          } & {
-            /**
-             * Format: hex
-             * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-             */
-            selection_proof: string;
-          };
-          /**
-           * Format: hex
-           * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
-           */
-          signature: string;
-        }[];
       };
     };
   };
@@ -48256,19 +48983,51 @@ export interface operations {
           | 'bellatrix'
           | 'capella'
           | 'deneb'
-          | 'electra';
+          | 'electra'
+          | 'fulu'
+          | 'gloas';
       };
     };
     responses: {
       /** Successful response */
       200: unknown;
-      /** Invalid request syntax. */
+      /** Errors with one or more aggregate and proofs */
       400: {
         content: {
           'application/json': {
             /**
              * @description Either specific error code in case of invalid request or http status code
              * @example 400
+             */
+            code: number;
+            /**
+             * @description Message describing error
+             * @example some failures
+             */
+            message: string;
+            /** @description List of individual items that have failed */
+            failures: {
+              /**
+               * @description Index of item in the request list that caused the error
+               * @example 3
+               */
+              index: number;
+              /**
+               * @description Message describing error
+               * @example invalid signature
+               */
+              message: string;
+            }[];
+          };
+        };
+      };
+      /** Supplied content-type is not supported. */
+      415: {
+        content: {
+          'application/json': {
+            /**
+             * @description The media type in "Content-Type" header is unsupported, and the request has been rejected. This occurs when a HTTP request supplies a payload in a content-type that the server is not able to handle.
+             * @example 415
              */
             code: number;
             /** @description Message describing error */
@@ -48302,7 +49061,7 @@ export interface operations {
             message: {
               /** @example 1 */
               aggregator_index: string;
-              /** @description The [`Attestation`](https://github.com/ethereum/consensus-specs/blob/v1.5.0-beta.2/specs/electra/beacon-chain.md#attestation) object from the CL spec. */
+              /** @description The [`Attestation`](https://github.com/ethereum/consensus-specs/blob/v1.5.0/specs/electra/beacon-chain.md#attestation) object from the CL spec. */
               aggregate: {
                 /**
                  * Format: hex
@@ -48437,6 +49196,7 @@ export interface operations {
               signature: string;
             }[]
           >;
+        'application/octet-stream': unknown;
       };
     };
   };
@@ -48592,9 +49352,9 @@ export interface operations {
    * implemented by a distributed validator middleware client. This endpoint is used to exchange partial
    * selection proofs for combined/aggregated selection proofs to allow a validator client
    * to correctly determine if any of its validators has been selected to perform an attestation aggregation duty in a slot.
-   * Validator clients running in a distributed validator cluster must query this endpoint at the start of an epoch for the current and lookahead (next) epochs for
-   * all validators that have attester duties in the current and lookahead epochs. Consensus clients need not support this
-   * endpoint and may return a 501.
+   * Validator clients running in a distributed validator cluster must query this endpoint at the start of an epoch either for all slots of
+   * the current epoch or for all slots of the current and all slots of the next epoch in two separate requests. In both cases it should be for
+   * all validators that have attester duties in the respective epoch. Consensus clients need not support this endpoint and may return a 501.
    */
   submitBeaconCommitteeSelections: {
     responses: {
@@ -48757,7 +49517,7 @@ export interface operations {
               /**
                * Format: hex
                * @description A bit is set if a signature from the validator at the corresponding index in the subcommittee is present in the aggregate `signature`.
-               * @example 0xffffffffffffffffffffffffffffffff
+               * @example 0x01
                */
               aggregation_bits: string;
               /**
@@ -48976,7 +49736,7 @@ export interface operations {
     responses: {
       /** Successful response */
       200: unknown;
-      /** Invalid request syntax. */
+      /** Errors with one or more contribution and proofs */
       400: {
         content: {
           'application/json': {
@@ -48985,10 +49745,24 @@ export interface operations {
              * @example 400
              */
             code: number;
-            /** @description Message describing error */
+            /**
+             * @description Message describing error
+             * @example some failures
+             */
             message: string;
-            /** @description Optional stacktraces, sent when node is in debug mode */
-            stacktraces?: string[];
+            /** @description List of individual items that have failed */
+            failures: {
+              /**
+               * @description Index of item in the request list that caused the error
+               * @example 3
+               */
+              index: number;
+              /**
+               * @description Message describing error
+               * @example invalid signature
+               */
+              message: string;
+            }[];
           };
         };
       };
@@ -49043,7 +49817,7 @@ export interface operations {
               /**
                * Format: hex
                * @description A bit is set if a signature from the validator at the corresponding index in the subcommittee is present in the aggregate `signature`.
-               * @example 0xffffffffffffffffffffffffffffffff
+               * @example 0x01
                */
               aggregation_bits: string;
               /**
@@ -49162,6 +49936,22 @@ export interface operations {
           };
         };
       };
+      /** Supplied content-type is not supported. */
+      415: {
+        content: {
+          'application/json': {
+            /**
+             * @description The media type in "Content-Type" header is unsupported, and the request has been rejected. This occurs when a HTTP request supplies a payload in a content-type that the server is not able to handle.
+             * @example 415
+             */
+            code: number;
+            /** @description Message describing error */
+            message: string;
+            /** @description Optional stacktraces, sent when node is in debug mode */
+            stacktraces?: string[];
+          };
+        };
+      };
       /** Beacon node internal error. */
       500: {
         content: {
@@ -49213,6 +50003,7 @@ export interface operations {
            */
           signature: string;
         }[];
+        'application/octet-stream': unknown;
       };
     };
   };
@@ -49293,6 +50084,151 @@ export interface operations {
       };
     };
   };
+  /** Retrieves execution payload bid for a given slot and builder. Depending on `Accept` header, it can be returned either as json or as bytes serialized by SSZ. */
+  getExecutionPayloadBid: {
+    parameters: {
+      path: {
+        /** Slot for which the execution payload bid is requested. Must be current slot or next slot. */
+        slot: string;
+        /** Index of the builder from which the execution payload bid is requested. */
+        builder_index: string;
+      };
+    };
+    responses: {
+      /** Successful response */
+      200: {
+        headers: {
+          /**
+           * The active consensus version to which the data belongs. Required in response so client can deserialize returned json or ssz data
+           * more effectively.
+           */
+          'Eth-Consensus-Version':
+            | 'phase0'
+            | 'altair'
+            | 'bellatrix'
+            | 'capella'
+            | 'deneb'
+            | 'electra'
+            | 'fulu'
+            | 'gloas';
+        };
+        content: {
+          'application/json': {
+            /**
+             * @example gloas
+             * @enum {string}
+             */
+            version: 'gloas';
+            /** @description The [`ExecutionPayloadBid`](https://github.com/ethereum/consensus-specs/blob/v1.7.0-alpha.2/specs/gloas/beacon-chain.md#executionpayloadbid) object from the CL Gloas spec. */
+            data: {
+              /**
+               * Format: hex
+               * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+               */
+              parent_block_hash: string;
+              /**
+               * Format: hex
+               * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+               */
+              parent_block_root: string;
+              /**
+               * Format: hex
+               * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+               */
+              block_hash: string;
+              /**
+               * Format: hex
+               * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+               */
+              prev_randao: string;
+              /**
+               * Format: hex
+               * @description An address on the execution (Ethereum 1) network.
+               * @example 0xAbcF8e0d4e9587369b2301D0790347320302cc09
+               */
+              fee_recipient: string;
+              /** @example 1 */
+              gas_limit: string;
+              /** @example 1 */
+              builder_index: string;
+              /** @example 1 */
+              slot: string;
+              /** @example 1 */
+              value: string;
+              /** @example 1 */
+              execution_payment: string;
+              blob_kzg_commitments: string[];
+            };
+          };
+          'application/octet-stream': unknown;
+        };
+      };
+      /** Invalid request - the slot or builder_index is invalid */
+      400: {
+        content: {
+          'application/json': {
+            /**
+             * @description Either specific error code in case of invalid request or http status code
+             * @example 404
+             */
+            code: number;
+            /** @description Message describing error */
+            message: string;
+            /** @description Optional stacktraces, sent when node is in debug mode */
+            stacktraces?: string[];
+          };
+        };
+      };
+      /** Execution payload bid not available for the requested slot and builder */
+      404: {
+        content: {
+          'application/json': {
+            /**
+             * @description Either specific error code in case of invalid request or http status code
+             * @example 404
+             */
+            code: number;
+            /** @description Message describing error */
+            message: string;
+            /** @description Optional stacktraces, sent when node is in debug mode */
+            stacktraces?: string[];
+          };
+        };
+      };
+      /** Accepted media type is not supported. */
+      406: {
+        content: {
+          'application/json': {
+            /**
+             * @description The media type in "Accept" header is unsupported, and the request has been rejected. This occurs when the server cannot produce a response in the format accepted by the client.
+             * @example 406
+             */
+            code: number;
+            /** @description Message describing error */
+            message: string;
+            /** @description Optional stacktraces, sent when node is in debug mode */
+            stacktraces?: string[];
+          };
+        };
+      };
+      /** Beacon node internal error. */
+      500: {
+        content: {
+          'application/json': {
+            /**
+             * @description Either specific error code in case of invalid request or http status code
+             * @example 404
+             */
+            code: number;
+            /** @description Message describing error */
+            message: string;
+            /** @description Optional stacktraces, sent when node is in debug mode */
+            stacktraces?: string[];
+          };
+        };
+      };
+    };
+  };
   /**
    * Provides endpoint to subscribe to beacon node Server-Sent-Events stream.
    * Consumers should use [eventsource](https://html.spec.whatwg.org/multipage/server-sent-events.html#the-eventsource-interface)
@@ -49321,7 +50257,10 @@ export interface operations {
           | 'light_client_finality_update'
           | 'light_client_optimistic_update'
           | 'payload_attributes'
-          | 'blob_sidecar'
+          | 'data_column_sidecar'
+          | 'execution_payload_available'
+          | 'execution_payload_bid'
+          | 'payload_attestation_message'
         )[];
       };
     };

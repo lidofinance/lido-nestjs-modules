@@ -215,12 +215,12 @@ describe('Beacon endpoints', () => {
     expect(mockFetch).toBeCalledWith('/eth/v1/beacon/headers/1', undefined);
   });
 
-  test('publishBlock', async () => {
-    await expect(consensusService.publishBlock()).rejects.toThrow();
+  test('publishBlockV2', async () => {
+    await expect(consensusService.publishBlockV2()).rejects.toThrow();
   });
 
-  test('publishBlindedBlock', async () => {
-    await expect(consensusService.publishBlindedBlock()).rejects.toThrow();
+  test('publishBlindedBlockV2', async () => {
+    await expect(consensusService.publishBlindedBlockV2()).rejects.toThrow();
   });
 
   test('getBlockV2', async () => {
@@ -237,57 +237,111 @@ describe('Beacon endpoints', () => {
     expect(mockFetch).toBeCalledWith('/eth/v1/beacon/blocks/1/root', undefined);
   });
 
-  test('getBlockAttestations', async () => {
-    await consensusService.getBlockAttestations({ blockId: '1' });
+  test('getBlockAttestationsV2', async () => {
+    await consensusService.getBlockAttestationsV2({ blockId: '1' });
 
     expect(mockFetch).toBeCalledTimes(1);
     expect(mockFetch).toBeCalledWith(
-      '/eth/v1/beacon/blocks/1/attestations',
+      '/eth/v2/beacon/blocks/1/attestations',
       undefined,
     );
   });
 
-  test('getPoolAttestations', async () => {
-    await consensusService.getPoolAttestations({
+  test('getPoolAttestationsV2', async () => {
+    await consensusService.getPoolAttestationsV2({
       slot: '1',
       committeeIndex: '2',
     });
 
     expect(mockFetch).toBeCalledTimes(1);
     expect(mockFetch).toBeCalledWith(
-      '/eth/v1/beacon/pool/attestations?slot=1&committee_index=2',
+      '/eth/v2/beacon/pool/attestations?slot=1&committee_index=2',
       undefined,
     );
   });
 
-  test('getPoolAttestations', async () => {
-    await consensusService.getPoolAttestations();
+  test('getPoolAttestationsV2 without args', async () => {
+    await consensusService.getPoolAttestationsV2();
 
     expect(mockFetch).toBeCalledTimes(1);
     expect(mockFetch).toBeCalledWith(
-      '/eth/v1/beacon/pool/attestations',
+      '/eth/v2/beacon/pool/attestations',
       undefined,
     );
   });
 
-  test('submitPoolAttestations', async () => {
-    await expect(consensusService.submitPoolAttestations()).rejects.toThrow();
+  test('submitPoolAttestationsV2', async () => {
+    await expect(consensusService.submitPoolAttestationsV2()).rejects.toThrow();
   });
 
-  test('getPoolAttesterSlashings', async () => {
-    await consensusService.getPoolAttesterSlashings();
+  test('getPoolAttesterSlashingsV2', async () => {
+    await consensusService.getPoolAttesterSlashingsV2();
 
     expect(mockFetch).toBeCalledTimes(1);
     expect(mockFetch).toBeCalledWith(
-      '/eth/v1/beacon/pool/attester_slashings',
+      '/eth/v2/beacon/pool/attester_slashings',
       undefined,
     );
   });
 
-  test('submitPoolAttesterSlashings', async () => {
+  test('submitPoolAttesterSlashingsV2', async () => {
     await expect(
-      consensusService.submitPoolAttesterSlashings(),
+      consensusService.submitPoolAttesterSlashingsV2(),
     ).rejects.toThrow();
+  });
+
+  test('getPoolPayloadAttestations with slot', async () => {
+    await consensusService.getPoolPayloadAttestations({ slot: '42' });
+
+    expect(mockFetch).toBeCalledTimes(1);
+    expect(mockFetch).toBeCalledWith(
+      '/eth/v1/beacon/pool/payload_attestations?slot=42',
+      undefined,
+    );
+  });
+
+  test('getPoolPayloadAttestations without args', async () => {
+    await consensusService.getPoolPayloadAttestations();
+
+    expect(mockFetch).toBeCalledTimes(1);
+    expect(mockFetch).toBeCalledWith(
+      '/eth/v1/beacon/pool/payload_attestations',
+      undefined,
+    );
+  });
+
+  test('submitPayloadAttestationMessages', async () => {
+    await expect(
+      consensusService.submitPayloadAttestationMessages(),
+    ).rejects.toThrow();
+  });
+
+  test('getSignedExecutionPayloadEnvelope', async () => {
+    await consensusService.getSignedExecutionPayloadEnvelope({
+      blockId: 'head',
+    });
+
+    expect(mockFetch).toBeCalledTimes(1);
+    expect(mockFetch).toBeCalledWith(
+      '/eth/v1/beacon/execution_payload_envelope/head',
+      undefined,
+    );
+  });
+
+  test('publishExecutionPayloadBid', async () => {
+    await expect(
+      consensusService.publishExecutionPayloadBid(),
+    ).rejects.toThrow();
+  });
+
+  test('getProposerLookahead', async () => {
+    await consensusService.getProposerLookahead({ stateId: 'head' });
+
+    expect(mockFetch).toBeCalledTimes(1);
+    expect(mockFetch).toBeCalledWith(
+      '/eth/v1/beacon/states/head/proposer_lookahead',
+      undefined,
+    );
   });
 
   test('getPoolProposerSlashings', async () => {

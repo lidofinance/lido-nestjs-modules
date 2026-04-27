@@ -21,14 +21,51 @@ export class ConsensusValidatorService extends ConsensusBaseService {
     );
   }
 
+  /**
+   * Versioned variant of getProposerDuties. Available from Glamsterdam (Gloas)
+   * onwards: response payload is a Glamsterdam-specific shape that distinguishes
+   * proposer slots from those allocated to the Payload Timeliness Committee.
+   */
+  public async getProposerDutiesV2(
+    args: ConsensusMethodArgs<'getProposerDutiesV2'>,
+  ): ConsensusMethodResult<'getProposerDutiesV2'> {
+    const { epoch, options } = args;
+    return await this.fetch(
+      `/eth/v2/validator/duties/proposer/${epoch}`,
+      options,
+    );
+  }
+
+  /**
+   * Requests the beacon node to provide a set of Payload Timeliness Committee duties for the given epoch.
+   * Introduced in Glamsterdam (Gloas) for ePBS.
+   */
+  public async getPtcDuties(): ConsensusMethodResult<'getPtcDuties'> {
+    throw new Error('Method is not implemented');
+  }
+
   /** Requests the beacon node to provide a set of sync committee duties for a particular epoch. */
   public async getSyncCommitteeDuties(): ConsensusMethodResult<'getSyncCommitteeDuties'> {
     throw new Error('Method is not implemented');
   }
 
-  /** Requests a beacon node to provide an aggregated attestation. */
-  public async getAggregatedAttestationV2(): ConsensusMethodResult<'getAggregatedAttestationV2'> {
-    throw new Error('Method is not implemented');
+  /**
+   * Aggregates all attestations matching given attestation data root, slot and committee index.
+   * Versioned response variant; the v1 variant has been removed from beacon-APIs.
+   */
+  public async getAggregatedAttestationV2(
+    args: ConsensusMethodArgs<'getAggregatedAttestationV2'>,
+  ): ConsensusMethodResult<'getAggregatedAttestationV2'> {
+    const { slot, attestationDataRoot, committeeIndex, options } = args;
+    const search = this.getSearchString({
+      slot,
+      attestationDataRoot,
+      committeeIndex,
+    });
+    return await this.fetch(
+      `/eth/v2/validator/aggregate_attestation${search}`,
+      options,
+    );
   }
 
   /** Requests a beacon node to produce a valid block, which can then be signed by a validator. */
@@ -55,20 +92,39 @@ export class ConsensusValidatorService extends ConsensusBaseService {
     );
   }
 
-  /** Aggregates all attestations matching given attestation data root and slot */
-  public async getAggregatedAttestation(
-    args: ConsensusMethodArgs<'getAggregatedAttestation'>,
-  ): ConsensusMethodResult<'getAggregatedAttestation'> {
-    const { slot, attestationDataRoot, options } = args;
-    const search = this.getSearchString({ slot, attestationDataRoot });
+  /**
+   * Requests the beacon node to produce a PayloadAttestationData object for the given slot.
+   * Introduced in Glamsterdam (Gloas) for ePBS.
+   */
+  public async producePayloadAttestationData(
+    args: ConsensusMethodArgs<'producePayloadAttestationData'>,
+  ): ConsensusMethodResult<'producePayloadAttestationData'> {
+    const { slot, options } = args;
     return await this.fetch(
-      `/eth/v1/validator/aggregate_attestation${search}`,
+      `/eth/v1/validator/payload_attestation_data/${slot}`,
       options,
     );
   }
 
-  /** Verifies given aggregate and proofs and publishes them on appropriate gossipsub topic. */
-  public async publishAggregateAndProofs(): ConsensusMethodResult<'publishAggregateAndProofs'> {
+  /**
+   * Returns the ExecutionPayloadBid produced by the given builder for the requested slot.
+   * Introduced in Glamsterdam (Gloas) for ePBS.
+   */
+  public async getExecutionPayloadBid(
+    args: ConsensusMethodArgs<'getExecutionPayloadBid'>,
+  ): ConsensusMethodResult<'getExecutionPayloadBid'> {
+    const { slot, builderIndex, options } = args;
+    return await this.fetch(
+      `/eth/v1/validator/execution_payload_bid/${slot}/${builderIndex}`,
+      options,
+    );
+  }
+
+  /**
+   * Verifies given aggregate and proofs and publishes them on appropriate gossipsub topic.
+   * Versioned variant introduced in beacon-APIs v3.
+   */
+  public async publishAggregateAndProofsV2(): ConsensusMethodResult<'publishAggregateAndProofsV2'> {
     throw new Error('Method is not implemented');
   }
 

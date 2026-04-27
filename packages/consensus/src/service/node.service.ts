@@ -46,6 +46,17 @@ export class ConsensusNodeService extends ConsensusBaseService {
     return await this.fetch(`/eth/v1/node/version`, options);
   }
 
+  /**
+   * Versioned variant of getNodeVersion introduced in beacon-APIs v5; the response is a
+   * structured object identifying both beacon and (optional) execution clients.
+   */
+  public async getNodeVersionV2(
+    args?: ConsensusMethodArgs<'getNodeVersionV2'>,
+  ): ConsensusMethodResult<'getNodeVersionV2'> {
+    const { options } = args || {};
+    return await this.fetch(`/eth/v2/node/version`, options);
+  }
+
   /** Requests the beacon node to describe if it's currently syncing or not, and if it is, what block it is up to. */
   public async getSyncingStatus(
     args?: ConsensusMethodArgs<'getSyncingStatus'>,

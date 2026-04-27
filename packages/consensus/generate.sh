@@ -1,6 +1,6 @@
 #!/bin/bash
 
-oapi="https://github.com/ethereum/beacon-APIs/releases/download/v3.0.0/beacon-node-oapi.json"
+oapi="https://github.com/ethereum/beacon-APIs/releases/download/v5.0.0-alpha.1/beacon-node-oapi.json"
 tempfile="./api.json"
 filename="./src/interfaces/generated.interface.ts"
 prettierrc="../../.prettierrc"
@@ -9,16 +9,6 @@ prettierrc="../../.prettierrc"
 wget -O $tempfile $oapi
 npx openapi-typescript@5.4.0 $tempfile --output $filename
 rm -f $tempfile
-
-# fix statuses in getStateValidators query
-search="        ) &"
-replace="        ) |"
-if [[ "$OSTYPE" == "darwin"* ]]; then
-  # it requres gnu-sed on macos
-  gsed -i "s/$search/$replace/" $filename
-else
-  sed -i "s/$search/$replace/" $filename
-fi
 
 # format file with prettier
 npx prettier --config $prettierrc --write $filename
