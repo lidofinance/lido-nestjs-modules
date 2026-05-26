@@ -76,6 +76,10 @@ describe('Execution module. ', () => {
 
       range(0, fallbackProvidersQty).forEach((i) => {
         if (mockedProvider.fallbackProviders[i]) {
+          mockedProvider.fallbackProviders[i].network = {
+            name: 'mainnet',
+            chainId: 1,
+          };
           mockedFallbackProviderFetch[i] = jest
             .spyOn(mockedProvider.fallbackProviders[i].provider, 'fetchJson')
             .mockImplementation(fakeFetchImpl());

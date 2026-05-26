@@ -255,31 +255,42 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
 
   protected get provider(): FallbackProvider {
     if (this.activeFallbackProviderIndex > this.fallbackProviders.length - 1) {
+      this.logger.warn(
+        this.formatLog(
+          `Value of activeFallbackProviderIndex (= ${this.activeFallbackProviderIndex}) is not less than the total number of providers (${this.fallbackProviders.length}). This should not normally happen. Switching to the first provider in the list.`,
+          this.activeFallbackProviderIndex,
+        ),
+      );
       this.activeFallbackProviderIndex = 0;
     }
 
     let fallbackProvider =
       this.fallbackProviders[this.activeFallbackProviderIndex];
-    let attempt = 0;
+    let attempt = 1;
 
-    const isValid = (provider: FallbackProvider): boolean =>
-      provider.network !== null &&
-      provider.network.chainId === getNetworkChain(this.config.network);
-
+    // skipping providers with unreachable endpoints or networks
+    // that are not equal to predefined network (from config)
     while (
-      !isValid(fallbackProvider) &&
+      !this._isValidProvider(fallbackProvider) &&
       attempt < this.fallbackProviders.length
     ) {
+      this.logger.warn(
+        this.formatLog(
+          `Provider ${this.activeFallbackProviderIndex} is not valid. Switching to the next provider. Attempt ${attempt}/${this.fallbackProviders.length}`,
+          this.activeFallbackProviderIndex,
+        ),
+      );
+
+      this.switchToNextProvider();
       fallbackProvider =
         this.fallbackProviders[this.activeFallbackProviderIndex];
-
-      // skipping providers with unreachable endpoints or networks
-      // that are not equal to predefined network (from config)
-      if (!isValid(fallbackProvider)) {
-        this.activeFallbackProviderIndex++;
-      }
-
       attempt++;
+    }
+
+    if (!this._isValidProvider(fallbackProvider)) {
+      throw new AllProvidersFailedError(
+        `No valid providers found in the list of ${this.fallbackProviders.length} providers`,
+      );
     }
 
     return fallbackProvider;
@@ -306,9 +317,10 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
 
   protected isNonRetryableError(error: Error | unknown): boolean {
     return (
-      !isEthersServerError(error) &&
-      isErrorHasCode(error) &&
-      nonRetryableErrors.includes(error.code)
+      (!isEthersServerError(error) &&
+        isErrorHasCode(error) &&
+        nonRetryableErrors.includes(error.code)) ||
+      error instanceof AllProvidersFailedError
     );
   }
 
@@ -583,6 +595,13 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
         this._eventEmitter.emit('rpc', event);
       });
     }
+  }
+
+  private _isValidProvider(provider: FallbackProvider): boolean {
+    return (
+      provider.network != null &&
+      provider.network.chainId === getNetworkChain(this.config.network)
+    );
   }
 
   /**
