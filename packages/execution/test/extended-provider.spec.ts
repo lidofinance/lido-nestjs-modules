@@ -414,7 +414,39 @@ describe('Execution module. ', () => {
         await mockedProvider.getBlock(42);
         await mockedProvider.getBlock(32);
       }).rejects.toThrowError(
-        new FetchError('Partial payload batch result. Response 44 not found'),
+        new FetchError('Partial payload batch result. Response 44 not found.'),
+      );
+      expect(mockedProviderFetch).toBeCalledTimes(3);
+    });
+
+    test('should throw exception on JsonRpc error when partial rpc response with a custom error message and structure received from node', async () => {
+      await createMocks(10, 10);
+
+      // this will trigger network detection and provider initialization
+      await mockedProvider.getBlock(1000);
+
+      const fakeFetchImplWithRPCError = async (): Promise<unknown[]> => {
+        return [
+          {
+            code: -32005,
+            data: {
+              see: 'https://rpc.provider.dashboard',
+            },
+            message: 'Too Many Requests',
+          },
+        ];
+      };
+
+      mockedProviderFetch.mockImplementation(fakeFetchImplWithRPCError);
+
+      await expect(async () => {
+        // these requests will be batched
+        await mockedProvider.getBlock(42);
+        await mockedProvider.getBlock(32);
+      }).rejects.toThrowError(
+        new FetchError(
+          'Partial payload batch result. Response 44 not found. Possible reason: "Too Many Requests".',
+        ),
       );
       expect(mockedProviderFetch).toBeCalledTimes(3);
     });
