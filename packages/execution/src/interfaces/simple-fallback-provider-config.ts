@@ -17,8 +17,11 @@ export interface SimpleFallbackProviderConfig {
   minBackoffMs?: number;
   maxBackoffMs?: number;
 
-  // log retry attempts if needed
+  // log warn retry attempts if needed
   logRetries?: boolean;
+
+  // log successful attempts if needed
+  logSuccessfulAttempts?: boolean;
 
   // time to reset active provider index to 0 and provider unreachable flags
   resetIntervalMs?: number;

@@ -120,6 +120,7 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
       minBackoffMs: 500,
       maxBackoffMs: 5000,
       logRetries: true,
+      logSuccessfulAttempts: true,
       resetIntervalMs: 10000,
       maxTimeWithoutNewBlocksMs: 60000,
       ...config,
@@ -338,12 +339,14 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
         attempt++;
 
         // Log which provider we're attempting to use
-        this.logger.log(
-          this.formatLog(
-            `Attempting ${method} (attempt ${attempt}/${this.fallbackProviders.length})`,
-            this.activeFallbackProviderIndex,
-          ),
-        );
+        if (this.config.logSuccessfulAttempts) {
+          this.logger.log(
+            this.formatLog(
+              `Attempting ${method} (attempt ${attempt}/${this.fallbackProviders.length})`,
+              this.activeFallbackProviderIndex,
+            ),
+          );
+        }
 
         // awaiting is extremely important here
         // without it, the error will not be caught in current try-catch scope
@@ -367,12 +370,14 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
         });
 
         // Log successful request
-        this.logger.log(
-          this.formatLog(
-            `${method} successful after ${performRetryAttempt} retry attempt(s)`,
-            this.activeFallbackProviderIndex,
-          ),
-        );
+        if (this.config.logSuccessfulAttempts) {
+          this.logger.log(
+            this.formatLog(
+              `${method} successful after ${performRetryAttempt} retry attempt(s)`,
+              this.activeFallbackProviderIndex,
+            ),
+          );
+        }
 
         return result;
       } catch (e) {

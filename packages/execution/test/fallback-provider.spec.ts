@@ -58,6 +58,7 @@ describe('Execution module. ', () => {
       maxConcurrentRequests = 2,
       maxRetries = 1,
       logRetries = false,
+      logSuccessfulAttempts = true,
       urls: NonEmptyArray<string | ConnectionInfo> | null = null,
       fetchMiddlewares?: MiddlewareCallback<Promise<any>>[], // eslint-disable-line @typescript-eslint/no-explicit-any
       resetIntervalMs?: number,
@@ -83,6 +84,7 @@ describe('Execution module. ', () => {
             network: 1,
             maxRetries: maxRetries,
             logRetries: logRetries,
+            logSuccessfulAttempts: logSuccessfulAttempts,
             resetIntervalMs: resetIntervalMs,
             requestTimeoutMs: requestTimeoutMs,
             fetchMiddlewares,
@@ -217,7 +219,7 @@ describe('Execution module. ', () => {
     test('should do fallback to second provider if first provider is unavailable, but after 2 seconds do a reset (switch) to the first provider', async () => {
       jest.setTimeout(5000);
 
-      await createMocks(2, 1, 1, 1, false, null, undefined, 2000);
+      await createMocks(2, 1, 1, 1, false, true, null, undefined, 2000);
 
       // first provider always fails
       mockedFallbackProviderFetch[0].mockImplementation(
@@ -332,7 +334,7 @@ describe('Execution module. ', () => {
         { url: '' },
         'http://localhost:8545',
       ];
-      await createMocks(2, 1, 1, 2, false, urls);
+      await createMocks(2, 1, 1, 2, false, true, urls);
 
       expect(<any>mockedProvider.fallbackProviders.length).toBe(1);
 
@@ -352,7 +354,7 @@ describe('Execution module. ', () => {
       ];
 
       await expect(
-        async () => await createMocks(4, 1, 1, 2, false, urls),
+        async () => await createMocks(4, 1, 1, 2, false, true, urls),
       ).rejects.toThrow('No valid URLs or Connections were provided');
     });
 
@@ -484,7 +486,7 @@ describe('Execution module. ', () => {
 
     test('should work when one fallback endpoint is unreachable at startup, but have different network ENS or Name after being reachable again', async () => {
       jest.setTimeout(5000);
-      await createMocks(2, 1, 1, 1, false, null, undefined, 2000);
+      await createMocks(2, 1, 1, 1, false, true, null, undefined, 2000);
 
       const mockedNetworksEqual = jest
         .spyOn(mockedProvider, 'networksEqual')
@@ -533,7 +535,7 @@ describe('Execution module. ', () => {
         'but appears to be reachable after startup with network(s), different to predefined network',
       async () => {
         jest.setTimeout(5000);
-        await createMocks(2, 1, 1, 1, false, null, undefined, 2000);
+        await createMocks(2, 1, 1, 1, false, true, null, undefined, 2000);
 
         mockedFallbackProviderFetch[0].mockImplementation(
           makeFakeFetchImplThatFailsFirstNRequests(3, 2, 10000),
@@ -657,7 +659,7 @@ describe('Execution module. ', () => {
         },
       ];
 
-      await createMocks(1, 1, 1, 1, false, undefined, middlewares);
+      await createMocks(1, 1, 1, 1, false, true, undefined, middlewares);
 
       expect(mockCallback).toBeCalledTimes(0);
 
@@ -1216,6 +1218,7 @@ describe('Execution module. ', () => {
         1,
         1, // maxRetries = 1 (no retry)
         false,
+        true,
         null,
         undefined,
         undefined,
@@ -1260,6 +1263,7 @@ describe('Execution module. ', () => {
         1,
         1,
         false,
+        true,
         null,
         undefined,
         undefined,
@@ -1392,6 +1396,102 @@ describe('Execution module. ', () => {
       logSpy.mockRestore();
     });
 
+    test('should log successful attempts when logSuccessfulAttempts is enabled (default)', async () => {
+      await createMocks(2);
+
+      const logSpy = jest.spyOn(mockedProvider['logger'], 'log');
+
+      await mockedProvider.getBlock(42);
+
+      const logCalls = logSpy.mock.calls.map((call) => call[0]);
+      const attemptingLogs = logCalls.filter(
+        (msg) => typeof msg === 'string' && msg.includes('Attempting'),
+      );
+      const successfulLogs = logCalls.filter(
+        (msg) => typeof msg === 'string' && msg.includes('successful after'),
+      );
+
+      expect(attemptingLogs.length).toBeGreaterThan(0);
+      expect(successfulLogs.length).toBeGreaterThan(0);
+
+      logSpy.mockRestore();
+    });
+
+    test('should not log successful attempts when logSuccessfulAttempts is disabled', async () => {
+      await createMocks(2, 2, 2, 1, false, false);
+
+      const logSpy = jest.spyOn(mockedProvider['logger'], 'log');
+
+      await mockedProvider.getBlock(42);
+
+      const logCalls = logSpy.mock.calls.map((call) => call[0]);
+      const attemptingLogs = logCalls.filter(
+        (msg) => typeof msg === 'string' && msg.includes('Attempting'),
+      );
+      const successfulLogs = logCalls.filter(
+        (msg) => typeof msg === 'string' && msg.includes('successful after'),
+      );
+
+      expect(attemptingLogs.length).toBe(0);
+      expect(successfulLogs.length).toBe(0);
+
+      logSpy.mockRestore();
+    });
+
+    test('should still log errors when logSuccessfulAttempts is disabled', async () => {
+      await createMocks(
+        2,
+        1,
+        1,
+        1,
+        false,
+        false, // logSuccessfulAttempts
+        null,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+      );
+
+      const logSpy = jest.spyOn(mockedProvider['logger'], 'log');
+      const errorSpy = jest.spyOn(mockedProvider['logger'], 'error');
+
+      // Establish network with a working request first so the failing
+      // request below reaches the per-attempt error path inside perform()
+      await mockedProvider.getBlock(42);
+
+      // Success logs stay suppressed even on a successful request
+      const successLogsAfterOk = logSpy.mock.calls
+        .map((call) => call[0])
+        .filter(
+          (msg) =>
+            typeof msg === 'string' &&
+            (msg.includes('Attempting') || msg.includes('successful after')),
+        );
+      expect(successLogsAfterOk.length).toBe(0);
+
+      logSpy.mockClear();
+      errorSpy.mockClear();
+
+      // Now make every provider fail
+      mockedFallbackProviderFetch[0].mockImplementation(
+        fakeFetchImplThatAlwaysFails,
+      );
+      mockedFallbackProviderFetch[1].mockImplementation(
+        fakeFetchImplThatAlwaysFails,
+      );
+
+      await expect(
+        async () => await mockedProvider.getBlock(1000),
+      ).rejects.toThrow(/All attempts to do ETH1 RPC request failed/);
+
+      // Errors must still be logged regardless of the flag
+      expect(errorSpy).toHaveBeenCalled();
+
+      logSpy.mockRestore();
+      errorSpy.mockRestore();
+    });
+
     test('should work when logger.debug is undefined', async () => {
       await createMocks(2);
 
@@ -1415,6 +1515,7 @@ describe('Execution module. ', () => {
         1,
         1,
         false,
+        true,
         null,
         undefined,
         undefined,
