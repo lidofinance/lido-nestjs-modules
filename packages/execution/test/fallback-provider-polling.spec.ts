@@ -76,10 +76,6 @@ describe('Execution module. ', () => {
 
       range(0, fallbackProvidersQty).forEach((i) => {
         if (mockedProvider.fallbackProviders[i]) {
-          mockedProvider.fallbackProviders[i].network = {
-            name: 'mainnet',
-            chainId: 1,
-          };
           mockedFallbackProviderFetch[i] = jest
             .spyOn(mockedProvider.fallbackProviders[i].provider, 'fetchJson')
             .mockImplementation(fakeFetchImpl());
@@ -105,13 +101,19 @@ describe('Execution module. ', () => {
 
       await sleep(2000);
 
-      const noNewBlocksErrors = errors.filter(
-        (err) => err instanceof NoNewBlocksWhilePollingError,
+      errors.forEach((err, i) =>
+        console.log(`error[${i}]: ${err.constructor.name}: ${err.message}`),
+      );
+
+      const errorDescriptions = errors.map(
+        (err) => `${err.constructor.name}: ${err.message}`,
       );
 
       expect(listenerMock).toBeCalledTimes(1);
-      expect(errors.length).toBe(1);
-      expect(noNewBlocksErrors.length).toBe(1);
+      expect(errorDescriptions).toEqual([
+        'NoNewBlocksWhilePollingError: No new blocks for a long time while polling',
+      ]);
+      expect(errors[0]).toBeInstanceOf(NoNewBlocksWhilePollingError);
 
       mockedProvider.removeAllListeners();
     });
@@ -132,7 +134,9 @@ describe('Execution module. ', () => {
       // Ensure that the listener was called with the correct arguments
       expect(listener).toHaveBeenCalledTimes(1);
       expect(listener).toHaveBeenCalledWith(blockNumber);
-      expect(errors.length).toBe(0);
+      expect(
+        errors.map((err) => `${err.constructor.name}: ${err.message}`),
+      ).toEqual([]);
 
       mockedProvider.removeAllListeners();
     });

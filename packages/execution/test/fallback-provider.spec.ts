@@ -95,11 +95,6 @@ describe('Execution module. ', () => {
 
       range(0, fallbackProvidersQty).forEach((i) => {
         if (mockedProvider.fallbackProviders[i]) {
-          mockedProvider.fallbackProviders[i].network = {
-            name: 'mainnet',
-            chainId: 1,
-          };
-
           mockedFallbackProviderFetch[i] = jest
             .spyOn(mockedProvider.fallbackProviders[i].provider, 'fetchJson')
             .mockImplementation(fakeFetchImpl());
@@ -1458,26 +1453,37 @@ describe('Execution module. ', () => {
         expect(warnLogCall).toBeDefined();
       });
 
-      test('should throw error during RPC call when there are no valid providers', async () => {
+      test('should log a warning and return the last fallback provider in the list when there are no valid providers during RPC call', async () => {
         await createMocks(2);
-        await mockedProvider.getBlock(42);
+        const provider = mockedProvider as any;
+        await provider.getBlock(42);
         const warnSpy = jest.spyOn(mockedProvider['logger'], 'warn');
 
-        mockedProvider.fallbackProviders[0].network = null;
-        mockedProvider.fallbackProviders[1].network = null;
+        provider.fallbackProviders[0].network = null;
+        provider.fallbackProviders[1].network = null;
 
-        await expect(
-          mockedProvider.perform('getBlock', { blockTag: '0x2710' }),
-        ).rejects.toThrow(AllProvidersFailedError);
+        await provider.perform('getBlock', {
+          blockTag: '0x2710',
+        });
+        expect(provider.activeFallbackProviderIndex).toBe(1);
 
-        const warnLogCall = warnSpy.mock.calls.find(
+        const warnLogCall1 = warnSpy.mock.calls.find(
           (call) =>
             typeof call[0] === 'string' &&
             call[0].includes(
               'Provider 0 is not valid. Switching to the next provider. Attempt 1/2',
             ),
         );
-        expect(warnLogCall).toBeDefined();
+        expect(warnLogCall1).toBeDefined();
+
+        const warnLogCall2 = warnSpy.mock.calls.find(
+          (call) =>
+            typeof call[0] === 'string' &&
+            call[0].includes(
+              'No valid providers found in the list of 2 providers',
+            ),
+        );
+        expect(warnLogCall2).toBeDefined();
       });
 
       test('should switch to the next provider if current one is invalid during RPC call', async () => {
