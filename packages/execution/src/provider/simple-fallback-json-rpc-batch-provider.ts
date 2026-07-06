@@ -320,10 +320,9 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
 
   protected isNonRetryableError(error: Error | unknown): boolean {
     return (
-      (!isEthersServerError(error) &&
-        isErrorHasCode(error) &&
-        nonRetryableErrors.includes(error.code)) ||
-      error instanceof AllProvidersFailedError
+      !isEthersServerError(error) &&
+      isErrorHasCode(error) &&
+      nonRetryableErrors.includes(error.code)
     );
   }
 
