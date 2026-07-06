@@ -171,6 +171,21 @@ describe('SimpleFallbackJsonRpcBatchProvider provider selection', () => {
     expect(fetchMocks[1]).toHaveBeenCalledTimes(0); // invalid provider skipped
   });
 
+  // The entry guard of the getter is unreachable through normal operation:
+  // the wrap-around keeps the index in bounds by construction. It remains
+  // as a safety net for any future code that writes the index directly —
+  // pin its contract so it stays covered and working.
+  test('normalizes an out-of-bounds active index to the first provider', async () => {
+    await createProvider();
+    setProviderState([true, true], 0);
+    provider.activeFallbackProviderIndex = 5;
+
+    const returned: { index: number } = (provider as any).provider;
+
+    expect(returned.index).toBe(0);
+    expect(provider.activeFallbackProviderIndex).toBe(0);
+  });
+
   // The trigger sequence: everything runs on healthy provider 0 until a
   // single transient network error makes the perform catch block switch to
   // the invalid provider 1. The very next attempt inside the same perform
