@@ -255,6 +255,14 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
   }
 
   protected get provider(): FallbackProvider {
+    // out-of-bounds safety net. Before the wrap-around below existed, this
+    // guard was also the accidental self-heal for maxRetries >= 2 configs:
+    // a scan crash left the index at `length`, the retrier re-entered the
+    // getter within the same perform attempt (bypassing switchToNextProvider,
+    // whose modulo would have pulled the index back in range past provider 0),
+    // and this reset routed the retry to provider 0. With maxRetries = 1
+    // every path to the getter went through switchToNextProvider first, so
+    // the guard never fired and requests failed permanently
     if (this.activeFallbackProviderIndex > this.fallbackProviders.length - 1) {
       this.activeFallbackProviderIndex = 0;
     }
@@ -277,12 +285,19 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
       // skipping providers with unreachable endpoints or networks
       // that are not equal to predefined network (from config)
       if (!isValid(fallbackProvider)) {
-        this.activeFallbackProviderIndex++;
+        // wrap around: a plain increment would walk past the array end when
+        // the scan starts at the last provider (crash on isValid(undefined))
+        // and would never reach valid providers at lower indexes
+        this.activeFallbackProviderIndex =
+          (this.activeFallbackProviderIndex + 1) %
+          this.fallbackProviders.length;
       }
 
       attempt++;
     }
 
+    // if all providers are invalid, the last examined one is returned:
+    // a real request to it fails with a real error instead of a crash here
     return fallbackProvider;
   }
 
