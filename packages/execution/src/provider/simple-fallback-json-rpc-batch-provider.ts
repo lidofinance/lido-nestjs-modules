@@ -287,7 +287,21 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
       attempt++;
     }
 
-    if (!this._isValidProvider(fallbackProvider)) {
+    if (
+      !this._isValidProvider(fallbackProvider)
+      // this.fallbackProviders.some((c) => c.unreachable)
+    ) {
+      // "no valid providers" has two distinct causes and only one of them
+      // is an error state:
+      // - at least one endpoint was probed and failed (marked unreachable):
+      //   the state is known-bad and cannot heal by itself, because
+      //   detectNetwork skips unreachable providers — reset the flags so
+      //   the next detectNetwork re-probes all endpoints, and fail fast;
+      // - no provider is marked unreachable: networks are simply not
+      //   detected yet (right after startup ethers fires the first request
+      //   in parallel with detectNetwork). Fall through and return the
+      //   current provider — the real request does not depend on the
+      //   `network` mark and goes through
       this.resetFallbacks();
       throw new AllProvidersFailedError(
         `No valid providers found in the list of ${this.fallbackProviders.length} providers`,

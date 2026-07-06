@@ -95,11 +95,6 @@ describe('Execution module. ', () => {
 
       range(0, fallbackProvidersQty).forEach((i) => {
         if (mockedProvider.fallbackProviders[i]) {
-          mockedProvider.fallbackProviders[i].network = {
-            name: 'mainnet',
-            chainId: 1,
-          };
-
           mockedFallbackProviderFetch[i] = jest
             .spyOn(mockedProvider.fallbackProviders[i].provider, 'fetchJson')
             .mockImplementation(fakeFetchImpl());
@@ -1463,8 +1458,14 @@ describe('Execution module. ', () => {
         await mockedProvider.getBlock(42);
         const warnSpy = jest.spyOn(mockedProvider['logger'], 'warn');
 
+        // the state detectNetwork leaves after failed probes: network is
+        // cleared and the provider is marked unreachable (network=null with
+        // unreachable=false means "not probed yet" and must NOT throw —
+        // that is the normal state right after startup)
         mockedProvider.fallbackProviders[0].network = null;
+        mockedProvider.fallbackProviders[0].unreachable = true;
         mockedProvider.fallbackProviders[1].network = null;
+        mockedProvider.fallbackProviders[1].unreachable = true;
 
         await expect(
           mockedProvider.perform('getBlock', { blockTag: '0x2710' }),
