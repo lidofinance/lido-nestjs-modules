@@ -288,6 +288,7 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
     }
 
     if (!this._isValidProvider(fallbackProvider)) {
+      this.resetFallbacks();
       throw new AllProvidersFailedError(
         `No valid providers found in the list of ${this.fallbackProviders.length} providers`,
       );
