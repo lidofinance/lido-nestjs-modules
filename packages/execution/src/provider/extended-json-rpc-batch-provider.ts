@@ -234,12 +234,17 @@ export class ExtendedJsonRpcBatchProvider extends JsonRpcProvider {
 
             // For each batch, feed it to the correct Promise, depending
             // on whether it was a success or error
-            batch.forEach((inflightRequest) => {
+            batch.forEach((inflightRequest, index) => {
               const payload = resultMap[inflightRequest.request.id];
               if (!payload) {
-                const error = new FetchError(
-                  `Partial payload batch result. Response ${inflightRequest.request.id} not found`,
-                );
+                const errMessage = `Partial payload batch result. Response ${inflightRequest.request.id} not found.`;
+                const extraResponseErrMessage = (batchResult[index] as any)
+                  ?.message;
+                const detailedMessage =
+                  extraResponseErrMessage != null
+                    ? ` Possible reason: "${extraResponseErrMessage}".`
+                    : '';
+                const error = new FetchError(errMessage + detailedMessage);
                 error.code = ErrorCode.PARTIAL_BATCH_RESULT;
                 error.data = {
                   requestedId: inflightRequest.request.id,

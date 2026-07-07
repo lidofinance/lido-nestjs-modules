@@ -1529,5 +1529,88 @@ describe('Execution module. ', () => {
       expect(formatted).toContain('test message');
       expect(formatted).not.toContain('undefined');
     });
+
+    describe('provider selection and validation', () => {
+      test('should handle out of bonds activeFallbackProviderIndex during RPC call', async () => {
+        await createMocks(2);
+        const provider = mockedProvider as any;
+        const warnSpy = jest.spyOn(mockedProvider['logger'], 'warn');
+
+        // Ensure network is set
+        await provider.getBlock(42);
+        provider.activeFallbackProviderIndex = 2;
+
+        const block = await provider.getBlock(43);
+        expect(block.hash).toBe(fixtures.eth_getBlockByNumber.default.hash);
+        expect(provider.activeFallbackProviderIndex).toBe(0);
+
+        const warnLogCall = warnSpy.mock.calls.find(
+          (call) =>
+            typeof call[0] === 'string' &&
+            call[0].includes(
+              'Value of activeFallbackProviderIndex (= 2) is not less than the total number of providers (2). This should not normally happen. Switching to the first provider in the list.',
+            ),
+        );
+        expect(warnLogCall).toBeDefined();
+      });
+
+      test('should log a warning and return the last fallback provider in the list when there are no valid providers during RPC call', async () => {
+        await createMocks(2);
+        const provider = mockedProvider as any;
+        await provider.getBlock(42);
+        const warnSpy = jest.spyOn(mockedProvider['logger'], 'warn');
+
+        provider.fallbackProviders[0].network = null;
+        provider.fallbackProviders[1].network = null;
+
+        await provider.perform('getBlock', {
+          blockTag: '0x2710',
+        });
+        expect(provider.activeFallbackProviderIndex).toBe(1);
+
+        const warnLogCall1 = warnSpy.mock.calls.find(
+          (call) =>
+            typeof call[0] === 'string' &&
+            call[0].includes(
+              'Provider 0 is not valid. Switching to the next provider. Attempt 1/2',
+            ),
+        );
+        expect(warnLogCall1).toBeDefined();
+
+        const warnLogCall2 = warnSpy.mock.calls.find(
+          (call) =>
+            typeof call[0] === 'string' &&
+            call[0].includes(
+              'No valid providers found in the list of 2 providers',
+            ),
+        );
+        expect(warnLogCall2).toBeDefined();
+      });
+
+      test('should switch to the next provider if current one is invalid during RPC call', async () => {
+        await createMocks(2);
+        const provider = mockedProvider as any;
+        await provider.getBlock(42);
+        const warnSpy = jest.spyOn(mockedProvider['logger'], 'warn');
+
+        provider.fallbackProviders[0].network = null;
+        provider.activeFallbackProviderIndex = 0;
+
+        const block = await provider.perform('getBlock', {
+          blockTag: '0x2710',
+        });
+        expect(block.hash).toBe(fixtures.eth_getBlockByNumber.default.hash);
+        expect(provider.activeFallbackProviderIndex).toBe(1);
+
+        const warnLogCall = warnSpy.mock.calls.find(
+          (call) =>
+            typeof call[0] === 'string' &&
+            call[0].includes(
+              'Provider 0 is not valid. Switching to the next provider. Attempt 1/2',
+            ),
+        );
+        expect(warnLogCall).toBeDefined();
+      });
+    });
   });
 });
