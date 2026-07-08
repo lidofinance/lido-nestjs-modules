@@ -137,7 +137,7 @@ problem related to the inability to install @chainsafe/blst dependencies under d
 
 #### Why does it happen?!
 
-It happens because https://www.npmjs.com/package/@chainsafe/blst doesn't provide native C binding to https://github.com/supranational/blst under darwin arm64.
+It happens because [npm](https://www.npmjs.com/package/@chainsafe/blst) doesn't provide native C binding to [blst](https://github.com/supranational/blst) under darwin arm64.
 Such as there no native binding, a user has to compile C binding to blst lab manually for darwin arm64.
 @chainsafe/blst has compile option but inside itself for downloading dependencies this lib uses Python language.
 Historically MacOs uses alias python3 for python. So then @chainsafe/blst fails with an error that it could not install all dependencies.
