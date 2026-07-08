@@ -83,11 +83,6 @@
   },
   {
     "inputs": [],
-    "name": "LidoCanNotDeposit",
-    "type": "error"
-  },
-  {
-    "inputs": [],
     "name": "ModuleNonceChanged",
     "type": "error"
   },

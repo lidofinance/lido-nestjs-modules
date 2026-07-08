@@ -116,22 +116,6 @@
     "inputs": [
       {
         "internalType": "uint256",
-        "name": "limitPerDay",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "appearedPerDay",
-        "type": "uint256"
-      }
-    ],
-    "name": "AppearedEthAmountPerDayLimitExceeded",
-    "type": "error"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint256",
         "name": "value",
         "type": "uint256"
       },
@@ -201,27 +185,6 @@
     "inputs": [
       {
         "internalType": "uint256",
-        "name": "baselineBalance",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "totalDeposits",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "totalCLWithdrawals",
-        "type": "uint256"
-      }
-    ],
-    "name": "IncorrectCLBalanceDecreaseWindowData",
-    "type": "error"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint256",
         "name": "annualBalanceDiff",
         "type": "uint256"
       }
@@ -281,7 +244,7 @@
     "inputs": [
       {
         "internalType": "uint256",
-        "name": "requestCreationBlock",
+        "name": "requestCreationTimestamp",
         "type": "uint256"
       }
     ],
@@ -565,12 +528,6 @@
         "indexed": false,
         "internalType": "uint256",
         "name": "clBalance",
-        "type": "uint256"
-      },
-      {
-        "indexed": false,
-        "internalType": "uint256",
-        "name": "deposits",
         "type": "uint256"
       },
       {
@@ -1192,85 +1149,6 @@
     "inputs": [
       {
         "internalType": "uint256",
-        "name": "_appearedEthAmountPerDay",
-        "type": "uint256"
-      }
-    ],
-    "name": "checkAppearedEthAmountPerDay",
-    "outputs": [],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint256[]",
-        "name": "_stakingModuleIdsWithUpdatedBalance",
-        "type": "uint256[]"
-      },
-      {
-        "internalType": "uint256[]",
-        "name": "_validatorBalancesWeiByStakingModule",
-        "type": "uint256[]"
-      },
-      {
-        "internalType": "uint256",
-        "name": "_clValidatorsBalanceWei",
-        "type": "uint256"
-      }
-    ],
-    "name": "checkCLBalancesConsistency",
-    "outputs": [],
-    "stateMutability": "pure",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "_timeElapsed",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "_preCLValidatorsBalance",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "_preCLPendingBalance",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "_postCLValidatorsBalance",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "_postCLPendingBalance",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "_withdrawalVaultBalance",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "_deposits",
-        "type": "uint256"
-      }
-    ],
-    "name": "checkCLPendingBalanceIncrease",
-    "outputs": [],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint256",
         "name": "_maxBalanceExitRequestedPerReportInEth",
         "type": "uint256"
       }
@@ -1293,7 +1171,7 @@
         "type": "uint256"
       }
     ],
-    "name": "checkExitedEthAmountPerDay",
+    "name": "checkExitedValidatorsCount",
     "outputs": [],
     "stateMutability": "view",
     "type": "function"
@@ -1700,6 +1578,45 @@
         "internalType": "bool",
         "name": "",
         "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "isPostMigrationFirstReportDone",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "lastReportTimestamp",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "lastVaultBalanceAfterTransfer",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
       }
     ],
     "stateMutability": "view",
