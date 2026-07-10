@@ -83,6 +83,20 @@
     "type": "function"
   },
   {
+    "constant": true,
+    "inputs": [],
+    "name": "BUFFER_RESERVE_MANAGER_ROLE",
+    "outputs": [
+      {
+        "name": "",
+        "type": "bytes32"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "constant": false,
     "inputs": [
       {
@@ -108,7 +122,35 @@
   {
     "constant": true,
     "inputs": [],
-    "name": "getFastLaneMaxAllowedAmount",
+    "name": "STAKING_CONTROL_ROLE",
+    "outputs": [
+      {
+        "name": "",
+        "type": "bytes32"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": false,
+    "inputs": [
+      {
+        "name": "_newDepositsReserveTarget",
+        "type": "uint256"
+      }
+    ],
+    "name": "setDepositsReserveTarget",
+    "outputs": [],
+    "payable": false,
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [],
+    "name": "getDepositsReserveTarget",
     "outputs": [
       {
         "name": "",
@@ -120,17 +162,25 @@
     "type": "function"
   },
   {
-    "constant": true,
-    "inputs": [],
-    "name": "STAKING_CONTROL_ROLE",
-    "outputs": [
+    "constant": false,
+    "inputs": [
       {
-        "name": "",
-        "type": "bytes32"
+        "name": "_lidoLocator",
+        "type": "address"
+      },
+      {
+        "name": "_eip712StETH",
+        "type": "address"
+      },
+      {
+        "name": "_depositsReserveTarget",
+        "type": "uint256"
       }
     ],
-    "payable": false,
-    "stateMutability": "view",
+    "name": "initialize",
+    "outputs": [],
+    "payable": true,
+    "stateMutability": "payable",
     "type": "function"
   },
   {
@@ -234,7 +284,7 @@
         "type": "uint256"
       },
       {
-        "name": "_depositsCount",
+        "name": "_seedDepositsCount",
         "type": "uint256"
       }
     ],
@@ -379,20 +429,6 @@
     "type": "function"
   },
   {
-    "constant": false,
-    "inputs": [
-      {
-        "name": "_newDepositedValidators",
-        "type": "uint256"
-      }
-    ],
-    "name": "unsafeChangeDepositedValidators",
-    "outputs": [],
-    "payable": false,
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
     "constant": true,
     "inputs": [],
     "name": "PAUSE_ROLE",
@@ -400,6 +436,32 @@
       {
         "name": "",
         "type": "bytes32"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [],
+    "name": "getBalanceStats",
+    "outputs": [
+      {
+        "name": "clValidatorsBalanceAtLastReport",
+        "type": "uint256"
+      },
+      {
+        "name": "clPendingBalanceAtLastReport",
+        "type": "uint256"
+      },
+      {
+        "name": "depositedSinceLastReport",
+        "type": "uint256"
+      },
+      {
+        "name": "depositedForCurrentReport",
+        "type": "uint256"
       }
     ],
     "payable": false,
@@ -473,24 +535,6 @@
   },
   {
     "constant": false,
-    "inputs": [
-      {
-        "name": "_lidoLocator",
-        "type": "address"
-      },
-      {
-        "name": "_eip712StETH",
-        "type": "address"
-      }
-    ],
-    "name": "initialize",
-    "outputs": [],
-    "payable": true,
-    "stateMutability": "payable",
-    "type": "function"
-  },
-  {
-    "constant": false,
     "inputs": [],
     "name": "receiveELRewards",
     "outputs": [],
@@ -528,6 +572,28 @@
     ],
     "payable": false,
     "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": false,
+    "inputs": [
+      {
+        "name": "_reportTimestamp",
+        "type": "uint256"
+      },
+      {
+        "name": "_clValidatorsBalance",
+        "type": "uint256"
+      },
+      {
+        "name": "_clPendingBalance",
+        "type": "uint256"
+      }
+    ],
+    "name": "processClStateUpdate",
+    "outputs": [],
+    "payable": false,
+    "stateMutability": "nonpayable",
     "type": "function"
   },
   {
@@ -633,28 +699,6 @@
         "type": "uint256"
       }
     ],
-    "payable": false,
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "constant": false,
-    "inputs": [
-      {
-        "name": "_reportTimestamp",
-        "type": "uint256"
-      },
-      {
-        "name": "_clActiveBalance",
-        "type": "uint256"
-      },
-      {
-        "name": "_clPendingBalance",
-        "type": "uint256"
-      }
-    ],
-    "name": "processClStateUpdateV2",
-    "outputs": [],
     "payable": false,
     "stateMutability": "nonpayable",
     "type": "function"
@@ -874,6 +918,20 @@
   {
     "constant": true,
     "inputs": [],
+    "name": "getWithdrawalsReserve",
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [],
     "name": "getContractVersion",
     "outputs": [
       {
@@ -897,6 +955,20 @@
     ],
     "payable": false,
     "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": false,
+    "inputs": [
+      {
+        "name": "_depositsReserveTarget",
+        "type": "uint256"
+      }
+    ],
+    "name": "finalizeUpgrade_v4",
+    "outputs": [],
+    "payable": false,
+    "stateMutability": "nonpayable",
     "type": "function"
   },
   {
@@ -1129,20 +1201,6 @@
   {
     "constant": true,
     "inputs": [],
-    "name": "UNSAFE_CHANGE_DEPOSITED_VALIDATORS_ROLE",
-    "outputs": [
-      {
-        "name": "",
-        "type": "bytes32"
-      }
-    ],
-    "payable": false,
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "constant": true,
-    "inputs": [],
     "name": "getBeaconStat",
     "outputs": [
       {
@@ -1150,11 +1208,11 @@
         "type": "uint256"
       },
       {
-        "name": "clActiveBalance",
+        "name": "beaconValidators",
         "type": "uint256"
       },
       {
-        "name": "clPendingBalance",
+        "name": "beaconBalance",
         "type": "uint256"
       }
     ],
@@ -1166,20 +1224,6 @@
     "constant": false,
     "inputs": [],
     "name": "removeStakingLimit",
-    "outputs": [],
-    "payable": false,
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "constant": false,
-    "inputs": [
-      {
-        "name": "_amount",
-        "type": "uint256"
-      }
-    ],
-    "name": "setFastLaneMaxAllowedAmount",
     "outputs": [],
     "payable": false,
     "stateMutability": "nonpayable",
@@ -1361,6 +1405,20 @@
   {
     "constant": true,
     "inputs": [],
+    "name": "getDepositsReserve",
+    "outputs": [
+      {
+        "name": "depositsReserve",
+        "type": "uint256"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [],
     "name": "getDepositableEther",
     "outputs": [
       {
@@ -1478,29 +1536,7 @@
       },
       {
         "indexed": false,
-        "name": "preCLValidators",
-        "type": "uint256"
-      },
-      {
-        "indexed": false,
-        "name": "postCLValidators",
-        "type": "uint256"
-      }
-    ],
-    "name": "CLValidatorsUpdated",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": true,
-        "name": "reportTimestamp",
-        "type": "uint256"
-      },
-      {
-        "indexed": false,
-        "name": "clActiveBalance",
+        "name": "clValidatorsBalance",
         "type": "uint256"
       },
       {
@@ -1517,11 +1553,11 @@
     "inputs": [
       {
         "indexed": false,
-        "name": "clPendingBalance",
+        "name": "depositedPostReport",
         "type": "uint256"
       }
     ],
-    "name": "CLPendingBalancesUpdated",
+    "name": "DepositedPostReportUpdated",
     "type": "event"
   },
   {
@@ -1782,11 +1818,23 @@
     "inputs": [
       {
         "indexed": false,
-        "name": "amount",
+        "name": "depositsReserve",
         "type": "uint256"
       }
     ],
-    "name": "FastLaneMaxAllowedAmountSet",
+    "name": "DepositsReserveSet",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "name": "depositsReserveTarget",
+        "type": "uint256"
+      }
+    ],
+    "name": "DepositsReserveTargetSet",
     "type": "event"
   },
   {
