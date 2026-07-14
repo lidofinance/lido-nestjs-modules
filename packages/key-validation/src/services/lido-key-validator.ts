@@ -40,7 +40,7 @@ export class LidoKeyValidator implements LidoKeyValidatorInterface {
     }
 
     const keysByModule = this.groupKeysByModule(lidoKeys);
-    const results: [Key & LidoKey & T, boolean][] = [];
+    let results: [Key & LidoKey & T, boolean][] = [];
 
     for (const [moduleId, moduleKeys] of keysByModule) {
       const possibleWC =
@@ -49,7 +49,7 @@ export class LidoKeyValidator implements LidoKeyValidatorInterface {
         moduleKeys,
         possibleWC,
       );
-      results.push(...moduleResults);
+      results = results.concat(moduleResults);
     }
 
     return results;
