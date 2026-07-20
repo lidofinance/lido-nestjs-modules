@@ -1,6 +1,6 @@
 #!/bin/bash
 
-oapi="https://github.com/ethereum/beacon-APIs/releases/download/v5.0.0-alpha.1/beacon-node-oapi.json"
+oapi="https://github.com/ethereum/beacon-APIs/releases/download/v5.0.0-alpha.2/beacon-node-oapi.json"
 tempfile="./api.json"
 filename="./src/interfaces/generated.interface.ts"
 prettierrc="../../.prettierrc"

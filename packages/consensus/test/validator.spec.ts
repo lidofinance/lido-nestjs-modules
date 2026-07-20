@@ -114,7 +114,7 @@ describe('Validator endpoints', () => {
 
     expect(mockFetch).toBeCalledTimes(1);
     expect(mockFetch).toBeCalledWith(
-      '/eth/v1/validator/execution_payload_bid/5/7',
+      '/eth/v1/validator/execution_payload_bids/5/7',
       undefined,
     );
   });

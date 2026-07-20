@@ -115,7 +115,7 @@ export class ConsensusValidatorService extends ConsensusBaseService {
   ): ConsensusMethodResult<'getExecutionPayloadBid'> {
     const { slot, builderIndex, options } = args;
     return await this.fetch(
-      `/eth/v1/validator/execution_payload_bid/${slot}/${builderIndex}`,
+      `/eth/v1/validator/execution_payload_bids/${slot}/${builderIndex}`,
       options,
     );
   }

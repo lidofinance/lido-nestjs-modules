@@ -251,7 +251,7 @@ export class ConsensusBeaconService extends ConsensusBaseService {
   ): ConsensusMethodResult<'getSignedExecutionPayloadEnvelope'> {
     const { blockId, options } = args;
     return await this.fetch(
-      `/eth/v1/beacon/execution_payload_envelope/${blockId}`,
+      `/eth/v1/beacon/execution_payload_envelopes/${blockId}`,
       options,
     );
   }

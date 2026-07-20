@@ -156,7 +156,7 @@ export interface paths {
      */
     post: operations['publishBlockV2'];
   };
-  '/eth/v1/beacon/execution_payload_bid': {
+  '/eth/v1/beacon/execution_payload_bids': {
     /**
      * Instructs the beacon node to broadcast a signed execution payload bid to the network,
      * to be gossiped for potential inclusion in block building. A success response (20x) indicates
@@ -164,7 +164,7 @@ export interface paths {
      */
     post: operations['publishExecutionPayloadBid'];
   };
-  '/eth/v1/beacon/execution_payload_envelope/{block_id}': {
+  '/eth/v1/beacon/execution_payload_envelopes/{block_id}': {
     /**
      * Retrieves signed execution payload envelope for a given block id.
      * Depending on `Accept` header it can be returned either as json or as bytes serialized by SSZ.
@@ -416,10 +416,9 @@ export interface paths {
   '/eth/v1/validator/duties/attester/{epoch}': {
     /**
      * Requests the beacon node to provide a set of attestation duties, which should be performed by validators, for a particular epoch.
-     * Duties should only need to be checked once per epoch, however a chain reorganization (of > MIN_SEED_LOOKAHEAD epochs) could occur, resulting in a change of duties. For full safety, you should monitor head events and confirm the dependent root in this response matches:
-     * - event.previous_duty_dependent_root when `compute_epoch_at_slot(event.slot) == epoch`
-     * - event.current_duty_dependent_root when `compute_epoch_at_slot(event.slot) + 1 == epoch`
-     * - event.block otherwise
+     * Duties should only need to be checked once per epoch, however a chain reorganization (of > MIN_SEED_LOOKAHEAD epochs) could occur, resulting in a change of duties. For full safety, you should monitor head_v2 events and confirm the dependent root in this response matches:
+     * - event.current_epoch_dependent_root when `compute_epoch_at_slot(event.slot) == epoch`
+     * - event.next_epoch_dependent_root when `compute_epoch_at_slot(event.slot) + 1 == epoch`
      *
      * The dependent_root value is `get_block_root_at_slot(state, compute_start_slot_at_epoch(epoch - 1) - 1)` or the genesis block root in the case of underflow.
      */
@@ -439,19 +438,11 @@ export interface paths {
   '/eth/v2/validator/duties/proposer/{epoch}': {
     /**
      * Request beacon node to provide all validators that are scheduled to propose a block in the given epoch.
-     * Duties should only need to be checked once per epoch, however a chain reorganization could occur that results in a change of duties. For full safety, you should monitor head events and confirm the dependent root in this response matches. After Fulu, different checks need to be performed as the dependent root changes due to deterministic proposer lookahead.
+     * Duties should only need to be checked once per epoch, however a chain reorganization could occur that results in a change of duties. For full safety, you should monitor head_v2 events and confirm the dependent root in this response matches:
+     * - event.current_epoch_dependent_root when `compute_epoch_at_slot(event.slot) == epoch`
+     * - event.next_epoch_dependent_root when `compute_epoch_at_slot(event.slot) + 1 == epoch`
      *
-     * Before Fulu:
-     * - event.current_duty_dependent_root when `compute_epoch_at_slot(event.slot) == epoch`
-     * - event.block otherwise
-     * - dependent_root value is `get_block_root_at_slot(state, compute_start_slot_at_epoch(epoch) - 1)`
-     *
-     * After Fulu:
-     * - event.previous_duty_dependent_root when `compute_epoch_at_slot(event.slot) == epoch`
-     * - event.block otherwise
-     * - dependent_root value is `get_block_root_at_slot(state, compute_start_slot_at_epoch(epoch - 1) - 1)`
-     *
-     * The dependent_root value is the genesis block root in the case of underflow.
+     * The dependent_root value is `get_block_root_at_slot(state, compute_start_slot_at_epoch(epoch - 1) - 1)` or the genesis block root in the case of underflow.
      */
     get: operations['getProposerDutiesV2'];
   };
@@ -462,10 +453,9 @@ export interface paths {
   '/eth/v1/validator/duties/ptc/{epoch}': {
     /**
      * Requests the beacon node to provide a set of Payload Timeliness Committee (PTC) duties, which should be performed by validators, for a particular epoch.
-     * Duties should only need to be checked once per epoch, however a chain reorganization (of > MIN_SEED_LOOKAHEAD epochs) could occur, resulting in a change of duties. For full safety, you should monitor head events and confirm the dependent root in this response matches:
-     * - event.previous_duty_dependent_root when `compute_epoch_at_slot(event.slot) == epoch`
-     * - event.current_duty_dependent_root when `compute_epoch_at_slot(event.slot) + 1 == epoch`
-     * - event.block otherwise
+     * Duties should only need to be checked once per epoch, however a chain reorganization (of > MIN_SEED_LOOKAHEAD epochs) could occur, resulting in a change of duties. For full safety, you should monitor head_v2 events and confirm the dependent root in this response matches:
+     * - event.current_epoch_dependent_root when `compute_epoch_at_slot(event.slot) == epoch`
+     * - event.next_epoch_dependent_root when `compute_epoch_at_slot(event.slot) + 1 == epoch`
      *
      * The dependent_root value is `get_block_root_at_slot(state, compute_start_slot_at_epoch(epoch - 1) - 1)` or the genesis block root in the case of underflow.
      */
@@ -629,7 +619,7 @@ export interface paths {
     /** Requests the beacon node to indicate if a validator has been observed to be live in a given epoch. The beacon node might detect liveness by observing messages from the validator on the network, in the beacon chain, from its API or from any other source. A beacon node SHOULD support the current and previous epoch, however it MAY support earlier epoch. It is important to note that the values returned by the beacon node are not canonical; they are best-effort and based upon a subjective view of the network. A beacon node that was recently started or suffered a network partition may indicate that a validator is not live when it actually is. */
     post: operations['getLiveness'];
   };
-  '/eth/v1/validator/execution_payload_bid/{slot}/{builder_index}': {
+  '/eth/v1/validator/execution_payload_bids/{slot}/{builder_index}': {
     /** Retrieves execution payload bid for a given slot and builder. Depending on `Accept` header, it can be returned either as json or as bytes serialized by SSZ. */
     get: operations['getExecutionPayloadBid'];
   };
@@ -16797,7 +16787,7 @@ export interface components {
        */
       state_root: string;
     } & {
-      /** @description The [`BeaconBlockBody`](https://github.com/ethereum/consensus-specs/blob/v1.7.0-alpha.2/specs/gloas/beacon-chain.md#beaconblockbody) object from the CL Gloas spec. */
+      /** @description The [`BeaconBlockBody`](https://github.com/ethereum/consensus-specs/blob/v1.7.0-alpha.8/specs/gloas/beacon-chain.md#beaconblockbody) object from the CL Gloas spec. */
       body: {
         /**
          * Format: hex
@@ -17146,9 +17136,9 @@ export interface components {
            */
           signature: string;
         }[];
-        /** @description The [`SignedExecutionPayloadBid`](https://github.com/ethereum/consensus-specs/blob/v1.7.0-alpha.2/specs/gloas/beacon-chain.md#signedexecutionpayloadbid) object from the CL Gloas spec. */
+        /** @description The [`SignedExecutionPayloadBid`](https://github.com/ethereum/consensus-specs/blob/v1.7.0-alpha.8/specs/gloas/beacon-chain.md#signedexecutionpayloadbid) object from the CL Gloas spec. */
         signed_execution_payload_bid: {
-          /** @description The [`ExecutionPayloadBid`](https://github.com/ethereum/consensus-specs/blob/v1.7.0-alpha.2/specs/gloas/beacon-chain.md#executionpayloadbid) object from the CL Gloas spec. */
+          /** @description The [`ExecutionPayloadBid`](https://github.com/ethereum/consensus-specs/blob/v1.7.0-alpha.8/specs/gloas/beacon-chain.md#executionpayloadbid) object from the CL Gloas spec. */
           message: {
             /**
              * Format: hex
@@ -17187,6 +17177,11 @@ export interface components {
             /** @example 1 */
             execution_payment: string;
             blob_kzg_commitments: string[];
+            /**
+             * Format: hex
+             * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+             */
+            execution_requests_root: string;
           };
           /**
            * Format: hex
@@ -17201,7 +17196,7 @@ export interface components {
            * @example 0x01
            */
           aggregation_bits: string;
-          /** @description The [`PayloadAttestationData`](https://github.com/ethereum/consensus-specs/blob/v1.7.0-alpha.2/specs/gloas/beacon-chain.md#payloadattestationdata) object from the CL Gloas spec. */
+          /** @description The [`PayloadAttestationData`](https://github.com/ethereum/consensus-specs/blob/v1.7.0-alpha.8/specs/gloas/beacon-chain.md#payloadattestationdata) object from the CL Gloas spec. */
           data: {
             /**
              * Format: hex
@@ -17225,6 +17220,77 @@ export interface components {
            */
           signature: string;
         }[];
+        /** @description The [`ExecutionRequests`](https://github.com/ethereum/consensus-specs/blob/v1.5.0/specs/electra/beacon-chain.md#executionrequests) object from the CL Electra spec. */
+        parent_execution_requests: {
+          deposits: {
+            /**
+             * Format: hex
+             * @description The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._
+             * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
+             */
+            pubkey: string;
+            /**
+             * Format: hex
+             * @description The withdrawal credentials.
+             * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+             */
+            withdrawal_credentials: string;
+            /**
+             * @description The value to be deposited (gwei).
+             * @example 1
+             */
+            amount: string;
+            /**
+             * Format: hex
+             * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+             */
+            signature: string;
+            /**
+             * @description The index of the deposit request.
+             * @example 1
+             */
+            index: string;
+          }[];
+          withdrawals: {
+            /**
+             * Format: hex
+             * @description An address on the execution (Ethereum 1) network.
+             * @example 0xAbcF8e0d4e9587369b2301D0790347320302cc09
+             */
+            source_address: string;
+            /**
+             * Format: hex
+             * @description The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._
+             * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
+             */
+            validator_pubkey: string;
+            /**
+             * @description The value to be withdrawn (gwei).
+             * @example 1
+             */
+            amount: string;
+          }[];
+          consolidations: {
+            /**
+             * Format: hex
+             * @description An address on the execution (Ethereum 1) network.
+             * @example 0xAbcF8e0d4e9587369b2301D0790347320302cc09
+             */
+            source_address: string;
+            /**
+             * Format: hex
+             * @description The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._
+             * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
+             */
+            source_pubkey: string;
+            /**
+             * Format: hex
+             * @description The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._
+             * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
+             */
+            target_pubkey: string;
+          }[];
+        };
       };
     };
     /** @description The [`SignedBeaconBlock`](https://github.com/ethereum/consensus-specs/blob/v1.5.0/specs/phase0/beacon-chain.md#signedbeaconblock) object envelope from the CL Gloas spec. */
@@ -17254,7 +17320,7 @@ export interface components {
          */
         state_root: string;
       } & {
-        /** @description The [`BeaconBlockBody`](https://github.com/ethereum/consensus-specs/blob/v1.7.0-alpha.2/specs/gloas/beacon-chain.md#beaconblockbody) object from the CL Gloas spec. */
+        /** @description The [`BeaconBlockBody`](https://github.com/ethereum/consensus-specs/blob/v1.7.0-alpha.8/specs/gloas/beacon-chain.md#beaconblockbody) object from the CL Gloas spec. */
         body: {
           /**
            * Format: hex
@@ -17603,9 +17669,9 @@ export interface components {
              */
             signature: string;
           }[];
-          /** @description The [`SignedExecutionPayloadBid`](https://github.com/ethereum/consensus-specs/blob/v1.7.0-alpha.2/specs/gloas/beacon-chain.md#signedexecutionpayloadbid) object from the CL Gloas spec. */
+          /** @description The [`SignedExecutionPayloadBid`](https://github.com/ethereum/consensus-specs/blob/v1.7.0-alpha.8/specs/gloas/beacon-chain.md#signedexecutionpayloadbid) object from the CL Gloas spec. */
           signed_execution_payload_bid: {
-            /** @description The [`ExecutionPayloadBid`](https://github.com/ethereum/consensus-specs/blob/v1.7.0-alpha.2/specs/gloas/beacon-chain.md#executionpayloadbid) object from the CL Gloas spec. */
+            /** @description The [`ExecutionPayloadBid`](https://github.com/ethereum/consensus-specs/blob/v1.7.0-alpha.8/specs/gloas/beacon-chain.md#executionpayloadbid) object from the CL Gloas spec. */
             message: {
               /**
                * Format: hex
@@ -17644,6 +17710,11 @@ export interface components {
               /** @example 1 */
               execution_payment: string;
               blob_kzg_commitments: string[];
+              /**
+               * Format: hex
+               * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+               */
+              execution_requests_root: string;
             };
             /**
              * Format: hex
@@ -17658,7 +17729,7 @@ export interface components {
              * @example 0x01
              */
             aggregation_bits: string;
-            /** @description The [`PayloadAttestationData`](https://github.com/ethereum/consensus-specs/blob/v1.7.0-alpha.2/specs/gloas/beacon-chain.md#payloadattestationdata) object from the CL Gloas spec. */
+            /** @description The [`PayloadAttestationData`](https://github.com/ethereum/consensus-specs/blob/v1.7.0-alpha.8/specs/gloas/beacon-chain.md#payloadattestationdata) object from the CL Gloas spec. */
             data: {
               /**
                * Format: hex
@@ -17682,6 +17753,77 @@ export interface components {
              */
             signature: string;
           }[];
+          /** @description The [`ExecutionRequests`](https://github.com/ethereum/consensus-specs/blob/v1.5.0/specs/electra/beacon-chain.md#executionrequests) object from the CL Electra spec. */
+          parent_execution_requests: {
+            deposits: {
+              /**
+               * Format: hex
+               * @description The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._
+               * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
+               */
+              pubkey: string;
+              /**
+               * Format: hex
+               * @description The withdrawal credentials.
+               * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+               */
+              withdrawal_credentials: string;
+              /**
+               * @description The value to be deposited (gwei).
+               * @example 1
+               */
+              amount: string;
+              /**
+               * Format: hex
+               * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+               */
+              signature: string;
+              /**
+               * @description The index of the deposit request.
+               * @example 1
+               */
+              index: string;
+            }[];
+            withdrawals: {
+              /**
+               * Format: hex
+               * @description An address on the execution (Ethereum 1) network.
+               * @example 0xAbcF8e0d4e9587369b2301D0790347320302cc09
+               */
+              source_address: string;
+              /**
+               * Format: hex
+               * @description The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._
+               * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
+               */
+              validator_pubkey: string;
+              /**
+               * @description The value to be withdrawn (gwei).
+               * @example 1
+               */
+              amount: string;
+            }[];
+            consolidations: {
+              /**
+               * Format: hex
+               * @description An address on the execution (Ethereum 1) network.
+               * @example 0xAbcF8e0d4e9587369b2301D0790347320302cc09
+               */
+              source_address: string;
+              /**
+               * Format: hex
+               * @description The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._
+               * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
+               */
+              source_pubkey: string;
+              /**
+               * Format: hex
+               * @description The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._
+               * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
+               */
+              target_pubkey: string;
+            }[];
+          };
         };
       };
       /**
@@ -17690,7 +17832,7 @@ export interface components {
        */
       signature: string;
     };
-    /** @description The [`ExecutionPayloadBid`](https://github.com/ethereum/consensus-specs/blob/v1.7.0-alpha.2/specs/gloas/beacon-chain.md#executionpayloadbid) object from the CL Gloas spec. */
+    /** @description The [`ExecutionPayloadBid`](https://github.com/ethereum/consensus-specs/blob/v1.7.0-alpha.8/specs/gloas/beacon-chain.md#executionpayloadbid) object from the CL Gloas spec. */
     'Gloas.ExecutionPayloadBid': {
       /**
        * Format: hex
@@ -17729,10 +17871,15 @@ export interface components {
       /** @example 1 */
       execution_payment: string;
       blob_kzg_commitments: string[];
+      /**
+       * Format: hex
+       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+       */
+      execution_requests_root: string;
     };
-    /** @description The [`SignedExecutionPayloadBid`](https://github.com/ethereum/consensus-specs/blob/v1.7.0-alpha.2/specs/gloas/beacon-chain.md#signedexecutionpayloadbid) object from the CL Gloas spec. */
+    /** @description The [`SignedExecutionPayloadBid`](https://github.com/ethereum/consensus-specs/blob/v1.7.0-alpha.8/specs/gloas/beacon-chain.md#signedexecutionpayloadbid) object from the CL Gloas spec. */
     'Gloas.SignedExecutionPayloadBid': {
-      /** @description The [`ExecutionPayloadBid`](https://github.com/ethereum/consensus-specs/blob/v1.7.0-alpha.2/specs/gloas/beacon-chain.md#executionpayloadbid) object from the CL Gloas spec. */
+      /** @description The [`ExecutionPayloadBid`](https://github.com/ethereum/consensus-specs/blob/v1.7.0-alpha.8/specs/gloas/beacon-chain.md#executionpayloadbid) object from the CL Gloas spec. */
       message: {
         /**
          * Format: hex
@@ -17771,6 +17918,11 @@ export interface components {
         /** @example 1 */
         execution_payment: string;
         blob_kzg_commitments: string[];
+        /**
+         * Format: hex
+         * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+         */
+        execution_requests_root: string;
       };
       /**
        * Format: hex
@@ -17778,9 +17930,103 @@ export interface components {
        */
       signature: string;
     };
-    /** @description The [`ExecutionPayloadEnvelope`](https://github.com/ethereum/consensus-specs/blob/v1.7.0-alpha.2/specs/gloas/beacon-chain.md#executionpayloadenvelope) object from the CL Gloas spec. */
+    /** @description The [`ExecutionPayload`](https://github.com/ethereum/consensus-specs/blob/v1.7.0-alpha.8/specs/gloas/beacon-chain.md#executionpayload) object from the CL Gloas spec. */
+    'Gloas.ExecutionPayload': ({
+      /**
+       * Format: hex
+       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+       */
+      parent_hash: string;
+      /**
+       * Format: hex
+       * @description An address on the execution (Ethereum 1) network.
+       * @example 0xAbcF8e0d4e9587369b2301D0790347320302cc09
+       */
+      fee_recipient: string;
+      /**
+       * Format: hex
+       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+       */
+      state_root: string;
+      /**
+       * Format: hex
+       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+       */
+      receipts_root: string;
+      /**
+       * Format: hex
+       * @example 0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+       */
+      logs_bloom: string;
+      /**
+       * Format: hex
+       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+       */
+      prev_randao: string;
+      /** @example 1 */
+      block_number: string;
+      /** @example 1 */
+      gas_limit: string;
+      /** @example 1 */
+      gas_used: string;
+      /** @example 1 */
+      timestamp: string;
+      /**
+       * Format: hex
+       * @description Extra data on the execution (Ethereum 1) network.
+       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+       */
+      extra_data: string;
+      /** @example 1 */
+      base_fee_per_gas: string;
+      /** @example 1 */
+      blob_gas_used: string;
+      /** @example 1 */
+      excess_blob_gas: string;
+      /**
+       * Format: hex
+       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+       */
+      block_hash: string;
+    } & {
+      transactions: string[];
+      withdrawals: {
+        /**
+         * @description The index of the withdrawal.
+         * @example 1
+         */
+        index: string;
+        /**
+         * @description The index of the withdrawing validator.
+         * @example 1
+         */
+        validator_index: string;
+        /**
+         * Format: hex
+         * @description An address on the execution (Ethereum 1) network.
+         * @example 0xAbcF8e0d4e9587369b2301D0790347320302cc09
+         */
+        address: string;
+        /**
+         * @description The value withdrawn (gwei).
+         * @example 1
+         */
+        amount: string;
+      }[];
+    }) & {
+      /**
+       * Format: hex
+       * @description RLP encoded `BlockAccessList` as defined in [EIP-7928](https://eips.ethereum.org/EIPS/eip-7928)
+       * @example 0xe5e494abcf8e0d4e9587369b2301d0790347320302cc09c0c0cac90187b1a2bc2ec50000c0c0
+       */
+      block_access_list: string;
+      /** @example 1 */
+      slot_number: string;
+    };
+    /** @description The [`ExecutionPayloadEnvelope`](https://github.com/ethereum/consensus-specs/blob/v1.7.0-alpha.8/specs/gloas/beacon-chain.md#executionpayloadenvelope) object from the CL Gloas spec. */
     'Gloas.ExecutionPayloadEnvelope': {
-      payload: {
+      /** @description The [`ExecutionPayload`](https://github.com/ethereum/consensus-specs/blob/v1.7.0-alpha.8/specs/gloas/beacon-chain.md#executionpayload) object from the CL Gloas spec. */
+      payload: ({
         /**
          * Format: hex
          * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
@@ -17862,6 +18108,15 @@ export interface components {
            */
           amount: string;
         }[];
+      }) & {
+        /**
+         * Format: hex
+         * @description RLP encoded `BlockAccessList` as defined in [EIP-7928](https://eips.ethereum.org/EIPS/eip-7928)
+         * @example 0xe5e494abcf8e0d4e9587369b2301d0790347320302cc09c0c0cac90187b1a2bc2ec50000c0c0
+         */
+        block_access_list: string;
+        /** @example 1 */
+        slot_number: string;
       };
       /** @description The [`ExecutionRequests`](https://github.com/ethereum/consensus-specs/blob/v1.5.0/specs/electra/beacon-chain.md#executionrequests) object from the CL Electra spec. */
       execution_requests: {
@@ -17946,22 +18201,18 @@ export interface components {
        */
       beacon_block_root: string;
       /**
-       * @description Slot number for this execution payload
-       * @example 1
-       */
-      slot: string;
-      /**
        * Format: hex
-       * @description Beacon state root after executing this payload
+       * @description Root of the parent beacon block
        * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
        */
-      state_root: string;
+      parent_beacon_block_root: string;
     };
-    /** @description The [`SignedExecutionPayloadEnvelope`](https://github.com/ethereum/consensus-specs/blob/v1.7.0-alpha.2/specs/gloas/beacon-chain.md#signedexecutionpayloadenvelope) object from the CL Gloas spec. */
+    /** @description The [`SignedExecutionPayloadEnvelope`](https://github.com/ethereum/consensus-specs/blob/v1.7.0-alpha.8/specs/gloas/beacon-chain.md#signedexecutionpayloadenvelope) object from the CL Gloas spec. */
     'Gloas.SignedExecutionPayloadEnvelope': {
-      /** @description The [`ExecutionPayloadEnvelope`](https://github.com/ethereum/consensus-specs/blob/v1.7.0-alpha.2/specs/gloas/beacon-chain.md#executionpayloadenvelope) object from the CL Gloas spec. */
+      /** @description The [`ExecutionPayloadEnvelope`](https://github.com/ethereum/consensus-specs/blob/v1.7.0-alpha.8/specs/gloas/beacon-chain.md#executionpayloadenvelope) object from the CL Gloas spec. */
       message: {
-        payload: {
+        /** @description The [`ExecutionPayload`](https://github.com/ethereum/consensus-specs/blob/v1.7.0-alpha.8/specs/gloas/beacon-chain.md#executionpayload) object from the CL Gloas spec. */
+        payload: ({
           /**
            * Format: hex
            * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
@@ -18043,6 +18294,15 @@ export interface components {
              */
             amount: string;
           }[];
+        }) & {
+          /**
+           * Format: hex
+           * @description RLP encoded `BlockAccessList` as defined in [EIP-7928](https://eips.ethereum.org/EIPS/eip-7928)
+           * @example 0xe5e494abcf8e0d4e9587369b2301d0790347320302cc09c0c0cac90187b1a2bc2ec50000c0c0
+           */
+          block_access_list: string;
+          /** @example 1 */
+          slot_number: string;
         };
         /** @description The [`ExecutionRequests`](https://github.com/ethereum/consensus-specs/blob/v1.5.0/specs/electra/beacon-chain.md#executionrequests) object from the CL Electra spec. */
         execution_requests: {
@@ -18127,16 +18387,11 @@ export interface components {
          */
         beacon_block_root: string;
         /**
-         * @description Slot number for this execution payload
-         * @example 1
-         */
-        slot: string;
-        /**
          * Format: hex
-         * @description Beacon state root after executing this payload
+         * @description Root of the parent beacon block
          * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
          */
-        state_root: string;
+        parent_beacon_block_root: string;
       };
       /**
        * Format: hex
@@ -18145,7 +18400,7 @@ export interface components {
        */
       signature: string;
     };
-    /** @description The [`PayloadAttestationData`](https://github.com/ethereum/consensus-specs/blob/v1.7.0-alpha.2/specs/gloas/beacon-chain.md#payloadattestationdata) object from the CL Gloas spec. */
+    /** @description The [`PayloadAttestationData`](https://github.com/ethereum/consensus-specs/blob/v1.7.0-alpha.8/specs/gloas/beacon-chain.md#payloadattestationdata) object from the CL Gloas spec. */
     'Gloas.PayloadAttestationData': {
       /**
        * Format: hex
@@ -18163,14 +18418,14 @@ export interface components {
       /** @description True if blob data is available for this block */
       blob_data_available: boolean;
     };
-    /** @description The [`PayloadAttestation`](https://github.com/ethereum/consensus-specs/blob/v1.7.0-alpha.2/specs/gloas/beacon-chain.md#payloadattestation) object from the CL Gloas spec. */
+    /** @description The [`PayloadAttestation`](https://github.com/ethereum/consensus-specs/blob/v1.7.0-alpha.8/specs/gloas/beacon-chain.md#payloadattestation) object from the CL Gloas spec. */
     'Gloas.PayloadAttestation': {
       /**
        * Format: hex
        * @example 0x01
        */
       aggregation_bits: string;
-      /** @description The [`PayloadAttestationData`](https://github.com/ethereum/consensus-specs/blob/v1.7.0-alpha.2/specs/gloas/beacon-chain.md#payloadattestationdata) object from the CL Gloas spec. */
+      /** @description The [`PayloadAttestationData`](https://github.com/ethereum/consensus-specs/blob/v1.7.0-alpha.8/specs/gloas/beacon-chain.md#payloadattestationdata) object from the CL Gloas spec. */
       data: {
         /**
          * Format: hex
@@ -18194,14 +18449,14 @@ export interface components {
        */
       signature: string;
     };
-    /** @description The [`PayloadAttestationMessage`](https://github.com/ethereum/consensus-specs/blob/v1.7.0-alpha.2/specs/gloas/beacon-chain.md#payloadattestationmessage) object from the CL Gloas spec. */
+    /** @description The [`PayloadAttestationMessage`](https://github.com/ethereum/consensus-specs/blob/v1.7.0-alpha.8/specs/gloas/beacon-chain.md#payloadattestationmessage) object from the CL Gloas spec. */
     'Gloas.PayloadAttestationMessage': {
       /**
        * @description Index of the validator submitting the payload attestation
        * @example 1
        */
       validator_index: string;
-      /** @description The [`PayloadAttestationData`](https://github.com/ethereum/consensus-specs/blob/v1.7.0-alpha.2/specs/gloas/beacon-chain.md#payloadattestationdata) object from the CL Gloas spec. */
+      /** @description The [`PayloadAttestationData`](https://github.com/ethereum/consensus-specs/blob/v1.7.0-alpha.8/specs/gloas/beacon-chain.md#payloadattestationdata) object from the CL Gloas spec. */
       data: {
         /**
          * Format: hex
@@ -24822,7 +25077,7 @@ export interface operations {
              */
             state_root: string;
           } & {
-            /** @description The [`BeaconBlockBody`](https://github.com/ethereum/consensus-specs/blob/v1.7.0-alpha.2/specs/gloas/beacon-chain.md#beaconblockbody) object from the CL Gloas spec. */
+            /** @description The [`BeaconBlockBody`](https://github.com/ethereum/consensus-specs/blob/v1.7.0-alpha.8/specs/gloas/beacon-chain.md#beaconblockbody) object from the CL Gloas spec. */
             body: {
               /**
                * Format: hex
@@ -25171,9 +25426,9 @@ export interface operations {
                  */
                 signature: string;
               }[];
-              /** @description The [`SignedExecutionPayloadBid`](https://github.com/ethereum/consensus-specs/blob/v1.7.0-alpha.2/specs/gloas/beacon-chain.md#signedexecutionpayloadbid) object from the CL Gloas spec. */
+              /** @description The [`SignedExecutionPayloadBid`](https://github.com/ethereum/consensus-specs/blob/v1.7.0-alpha.8/specs/gloas/beacon-chain.md#signedexecutionpayloadbid) object from the CL Gloas spec. */
               signed_execution_payload_bid: {
-                /** @description The [`ExecutionPayloadBid`](https://github.com/ethereum/consensus-specs/blob/v1.7.0-alpha.2/specs/gloas/beacon-chain.md#executionpayloadbid) object from the CL Gloas spec. */
+                /** @description The [`ExecutionPayloadBid`](https://github.com/ethereum/consensus-specs/blob/v1.7.0-alpha.8/specs/gloas/beacon-chain.md#executionpayloadbid) object from the CL Gloas spec. */
                 message: {
                   /**
                    * Format: hex
@@ -25212,6 +25467,11 @@ export interface operations {
                   /** @example 1 */
                   execution_payment: string;
                   blob_kzg_commitments: string[];
+                  /**
+                   * Format: hex
+                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                   */
+                  execution_requests_root: string;
                 };
                 /**
                  * Format: hex
@@ -25226,7 +25486,7 @@ export interface operations {
                  * @example 0x01
                  */
                 aggregation_bits: string;
-                /** @description The [`PayloadAttestationData`](https://github.com/ethereum/consensus-specs/blob/v1.7.0-alpha.2/specs/gloas/beacon-chain.md#payloadattestationdata) object from the CL Gloas spec. */
+                /** @description The [`PayloadAttestationData`](https://github.com/ethereum/consensus-specs/blob/v1.7.0-alpha.8/specs/gloas/beacon-chain.md#payloadattestationdata) object from the CL Gloas spec. */
                 data: {
                   /**
                    * Format: hex
@@ -25250,6 +25510,77 @@ export interface operations {
                  */
                 signature: string;
               }[];
+              /** @description The [`ExecutionRequests`](https://github.com/ethereum/consensus-specs/blob/v1.5.0/specs/electra/beacon-chain.md#executionrequests) object from the CL Electra spec. */
+              parent_execution_requests: {
+                deposits: {
+                  /**
+                   * Format: hex
+                   * @description The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._
+                   * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
+                   */
+                  pubkey: string;
+                  /**
+                   * Format: hex
+                   * @description The withdrawal credentials.
+                   * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                   */
+                  withdrawal_credentials: string;
+                  /**
+                   * @description The value to be deposited (gwei).
+                   * @example 1
+                   */
+                  amount: string;
+                  /**
+                   * Format: hex
+                   * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+                   */
+                  signature: string;
+                  /**
+                   * @description The index of the deposit request.
+                   * @example 1
+                   */
+                  index: string;
+                }[];
+                withdrawals: {
+                  /**
+                   * Format: hex
+                   * @description An address on the execution (Ethereum 1) network.
+                   * @example 0xAbcF8e0d4e9587369b2301D0790347320302cc09
+                   */
+                  source_address: string;
+                  /**
+                   * Format: hex
+                   * @description The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._
+                   * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
+                   */
+                  validator_pubkey: string;
+                  /**
+                   * @description The value to be withdrawn (gwei).
+                   * @example 1
+                   */
+                  amount: string;
+                }[];
+                consolidations: {
+                  /**
+                   * Format: hex
+                   * @description An address on the execution (Ethereum 1) network.
+                   * @example 0xAbcF8e0d4e9587369b2301D0790347320302cc09
+                   */
+                  source_address: string;
+                  /**
+                   * Format: hex
+                   * @description The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._
+                   * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
+                   */
+                  source_pubkey: string;
+                  /**
+                   * Format: hex
+                   * @description The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._
+                   * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
+                   */
+                  target_pubkey: string;
+                }[];
+              };
             };
           };
           /**
@@ -28424,7 +28755,7 @@ export interface operations {
     requestBody: {
       content: {
         'application/json': {
-          /** @description The [`ExecutionPayloadBid`](https://github.com/ethereum/consensus-specs/blob/v1.7.0-alpha.2/specs/gloas/beacon-chain.md#executionpayloadbid) object from the CL Gloas spec. */
+          /** @description The [`ExecutionPayloadBid`](https://github.com/ethereum/consensus-specs/blob/v1.7.0-alpha.8/specs/gloas/beacon-chain.md#executionpayloadbid) object from the CL Gloas spec. */
           message: {
             /**
              * Format: hex
@@ -28463,6 +28794,11 @@ export interface operations {
             /** @example 1 */
             execution_payment: string;
             blob_kzg_commitments: string[];
+            /**
+             * Format: hex
+             * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+             */
+            execution_requests_root: string;
           };
           /**
            * Format: hex
@@ -28523,11 +28859,12 @@ export interface operations {
              * @example false
              */
             finalized: boolean;
-            /** @description The [`SignedExecutionPayloadEnvelope`](https://github.com/ethereum/consensus-specs/blob/v1.7.0-alpha.2/specs/gloas/beacon-chain.md#signedexecutionpayloadenvelope) object from the CL Gloas spec. */
+            /** @description The [`SignedExecutionPayloadEnvelope`](https://github.com/ethereum/consensus-specs/blob/v1.7.0-alpha.8/specs/gloas/beacon-chain.md#signedexecutionpayloadenvelope) object from the CL Gloas spec. */
             data: {
-              /** @description The [`ExecutionPayloadEnvelope`](https://github.com/ethereum/consensus-specs/blob/v1.7.0-alpha.2/specs/gloas/beacon-chain.md#executionpayloadenvelope) object from the CL Gloas spec. */
+              /** @description The [`ExecutionPayloadEnvelope`](https://github.com/ethereum/consensus-specs/blob/v1.7.0-alpha.8/specs/gloas/beacon-chain.md#executionpayloadenvelope) object from the CL Gloas spec. */
               message: {
-                payload: {
+                /** @description The [`ExecutionPayload`](https://github.com/ethereum/consensus-specs/blob/v1.7.0-alpha.8/specs/gloas/beacon-chain.md#executionpayload) object from the CL Gloas spec. */
+                payload: ({
                   /**
                    * Format: hex
                    * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
@@ -28609,6 +28946,15 @@ export interface operations {
                      */
                     amount: string;
                   }[];
+                }) & {
+                  /**
+                   * Format: hex
+                   * @description RLP encoded `BlockAccessList` as defined in [EIP-7928](https://eips.ethereum.org/EIPS/eip-7928)
+                   * @example 0xe5e494abcf8e0d4e9587369b2301d0790347320302cc09c0c0cac90187b1a2bc2ec50000c0c0
+                   */
+                  block_access_list: string;
+                  /** @example 1 */
+                  slot_number: string;
                 };
                 /** @description The [`ExecutionRequests`](https://github.com/ethereum/consensus-specs/blob/v1.5.0/specs/electra/beacon-chain.md#executionrequests) object from the CL Electra spec. */
                 execution_requests: {
@@ -28693,16 +29039,11 @@ export interface operations {
                  */
                 beacon_block_root: string;
                 /**
-                 * @description Slot number for this execution payload
-                 * @example 1
-                 */
-                slot: string;
-                /**
                  * Format: hex
-                 * @description Beacon state root after executing this payload
+                 * @description Root of the parent beacon block
                  * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
                  */
-                state_root: string;
+                parent_beacon_block_root: string;
               };
               /**
                * Format: hex
@@ -28864,7 +29205,7 @@ export interface operations {
                  */
                 state_root: string;
               } & {
-                /** @description The [`BeaconBlockBody`](https://github.com/ethereum/consensus-specs/blob/v1.7.0-alpha.2/specs/gloas/beacon-chain.md#beaconblockbody) object from the CL Gloas spec. */
+                /** @description The [`BeaconBlockBody`](https://github.com/ethereum/consensus-specs/blob/v1.7.0-alpha.8/specs/gloas/beacon-chain.md#beaconblockbody) object from the CL Gloas spec. */
                 body: {
                   /**
                    * Format: hex
@@ -29213,9 +29554,9 @@ export interface operations {
                      */
                     signature: string;
                   }[];
-                  /** @description The [`SignedExecutionPayloadBid`](https://github.com/ethereum/consensus-specs/blob/v1.7.0-alpha.2/specs/gloas/beacon-chain.md#signedexecutionpayloadbid) object from the CL Gloas spec. */
+                  /** @description The [`SignedExecutionPayloadBid`](https://github.com/ethereum/consensus-specs/blob/v1.7.0-alpha.8/specs/gloas/beacon-chain.md#signedexecutionpayloadbid) object from the CL Gloas spec. */
                   signed_execution_payload_bid: {
-                    /** @description The [`ExecutionPayloadBid`](https://github.com/ethereum/consensus-specs/blob/v1.7.0-alpha.2/specs/gloas/beacon-chain.md#executionpayloadbid) object from the CL Gloas spec. */
+                    /** @description The [`ExecutionPayloadBid`](https://github.com/ethereum/consensus-specs/blob/v1.7.0-alpha.8/specs/gloas/beacon-chain.md#executionpayloadbid) object from the CL Gloas spec. */
                     message: {
                       /**
                        * Format: hex
@@ -29254,6 +29595,11 @@ export interface operations {
                       /** @example 1 */
                       execution_payment: string;
                       blob_kzg_commitments: string[];
+                      /**
+                       * Format: hex
+                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                       */
+                      execution_requests_root: string;
                     };
                     /**
                      * Format: hex
@@ -29268,7 +29614,7 @@ export interface operations {
                      * @example 0x01
                      */
                     aggregation_bits: string;
-                    /** @description The [`PayloadAttestationData`](https://github.com/ethereum/consensus-specs/blob/v1.7.0-alpha.2/specs/gloas/beacon-chain.md#payloadattestationdata) object from the CL Gloas spec. */
+                    /** @description The [`PayloadAttestationData`](https://github.com/ethereum/consensus-specs/blob/v1.7.0-alpha.8/specs/gloas/beacon-chain.md#payloadattestationdata) object from the CL Gloas spec. */
                     data: {
                       /**
                        * Format: hex
@@ -29292,6 +29638,77 @@ export interface operations {
                      */
                     signature: string;
                   }[];
+                  /** @description The [`ExecutionRequests`](https://github.com/ethereum/consensus-specs/blob/v1.5.0/specs/electra/beacon-chain.md#executionrequests) object from the CL Electra spec. */
+                  parent_execution_requests: {
+                    deposits: {
+                      /**
+                       * Format: hex
+                       * @description The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._
+                       * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
+                       */
+                      pubkey: string;
+                      /**
+                       * Format: hex
+                       * @description The withdrawal credentials.
+                       * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+                       */
+                      withdrawal_credentials: string;
+                      /**
+                       * @description The value to be deposited (gwei).
+                       * @example 1
+                       */
+                      amount: string;
+                      /**
+                       * Format: hex
+                       * @example 0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505
+                       */
+                      signature: string;
+                      /**
+                       * @description The index of the deposit request.
+                       * @example 1
+                       */
+                      index: string;
+                    }[];
+                    withdrawals: {
+                      /**
+                       * Format: hex
+                       * @description An address on the execution (Ethereum 1) network.
+                       * @example 0xAbcF8e0d4e9587369b2301D0790347320302cc09
+                       */
+                      source_address: string;
+                      /**
+                       * Format: hex
+                       * @description The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._
+                       * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
+                       */
+                      validator_pubkey: string;
+                      /**
+                       * @description The value to be withdrawn (gwei).
+                       * @example 1
+                       */
+                      amount: string;
+                    }[];
+                    consolidations: {
+                      /**
+                       * Format: hex
+                       * @description An address on the execution (Ethereum 1) network.
+                       * @example 0xAbcF8e0d4e9587369b2301D0790347320302cc09
+                       */
+                      source_address: string;
+                      /**
+                       * Format: hex
+                       * @description The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._
+                       * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
+                       */
+                      source_pubkey: string;
+                      /**
+                       * Format: hex
+                       * @description The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._
+                       * @example 0x93247f2209abcacf57b75a51dafae777f9dd38bc7053d1af526f220a7489a6d3a2753e5f3e8b1cfe39b56f43611df74a
+                       */
+                      target_pubkey: string;
+                    }[];
+                  };
                 };
               };
               /**
@@ -38689,7 +39106,7 @@ export interface operations {
                * @example 0x01
                */
               aggregation_bits: string;
-              /** @description The [`PayloadAttestationData`](https://github.com/ethereum/consensus-specs/blob/v1.7.0-alpha.2/specs/gloas/beacon-chain.md#payloadattestationdata) object from the CL Gloas spec. */
+              /** @description The [`PayloadAttestationData`](https://github.com/ethereum/consensus-specs/blob/v1.7.0-alpha.8/specs/gloas/beacon-chain.md#payloadattestationdata) object from the CL Gloas spec. */
               data: {
                 /**
                  * Format: hex
@@ -38852,7 +39269,7 @@ export interface operations {
            * @example 1
            */
           validator_index: string;
-          /** @description The [`PayloadAttestationData`](https://github.com/ethereum/consensus-specs/blob/v1.7.0-alpha.2/specs/gloas/beacon-chain.md#payloadattestationdata) object from the CL Gloas spec. */
+          /** @description The [`PayloadAttestationData`](https://github.com/ethereum/consensus-specs/blob/v1.7.0-alpha.8/specs/gloas/beacon-chain.md#payloadattestationdata) object from the CL Gloas spec. */
           data: {
             /**
              * Format: hex
@@ -42934,10 +43351,9 @@ export interface operations {
   };
   /**
    * Requests the beacon node to provide a set of attestation duties, which should be performed by validators, for a particular epoch.
-   * Duties should only need to be checked once per epoch, however a chain reorganization (of > MIN_SEED_LOOKAHEAD epochs) could occur, resulting in a change of duties. For full safety, you should monitor head events and confirm the dependent root in this response matches:
-   * - event.previous_duty_dependent_root when `compute_epoch_at_slot(event.slot) == epoch`
-   * - event.current_duty_dependent_root when `compute_epoch_at_slot(event.slot) + 1 == epoch`
-   * - event.block otherwise
+   * Duties should only need to be checked once per epoch, however a chain reorganization (of > MIN_SEED_LOOKAHEAD epochs) could occur, resulting in a change of duties. For full safety, you should monitor head_v2 events and confirm the dependent root in this response matches:
+   * - event.current_epoch_dependent_root when `compute_epoch_at_slot(event.slot) == epoch`
+   * - event.next_epoch_dependent_root when `compute_epoch_at_slot(event.slot) + 1 == epoch`
    *
    * The dependent_root value is `get_block_root_at_slot(state, compute_start_slot_at_epoch(epoch - 1) - 1)` or the genesis block root in the case of underflow.
    */
@@ -43164,19 +43580,11 @@ export interface operations {
   };
   /**
    * Request beacon node to provide all validators that are scheduled to propose a block in the given epoch.
-   * Duties should only need to be checked once per epoch, however a chain reorganization could occur that results in a change of duties. For full safety, you should monitor head events and confirm the dependent root in this response matches. After Fulu, different checks need to be performed as the dependent root changes due to deterministic proposer lookahead.
+   * Duties should only need to be checked once per epoch, however a chain reorganization could occur that results in a change of duties. For full safety, you should monitor head_v2 events and confirm the dependent root in this response matches:
+   * - event.current_epoch_dependent_root when `compute_epoch_at_slot(event.slot) == epoch`
+   * - event.next_epoch_dependent_root when `compute_epoch_at_slot(event.slot) + 1 == epoch`
    *
-   * Before Fulu:
-   * - event.current_duty_dependent_root when `compute_epoch_at_slot(event.slot) == epoch`
-   * - event.block otherwise
-   * - dependent_root value is `get_block_root_at_slot(state, compute_start_slot_at_epoch(epoch) - 1)`
-   *
-   * After Fulu:
-   * - event.previous_duty_dependent_root when `compute_epoch_at_slot(event.slot) == epoch`
-   * - event.block otherwise
-   * - dependent_root value is `get_block_root_at_slot(state, compute_start_slot_at_epoch(epoch - 1) - 1)`
-   *
-   * The dependent_root value is the genesis block root in the case of underflow.
+   * The dependent_root value is `get_block_root_at_slot(state, compute_start_slot_at_epoch(epoch - 1) - 1)` or the genesis block root in the case of underflow.
    */
   getProposerDutiesV2: {
     parameters: {
@@ -43365,10 +43773,9 @@ export interface operations {
   };
   /**
    * Requests the beacon node to provide a set of Payload Timeliness Committee (PTC) duties, which should be performed by validators, for a particular epoch.
-   * Duties should only need to be checked once per epoch, however a chain reorganization (of > MIN_SEED_LOOKAHEAD epochs) could occur, resulting in a change of duties. For full safety, you should monitor head events and confirm the dependent root in this response matches:
-   * - event.previous_duty_dependent_root when `compute_epoch_at_slot(event.slot) == epoch`
-   * - event.current_duty_dependent_root when `compute_epoch_at_slot(event.slot) + 1 == epoch`
-   * - event.block otherwise
+   * Duties should only need to be checked once per epoch, however a chain reorganization (of > MIN_SEED_LOOKAHEAD epochs) could occur, resulting in a change of duties. For full safety, you should monitor head_v2 events and confirm the dependent root in this response matches:
+   * - event.current_epoch_dependent_root when `compute_epoch_at_slot(event.slot) == epoch`
+   * - event.next_epoch_dependent_root when `compute_epoch_at_slot(event.slot) + 1 == epoch`
    *
    * The dependent_root value is `get_block_root_at_slot(state, compute_start_slot_at_epoch(epoch - 1) - 1)` or the genesis block root in the case of underflow.
    */
@@ -48663,7 +49070,7 @@ export interface operations {
              * @enum {string}
              */
             version: 'gloas';
-            /** @description The [`PayloadAttestationData`](https://github.com/ethereum/consensus-specs/blob/v1.7.0-alpha.2/specs/gloas/beacon-chain.md#payloadattestationdata) object from the CL Gloas spec. */
+            /** @description The [`PayloadAttestationData`](https://github.com/ethereum/consensus-specs/blob/v1.7.0-alpha.8/specs/gloas/beacon-chain.md#payloadattestationdata) object from the CL Gloas spec. */
             data: {
               /**
                * Format: hex
@@ -50119,7 +50526,7 @@ export interface operations {
              * @enum {string}
              */
             version: 'gloas';
-            /** @description The [`ExecutionPayloadBid`](https://github.com/ethereum/consensus-specs/blob/v1.7.0-alpha.2/specs/gloas/beacon-chain.md#executionpayloadbid) object from the CL Gloas spec. */
+            /** @description The [`ExecutionPayloadBid`](https://github.com/ethereum/consensus-specs/blob/v1.7.0-alpha.8/specs/gloas/beacon-chain.md#executionpayloadbid) object from the CL Gloas spec. */
             data: {
               /**
                * Format: hex
@@ -50158,6 +50565,11 @@ export interface operations {
               /** @example 1 */
               execution_payment: string;
               blob_kzg_commitments: string[];
+              /**
+               * Format: hex
+               * @example 0xcf8e0d4e9587369b2301d0790347320302cc0943d5a1884560367e8208d920f2
+               */
+              execution_requests_root: string;
             };
           };
           'application/octet-stream': unknown;
@@ -50243,6 +50655,7 @@ export interface operations {
         /** Event types to subscribe to */
         topics: (
           | 'head'
+          | 'head_v2'
           | 'block'
           | 'block_gossip'
           | 'attestation'
@@ -50258,9 +50671,12 @@ export interface operations {
           | 'light_client_optimistic_update'
           | 'payload_attributes'
           | 'data_column_sidecar'
+          | 'execution_payload'
+          | 'execution_payload_gossip'
           | 'execution_payload_available'
           | 'execution_payload_bid'
           | 'payload_attestation_message'
+          | 'fast_confirmation'
         )[];
       };
     };

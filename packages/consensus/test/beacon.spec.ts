@@ -323,7 +323,7 @@ describe('Beacon endpoints', () => {
 
     expect(mockFetch).toBeCalledTimes(1);
     expect(mockFetch).toBeCalledWith(
-      '/eth/v1/beacon/execution_payload_envelope/head',
+      '/eth/v1/beacon/execution_payload_envelopes/head',
       undefined,
     );
   });
