@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { deepCopy, Deferrable } from '@ethersproject/properties';
+import { deepCopy, Deferrable, shallowCopy } from '@ethersproject/properties';
 import {
   ConnectionInfo,
   fetchJson,
@@ -36,7 +36,7 @@ import {
 } from '../events';
 
 // @ethersproject/web retries throttled requests internally; fail immediately
-// by default and let callers opt into retries with a custom callback.
+// by default while preserving explicitly configured throttle policies.
 const doNotRetryThrottleCallback: NonNullable<
   ConnectionInfo['throttleCallback']
 > = async () => false;
@@ -45,13 +45,19 @@ const withDefaultThrottleCallback = (
   connection: ConnectionInfo | string,
 ): ConnectionInfo => {
   const connectionInfo =
-    typeof connection === 'string' ? { url: connection } : connection;
+    typeof connection === 'string'
+      ? { url: connection }
+      : shallowCopy(connection);
 
-  return {
-    ...connectionInfo,
-    throttleCallback:
-      connectionInfo.throttleCallback ?? doNotRetryThrottleCallback,
-  };
+  if (
+    connectionInfo.throttleCallback == null &&
+    connectionInfo.throttleLimit == null &&
+    connectionInfo.throttleSlotInterval == null
+  ) {
+    connectionInfo.throttleCallback = doNotRetryThrottleCallback;
+  }
+
+  return connectionInfo;
 };
 
 // this will help with autocomplete

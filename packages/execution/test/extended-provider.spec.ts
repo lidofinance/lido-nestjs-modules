@@ -488,12 +488,39 @@ describe('Execution module. ', () => {
       const provider = new ExtendedJsonRpcBatchProvider(
         {
           url: 'http://localhost:1000',
+          throttleLimit: 4,
+          throttleSlotInterval: 250,
           throttleCallback,
         },
         1,
       );
 
       expect(provider.connection.throttleCallback).toBe(throttleCallback);
+      expect(provider.connection.throttleLimit).toBe(4);
+      expect(provider.connection.throttleSlotInterval).toBe(250);
+    });
+
+    test('should preserve an explicit ethers throttle policy', () => {
+      const inheritedConnection = Object.create({
+        url: 'http://localhost:1000',
+        throttleLimit: 4,
+      }) as ConnectionInfo;
+      const providers = [
+        new ExtendedJsonRpcBatchProvider(inheritedConnection, 1),
+        new ExtendedJsonRpcBatchProvider(
+          {
+            url: 'http://localhost:1001',
+            throttleSlotInterval: 250,
+          },
+          1,
+        ),
+      ];
+
+      expect(providers[0].connection.url).toBe(inheritedConnection.url);
+      expect(providers[0].connection.throttleLimit).toBe(4);
+      expect(providers[1].connection.throttleSlotInterval).toBe(250);
+      expect(providers[0].connection.throttleCallback).toBeUndefined();
+      expect(providers[1].connection.throttleCallback).toBeUndefined();
     });
 
     test('should fail after the first HTTP 429 response', async () => {

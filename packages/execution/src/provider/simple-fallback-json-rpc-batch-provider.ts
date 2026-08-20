@@ -470,19 +470,22 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
   }
 
   public async detectNetwork(): Promise<Network> {
+    const reachableFallbackProviders = this.fallbackProviders.filter(
+      (fallbackProvider) => !fallbackProvider.unreachable,
+    );
     const results = await Promise.allSettled(
-      this.fallbackProviders
-        .filter((c) => !c.unreachable)
-        .map((c) => c.provider.getNetwork()),
+      reachableFallbackProviders.map(({ provider }) => provider.getNetwork()),
     );
 
     results.forEach((result, index) => {
+      const fallbackProvider = reachableFallbackProviders[index];
+
       if (result.status === 'fulfilled') {
-        this.fallbackProviders[index].network = result.value;
-        this.fallbackProviders[index].unreachable = false;
+        fallbackProvider.network = result.value;
+        fallbackProvider.unreachable = false;
       } else {
-        this.fallbackProviders[index].network = null;
-        this.fallbackProviders[index].unreachable = true;
+        fallbackProvider.network = null;
+        fallbackProvider.unreachable = true;
         this.lastError = result.reason;
       }
     });
@@ -527,6 +530,10 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
     });
 
     if (!previousNetwork) {
+      // No provider produced a usable network. Re-enable failed providers before
+      // throwing so the next network detection can probe them again.
+      this.resetFallbacks();
+
       const error = new AllProvidersFailedError(
         'All fallback endpoints are unreachable or all fallback networks differ between each other',
       );
