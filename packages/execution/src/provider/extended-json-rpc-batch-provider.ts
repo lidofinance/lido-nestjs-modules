@@ -34,6 +34,26 @@ import {
   ProviderResponseBatchedErrorEvent,
   ProviderResponseBatchedEvent,
 } from '../events';
+
+// @ethersproject/web retries throttled requests internally; fail immediately
+// by default and let callers opt into retries with a custom callback.
+const doNotRetryThrottleCallback: NonNullable<
+  ConnectionInfo['throttleCallback']
+> = async () => false;
+
+const withDefaultThrottleCallback = (
+  connection: ConnectionInfo | string,
+): ConnectionInfo => {
+  const connectionInfo =
+    typeof connection === 'string' ? { url: connection } : connection;
+
+  return {
+    ...connectionInfo,
+    throttleCallback:
+      connectionInfo.throttleCallback ?? doNotRetryThrottleCallback,
+  };
+};
+
 // this will help with autocomplete
 export interface ExtendedJsonRpcBatchProviderEventEmitter
   extends LazyEventEmitter {
@@ -138,7 +158,7 @@ export class ExtendedJsonRpcBatchProvider extends JsonRpcProvider {
     fetchMiddlewares: MiddlewareCallback<Promise<any>>[] = [],
     requestTimeoutMs?: number,
   ) {
-    super(url, network);
+    super(withDefaultThrottleCallback(url), network);
     this._requestTimeoutMs = requestTimeoutMs;
     this._eventEmitter = new LazyEventEmitter();
     this._domain = getConnectionFQDN(url);

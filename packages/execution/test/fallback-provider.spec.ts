@@ -117,6 +117,31 @@ describe('Execution module. ', () => {
       jest.resetAllMocks();
     });
 
+    test('should keep using a healthy primary when the secondary fails with HTTP 429', async () => {
+      await createMocks(2);
+
+      const secondaryProvider = mockedProvider.fallbackProviders[1].provider;
+      const { throttleCallback } = secondaryProvider.connection;
+
+      expect(throttleCallback).toBeDefined();
+      await expect(
+        throttleCallback?.(0, secondaryProvider.connection.url),
+      ).resolves.toBe(false);
+
+      // Model the transport error after ExtendedJsonRpcBatchProvider stops
+      // retrying the throttled request internally.
+      const rateLimitError = new Error('HTTP 429: rate limit exceeded');
+      mockedFallbackProviderFetch[1].mockRejectedValue(rateLimitError);
+
+      const block = await mockedProvider.getBlock(42);
+
+      expect(block.hash).toBe(fixtures.eth_getBlockByNumber.default.hash);
+      expect(mockedProvider.activeProviderIndex).toBe(0);
+      expect(mockedFallbackProviderFetch[0]).toHaveBeenCalledTimes(2);
+      // The two network checks each probe eth_chainId and then net_version.
+      expect(mockedFallbackProviderFetch[1]).toHaveBeenCalledTimes(4);
+    });
+
     test('should do basic functionality and return correct data with 1 fallback provider', async () => {
       await createMocks(1);
 
