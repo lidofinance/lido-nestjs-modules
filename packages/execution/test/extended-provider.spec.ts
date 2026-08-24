@@ -1,6 +1,7 @@
 import { Test } from '@nestjs/testing';
 import { ExtendedJsonRpcBatchProvider, BatchProviderModule } from '../src';
-import { ConnectionInfo } from '@ethersproject/web';
+import { ConnectionInfo, fetchJson } from '@ethersproject/web';
+import * as getUrlModule from '@ethersproject/web/lib/geturl';
 import {
   fakeFetchImpl,
   fixtures,
@@ -449,6 +450,111 @@ describe('Execution module. ', () => {
         ),
       );
       expect(mockedProviderFetch).toBeCalledTimes(3);
+    });
+  });
+
+  describe('HTTP 429 throttling', () => {
+    test('should disable ethers retries for strings and ConnectionInfo by default', async () => {
+      const connectionInfo: ConnectionInfo = {
+        url: 'http://localhost:1001',
+        headers: { authorization: 'test' },
+        timeout: 1234,
+      };
+      const providers = [
+        new ExtendedJsonRpcBatchProvider('http://localhost:1000', 1),
+        new ExtendedJsonRpcBatchProvider(connectionInfo, 1),
+      ];
+
+      for (const provider of providers) {
+        const { throttleCallback } = provider.connection;
+
+        expect(throttleCallback).toBeDefined();
+        await expect(
+          throttleCallback?.(0, provider.connection.url),
+        ).resolves.toBe(false);
+      }
+
+      expect(providers[1].connection).toEqual(
+        expect.objectContaining({
+          headers: connectionInfo.headers,
+          timeout: connectionInfo.timeout,
+        }),
+      );
+      expect(connectionInfo.throttleCallback).toBeUndefined();
+    });
+
+    test('should preserve a custom throttle callback', () => {
+      const throttleCallback = jest.fn(async () => true);
+      const provider = new ExtendedJsonRpcBatchProvider(
+        {
+          url: 'http://localhost:1000',
+          throttleLimit: 4,
+          throttleSlotInterval: 250,
+          throttleCallback,
+        },
+        1,
+      );
+
+      expect(provider.connection.throttleCallback).toBe(throttleCallback);
+      expect(provider.connection.throttleLimit).toBe(4);
+      expect(provider.connection.throttleSlotInterval).toBe(250);
+    });
+
+    test('should preserve an explicit ethers throttle policy', () => {
+      const inheritedConnection = Object.create({
+        url: 'http://localhost:1000',
+        throttleLimit: 4,
+      }) as ConnectionInfo;
+      const providers = [
+        new ExtendedJsonRpcBatchProvider(inheritedConnection, 1),
+        new ExtendedJsonRpcBatchProvider(
+          {
+            url: 'http://localhost:1001',
+            throttleSlotInterval: 250,
+          },
+          1,
+        ),
+      ];
+
+      expect(providers[0].connection.url).toBe(inheritedConnection.url);
+      expect(providers[0].connection.throttleLimit).toBe(4);
+      expect(providers[1].connection.throttleSlotInterval).toBe(250);
+      expect(providers[0].connection.throttleCallback).toBeUndefined();
+      expect(providers[1].connection.throttleCallback).toBeUndefined();
+    });
+
+    test('should fail after the first HTTP 429 response', async () => {
+      const getUrlSpy = jest.spyOn(getUrlModule, 'getUrl').mockResolvedValue({
+        statusCode: 429,
+        statusMessage: 'Too Many Requests',
+        headers: {},
+        body: new Uint8Array(),
+      });
+      const randomSpy = jest.spyOn(Math, 'random').mockReturnValue(0);
+
+      try {
+        const provider = new ExtendedJsonRpcBatchProvider(
+          'http://localhost:1000',
+          1,
+        );
+
+        await expect(
+          fetchJson(
+            provider.connection,
+            JSON.stringify({
+              jsonrpc: '2.0',
+              id: 1,
+              method: 'eth_chainId',
+              params: [],
+            }),
+          ),
+        ).rejects.toThrow('bad response');
+
+        expect(getUrlSpy).toHaveBeenCalledTimes(1);
+      } finally {
+        randomSpy.mockRestore();
+        getUrlSpy.mockRestore();
+      }
     });
   });
 

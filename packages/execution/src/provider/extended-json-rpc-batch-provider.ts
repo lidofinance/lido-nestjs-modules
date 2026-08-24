@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { deepCopy, Deferrable } from '@ethersproject/properties';
+import { deepCopy, Deferrable, shallowCopy } from '@ethersproject/properties';
 import {
   ConnectionInfo,
   fetchJson,
@@ -34,6 +34,32 @@ import {
   ProviderResponseBatchedErrorEvent,
   ProviderResponseBatchedEvent,
 } from '../events';
+
+// @ethersproject/web retries throttled requests internally; fail immediately
+// by default while preserving explicitly configured throttle policies.
+const doNotRetryThrottleCallback: NonNullable<
+  ConnectionInfo['throttleCallback']
+> = async () => false;
+
+const withDefaultThrottleCallback = (
+  connection: ConnectionInfo | string,
+): ConnectionInfo => {
+  const connectionInfo =
+    typeof connection === 'string'
+      ? { url: connection }
+      : shallowCopy(connection);
+
+  if (
+    connectionInfo.throttleCallback == null &&
+    connectionInfo.throttleLimit == null &&
+    connectionInfo.throttleSlotInterval == null
+  ) {
+    connectionInfo.throttleCallback = doNotRetryThrottleCallback;
+  }
+
+  return connectionInfo;
+};
+
 // this will help with autocomplete
 export interface ExtendedJsonRpcBatchProviderEventEmitter
   extends LazyEventEmitter {
@@ -138,7 +164,7 @@ export class ExtendedJsonRpcBatchProvider extends JsonRpcProvider {
     fetchMiddlewares: MiddlewareCallback<Promise<any>>[] = [],
     requestTimeoutMs?: number,
   ) {
-    super(url, network);
+    super(withDefaultThrottleCallback(url), network);
     this._requestTimeoutMs = requestTimeoutMs;
     this._eventEmitter = new LazyEventEmitter();
     this._domain = getConnectionFQDN(url);

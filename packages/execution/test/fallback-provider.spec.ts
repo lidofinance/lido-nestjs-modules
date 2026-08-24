@@ -40,6 +40,7 @@ export type MockedExtendedJsonRpcBatchProvider =
 type MockedSimpleFallbackJsonRpcBatchProvider =
   SimpleFallbackJsonRpcBatchProvider & {
     networksEqual(networkA: Network, networkB: Network): boolean;
+    resetTimer: ReturnType<typeof setTimeout> | null;
     fallbackProviders: [
       { provider: MockedExtendedJsonRpcBatchProvider; valid: boolean },
     ];
@@ -112,9 +113,88 @@ describe('Execution module. ', () => {
     };
 
     afterEach(async () => {
+      if (mockedProvider?.resetTimer) {
+        clearTimeout(mockedProvider.resetTimer);
+      }
       // Wait for pending setTimeout from ethers.js constructor to complete
       await new Promise((resolve) => setTimeout(resolve, 0));
       jest.resetAllMocks();
+    });
+
+    test('should keep using a healthy primary when the secondary fails with HTTP 429', async () => {
+      await createMocks(2);
+
+      const secondaryProvider = mockedProvider.fallbackProviders[1].provider;
+      const { throttleCallback } = secondaryProvider.connection;
+
+      expect(throttleCallback).toBeDefined();
+      await expect(
+        throttleCallback?.(0, secondaryProvider.connection.url),
+      ).resolves.toBe(false);
+
+      // Model the transport error after ExtendedJsonRpcBatchProvider stops
+      // retrying the throttled request internally.
+      const rateLimitError = new Error('HTTP 429: rate limit exceeded');
+      mockedFallbackProviderFetch[1].mockRejectedValue(rateLimitError);
+
+      const block = await mockedProvider.getBlock(42);
+
+      expect(block.hash).toBe(fixtures.eth_getBlockByNumber.default.hash);
+      expect(mockedProvider.activeProviderIndex).toBe(0);
+      expect(mockedFallbackProviderFetch[0]).toHaveBeenCalledTimes(2);
+      // The two network checks each probe eth_chainId and then net_version.
+      expect(mockedFallbackProviderFetch[1]).toHaveBeenCalledTimes(4);
+    });
+
+    test('should keep network results associated with reachable providers', async () => {
+      await createMocks(2);
+
+      mockedFallbackProviderFetch[0].mockRejectedValue(
+        new Error('HTTP 429: rate limit exceeded'),
+      );
+
+      await expect(mockedProvider.detectNetwork()).resolves.toEqual(
+        expect.objectContaining({ chainId: 1 }),
+      );
+      expect(mockedProvider.fallbackProviders[0].network).toBeNull();
+      expect(mockedProvider.fallbackProviders[0].unreachable).toBe(true);
+      expect(mockedProvider.fallbackProviders[1].network).toEqual(
+        expect.objectContaining({ chainId: 1 }),
+      );
+
+      await expect(mockedProvider.detectNetwork()).resolves.toEqual(
+        expect.objectContaining({ chainId: 1 }),
+      );
+      expect(mockedProvider.fallbackProviders[0].network).toBeNull();
+      expect(mockedProvider.fallbackProviders[0].unreachable).toBe(true);
+      expect(mockedProvider.fallbackProviders[1].network).toEqual(
+        expect.objectContaining({ chainId: 1 }),
+      );
+    });
+
+    test('should retry providers after a temporary network detection failure', async () => {
+      await createMocks(2);
+
+      mockedFallbackProviderFetch.forEach((fetchMock) => {
+        fetchMock.mockRejectedValue(new Error('HTTP 429: rate limit exceeded'));
+      });
+
+      await expect(mockedProvider.getBlock(42)).rejects.toThrow(
+        'All fallback endpoints are unreachable',
+      );
+      expect(
+        mockedProvider.fallbackProviders.every(
+          (fallbackProvider) => !fallbackProvider.unreachable,
+        ),
+      ).toBe(true);
+
+      mockedFallbackProviderFetch.forEach((fetchMock) => {
+        fetchMock.mockImplementation(fakeFetchImpl());
+      });
+
+      const block = await mockedProvider.getBlock(42);
+
+      expect(block.hash).toBe(fixtures.eth_getBlockByNumber.default.hash);
     });
 
     test('should do basic functionality and return correct data with 1 fallback provider', async () => {
@@ -361,8 +441,16 @@ describe('Execution module. ', () => {
     test('should go full cycle when doing fallback with correct networks', async () => {
       await createMocks(2, 1, 1, 1);
 
+      const firstProviderFetch = fakeFetchImpl(1, 10001);
+      let firstProviderRequestCount = 0;
       mockedFallbackProviderFetch[0].mockImplementation(
-        makeFakeFetchImplThatFailsFirstNRequests(3, 1, 10001),
+        async (connection: string | ConnectionInfo, json?: string) => {
+          firstProviderRequestCount++;
+          if (firstProviderRequestCount === 2) {
+            throw new Error('Failure');
+          }
+          return firstProviderFetch(connection, json);
+        },
       );
       mockedFallbackProviderFetch[1].mockImplementation(
         makeFakeFetchImplThatFailsAfterNRequests(2, 1, 10002),
