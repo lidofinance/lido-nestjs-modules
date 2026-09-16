@@ -125,8 +125,13 @@ new `payloadSlot` field of `ConsensusMeta` tells which slot the payload belongs 
 up to Fulu, where the payload always belongs to the slot itself.
 
 Finding the payload means walking the ancestors back, and `payloadLookbackDepth` bounds that walk.
-The registry throws `ExecutionPayloadNotFoundError` when the walk finds nothing, which normally
-points at a node that answers from another branch of the chain rather than at a depth set too low.
+The payload itself is then read from the envelope of the block it belongs to.
+
+`ExecutionPayloadNotFoundError` is thrown when either step comes up empty: the walk found no block
+holding that payload, or the node had no envelope to give for the block that does. Both normally
+point at the node rather than at a depth set too low. It either follows another branch of the
+chain, or keeps no envelopes that old. Errors that say nothing about the payload, such as a timeout
+or a 500, are passed through as they are.
 
 ## Migrations
 

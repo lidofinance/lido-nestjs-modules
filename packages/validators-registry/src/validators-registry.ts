@@ -18,6 +18,7 @@ import {
   BeaconBlockMessage,
   getAppliedExecutionBlockHash,
   getEnvelopePayload,
+  getHttpErrorStatus,
   getInlineExecutionPayload,
   getOwnExecutionBlockHash,
 } from './utils';
@@ -365,10 +366,10 @@ export class ValidatorsRegistry implements ValidatorsRegistryInterface {
       };
     }
 
-    const envelope =
-      await this.consensusService.getSignedExecutionPayloadEnvelope({
-        blockId: blockRoot,
-      });
+    const envelope = await this.getExecutionPayloadEnvelope(
+      blockRoot,
+      appliedBlockHash,
+    );
 
     const payload = getEnvelopePayload(envelope);
 
@@ -391,5 +392,37 @@ export class ValidatorsRegistry implements ValidatorsRegistryInterface {
       timestamp: payload.timestamp,
       payloadSlot,
     };
+  }
+
+  /**
+   * The envelope the builder revealed for the block.
+   *
+   * A 404 here means the node has no envelope for a block whose payload the state already has. The fetch layer walks
+   * the base urls it was given on every retry, so by this point every node the app knows has been asked. That makes
+   * the answer a state of the world and not a hiccup: the node either keeps no envelopes that old, or follows another
+   * branch of the chain. It is turned into the same error the walk itself raises, because a caller can do nothing
+   * more about it either way.
+   *
+   * Any other error is left as it is: a timeout or a 500 says nothing about the payload.
+   */
+  protected async getExecutionPayloadEnvelope(
+    blockRoot: string,
+    appliedBlockHash: string,
+  ): ReturnType<ConsensusService['getSignedExecutionPayloadEnvelope']> {
+    try {
+      return await this.consensusService.getSignedExecutionPayloadEnvelope({
+        blockId: blockRoot,
+      });
+    } catch (error) {
+      if (getHttpErrorStatus(error) !== 404) {
+        throw error;
+      }
+
+      throw new ExecutionPayloadNotFoundError(
+        `Node has no execution payload envelope for a block [${blockRoot}], ` +
+          `which holds execution payload [${appliedBlockHash}] applied to the state`,
+        appliedBlockHash,
+      );
+    }
   }
 }
