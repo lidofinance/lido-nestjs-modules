@@ -28,6 +28,7 @@ import {
   metaG1,
   metaG2,
   metaG3,
+  metaG5,
   rootG1,
   rootG2,
   slotG0,
@@ -35,6 +36,7 @@ import {
   slotG2,
   slotG3,
   slotG4,
+  slotG5,
 } from './fixtures/gloas';
 
 describe('ValidatorsRegistry (Gloas)', () => {
@@ -114,6 +116,28 @@ describe('ValidatorsRegistry (Gloas)', () => {
       metaG3,
     );
     await expect(validatorsRegistry.getMeta()).resolves.toStrictEqual(metaG3);
+  });
+
+  test('update, chain catches up after a skipped payload', async () => {
+    await expect(validatorsRegistry.update(slotG5)).resolves.toStrictEqual(
+      metaG5,
+    );
+    await expect(validatorsRegistry.getMeta()).resolves.toStrictEqual(metaG5);
+  });
+
+  test('update, execution layer data repeats while the slot moves on', async () => {
+    // The first block of the fork stands on the payload of the block before it, and a skipped
+    // payload leaves the next block on an older one. Both give two slots the same execution
+    // layer block, which is what the README says a reader has to be ready for.
+    const run = async (slot: string) => await validatorsRegistry.update(slot);
+
+    expect((await run(slotG0)).blockNumber).toBe(
+      (await run(slotG1)).blockNumber,
+    );
+    expect((await run(slotG2)).blockNumber).toBe(
+      (await run(slotG3)).blockNumber,
+    );
+    expect((await run(slotG5)).blockNumber).toBeGreaterThan(metaG3.blockNumber);
   });
 
   test('updateStream, payload of the parent was revealed', async () => {

@@ -124,6 +124,30 @@ of the parent did not reveal its payload in time, or when slots before the block
 new `payloadSlot` field of `ConsensusMeta` tells which slot the payload belongs to. It stays empty
 up to Fulu, where the payload always belongs to the slot itself.
 
+### What this means for code that reads `ConsensusMeta`
+
+Two habits that were safe up to Fulu are not safe any more.
+
+**`timestamp` is no longer the time of `slot`.** It is the time of `payloadSlot`, so it is at least
+one slot behind the slot it comes with. Code that used it as the time of the slot has to take that
+from the slot number itself.
+
+**`blockNumber`, `blockHash` and `timestamp` can repeat.** Two updates at different slots can report
+the same execution layer block, because a slot may add no execution layer block at all. Code that
+reads "a new slot" as "a new execution layer block" breaks on this. `slot` always moves forward,
+`blockNumber` does not.
+
+Here is how a short run around the fork looks. The chain adds an execution layer block at every
+slot but two: the first slot of the fork, and the slot whose builder was too late.
+
+| Block | What happened                       | `slot` | `payloadSlot` | `blockNumber` |
+| ----- | ----------------------------------- | ------ | ------------- | ------------- |
+| 100   | the last block before the fork      | 100    | —             | 50            |
+| 101   | the first block of the fork         | 101    | 100           | 50            |
+| 102   | the payload of 101 was revealed     | 102    | 101           | 51            |
+| 103   | the payload of 102 was not revealed | 103    | 101           | 51            |
+| 104   | the payload of 103 was revealed     | 104    | 103           | 52            |
+
 Finding the payload means walking the ancestors back, and `payloadLookbackDepth` bounds that walk.
 The payload itself is then read from the envelope of the block it belongs to.
 
