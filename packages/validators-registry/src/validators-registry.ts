@@ -21,6 +21,7 @@ import {
   getHttpErrorStatus,
   getInlineExecutionPayload,
   getOwnExecutionBlockHash,
+  normalizeHash,
 } from './utils';
 import {
   ConsensusDataInvalidError,
@@ -379,10 +380,12 @@ export class ValidatorsRegistry implements ValidatorsRegistryInterface {
       );
     }
 
-    if (payload.block_hash !== appliedBlockHash) {
+    const payloadBlockHash = normalizeHash(payload.block_hash);
+
+    if (payloadBlockHash !== appliedBlockHash) {
       throw new ConsensusDataInvalidError(
         `Envelope of a block [${blockRoot}] holds execution payload ` +
-          `[${payload.block_hash}] instead of [${appliedBlockHash}]`,
+          `[${payloadBlockHash}] instead of [${appliedBlockHash}]`,
       );
     }
 

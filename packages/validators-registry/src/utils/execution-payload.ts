@@ -1,4 +1,5 @@
 import { ConsensusMethodResult } from '@lido-nestjs/consensus';
+import { normalizeHash } from './hash';
 
 type BlockResponse = Awaited<ConsensusMethodResult<'getBlockV2'>>;
 type EnvelopeResponse = Awaited<
@@ -49,7 +50,7 @@ export const getExecutionPayloadBid = (body: BeaconBlockBody) => {
 export const getAppliedExecutionBlockHash = (
   body: BeaconBlockBody,
 ): string | undefined => {
-  return getExecutionPayloadBid(body)?.parent_block_hash;
+  return normalizeHash(getExecutionPayloadBid(body)?.parent_block_hash);
 };
 
 /**
@@ -61,9 +62,9 @@ export const getAppliedExecutionBlockHash = (
 export const getOwnExecutionBlockHash = (
   body: BeaconBlockBody,
 ): string | undefined => {
-  return (
+  return normalizeHash(
     getInlineExecutionPayload(body)?.block_hash ??
-    getExecutionPayloadBid(body)?.block_hash
+      getExecutionPayloadBid(body)?.block_hash,
   );
 };
 
