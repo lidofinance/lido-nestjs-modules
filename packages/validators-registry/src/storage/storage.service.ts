@@ -75,7 +75,9 @@ export class StorageService
       .find(
         {},
         {
-          orderBy: { blockNumber: QueryOrder.DESC },
+          // Since Gloas (EIP-7732) a skipped payload leaves the block number of an earlier slot in place, so only the
+          // slot still tells which row is the newer one
+          orderBy: { slot: QueryOrder.DESC },
           limit: 1,
         },
       );
@@ -94,6 +96,10 @@ export class StorageService
       blockHash: metaEntity.blockHash,
       slotStateRoot: metaEntity.slotStateRoot,
       timestamp: metaEntity.timestamp,
+      // The column is empty up to Fulu, and the type keeps the field out instead of holding a null
+      ...(metaEntity.payloadSlot != null
+        ? { payloadSlot: metaEntity.payloadSlot }
+        : {}),
     };
   }
 

@@ -6,6 +6,7 @@ import {
 } from './interfaces';
 import { StorageModule } from './storage/';
 import { ValidatorsRegistry } from './validators-registry';
+import { VALIDATORS_REGISTRY_OPTIONS_TOKEN } from './constants';
 
 @Module({
   providers: [
@@ -37,9 +38,17 @@ export class ValidatorsRegistryModule {
   static forFeature(
     options?: ValidatorsRegistryModuleSyncOptions,
   ): DynamicModule {
+    const { imports, ...serviceOptions } = options || {};
+
     return {
       module: ValidatorsRegistryModule,
-      imports: options?.imports,
+      imports,
+      providers: [
+        {
+          provide: VALIDATORS_REGISTRY_OPTIONS_TOKEN,
+          useValue: serviceOptions,
+        },
+      ],
     };
   }
 
@@ -49,6 +58,13 @@ export class ValidatorsRegistryModule {
     return {
       module: ValidatorsRegistryModule,
       imports: options.imports,
+      providers: [
+        {
+          provide: VALIDATORS_REGISTRY_OPTIONS_TOKEN,
+          useFactory: options.useFactory,
+          inject: options.inject,
+        },
+      ],
     };
   }
 }
