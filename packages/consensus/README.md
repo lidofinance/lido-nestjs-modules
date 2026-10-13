@@ -135,6 +135,56 @@ export class MyService {
 }
 ```
 
+## Forks
+
+`getBlockV2` and `getStateV2` change shape from fork to fork. Their result is a union of the fork shapes, told apart by `version`. `ConsensusMethodResult<'getBlockV2'>` and `ConsensusMethodResult<'getStateV2'>` have the same type. A field that is not in every fork is a build error until you narrow the type:
+
+```ts
+import {
+  ConsensusService,
+  hasExecutionPayload,
+  hasExecutionPayloadBid,
+} from '@lido-nestjs/consensus';
+
+export class MyService {
+  constructor(private consensusService: ConsensusService) {}
+
+  async blockHash(slot: number) {
+    const block = await this.consensusService.getBlockV2({
+      blockId: String(slot),
+    });
+
+    // Build error: Gloas blocks have no execution_payload
+    // block.data.message.body.execution_payload.block_hash;
+
+    if (hasExecutionPayload(block)) {
+      // bellatrix to fulu
+      return block.data.message.body.execution_payload.block_hash;
+    }
+    if (hasExecutionPayloadBid(block)) {
+      // gloas: the block only commits to a payload
+      return block.data.message.body.signed_execution_payload_bid.message
+        .block_hash;
+    }
+    if (block.version === 'phase0' || block.version === 'altair') return null;
+
+    throw new Error(`Unsupported fork ${block.version}`);
+  }
+}
+```
+
+A fork this version of the package does not know matches no guard, so keep a branch that fails for it.
+
+`block.version` is the fork of the block, so no fork schedule is needed. To compare forks, use `isForkAtLeast(block.version, 'gloas')`.
+
+### Gloas (EIP-7732)
+
+From the Gloas fork on the block body has no `execution_payload`. It has `signed_execution_payload_bid`: the hash, fee recipient and value the builder committed to. The builder reveals the payload later in a separate envelope, `getSignedExecutionPayloadEnvelope`. The payload may never be revealed.
+
+The payload of block N is canonical when the next block builds on it: the next block's `bid.parent_block_hash` equals block N's `bid.block_hash`. A found envelope is not enough, some clients serve envelopes of late payloads that were orphaned.
+
+Values in the bid (`value`, `execution_payment`) are in Gwei.
+
 ## Methods
 
 ### Beacon

@@ -3,6 +3,10 @@
 
 import { RequestInit } from 'node-fetch';
 import { operations } from './generated.interface';
+import {
+  VersionedBeaconState,
+  VersionedSignedBeaconBlock,
+} from './fork.interface';
 
 type CamelCase<S extends string> =
   S extends `${infer P1}_${infer P2}${infer P3}`
@@ -41,5 +45,9 @@ export type ConsensusMethodArgs<T extends keyof operations> = ExtractArgs<
 > & { options?: RequestInit };
 
 export type ConsensusMethodResult<T extends keyof operations> = Promise<
-  ExtractResult<operations[T]>
+  T extends 'getBlockV2'
+    ? VersionedSignedBeaconBlock
+    : T extends 'getStateV2'
+    ? VersionedBeaconState
+    : ExtractResult<operations[T]>
 >;
