@@ -20,6 +20,10 @@ Support for the Glamsterdam fork (consensus fork Gloas, EIP-7732). Types follow 
 - Guards `hasExecutionPayload` (bellatrix to fulu) and `hasExecutionPayloadBid` (gloas), and `isForkAtLeast(fork, since)`.
 - Types and constants: `ConsensusFork`, `CONSENSUS_FORKS`, `EXECUTION_PAYLOAD_FORKS`, `EXECUTION_PAYLOAD_BID_FORKS`, `VersionedSignedBeaconBlock<F>`, `VersionedBeaconState<F>`, `SignedBeaconBlockByFork`, `BeaconStateByFork`.
 
+### Fixed
+
+- `getHealth` failed on every call, because the node answers with an empty body. It now resolves to `null` when the node is healthy.
+
 ### Deprecated
 
 `getProposerDuties`, `getNodeVersion`, `produceBlockV3`, `publishBlindedBlockV2`, `prepareBeaconProposer`, `registerValidator`.

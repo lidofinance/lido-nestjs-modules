@@ -68,11 +68,15 @@ export class ConsensusNodeService extends ConsensusBaseService {
     return await this.fetch(`/eth/v1/node/syncing`, options);
   }
 
-  /** Returns node health status in http status codes. Useful for load balancers. */
+  /**
+   * Returns node health status in http status codes. Useful for load balancers.
+   * The answer has no body: the method resolves when the node is healthy and throws otherwise.
+   */
   public async getHealth(
     args?: ConsensusMethodArgs<'getHealth'>,
-  ): ConsensusMethodResult<'getHealth'> {
+  ): Promise<null> {
     const { options } = args || {};
-    return await this.fetch(`/eth/v1/node/health`, options);
+    await this.fetchOptional(`/eth/v1/node/health`, options);
+    return null;
   }
 }
