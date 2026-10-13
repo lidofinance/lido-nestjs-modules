@@ -38,12 +38,26 @@ export class ConsensusNodeService extends ConsensusBaseService {
     return await this.fetch(`/eth/v1/node/peer_count`, options);
   }
 
-  /** Requests that the beacon node identify information about its implementation in a format similar to a [HTTP User-Agent](https://tools.ietf.org/html/rfc7231#section-5.5.3) field. */
+  /**
+   * Requests that the beacon node identify information about its implementation in a format similar to a [HTTP User-Agent](https://tools.ietf.org/html/rfc7231#section-5.5.3) field.
+   * @deprecated Use getNodeVersionV2.
+   */
   public async getNodeVersion(
     args?: ConsensusMethodArgs<'getNodeVersion'>,
   ): ConsensusMethodResult<'getNodeVersion'> {
     const { options } = args || {};
     return await this.fetch(`/eth/v1/node/version`, options);
+  }
+
+  /**
+   * Versioned variant of getNodeVersion introduced in beacon-APIs v5; the response is a
+   * structured object identifying both beacon and (optional) execution clients.
+   */
+  public async getNodeVersionV2(
+    args?: ConsensusMethodArgs<'getNodeVersionV2'>,
+  ): ConsensusMethodResult<'getNodeVersionV2'> {
+    const { options } = args || {};
+    return await this.fetch(`/eth/v2/node/version`, options);
   }
 
   /** Requests the beacon node to describe if it's currently syncing or not, and if it is, what block it is up to. */

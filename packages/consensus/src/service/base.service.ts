@@ -29,6 +29,14 @@ export class ConsensusBaseService {
     return await this.fetchService.fetchJson(path, init);
   }
 
+  public async fetchOptional<T>(
+    path: string,
+    init?: RequestInit,
+  ): Promise<T | null> {
+    const text = await this.fetchService.fetchText(path, init);
+    return text ? JSON.parse(text) : null;
+  }
+
   public async fetchStream(
     path: string,
     init?: RequestInit,

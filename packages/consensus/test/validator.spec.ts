@@ -37,14 +37,36 @@ describe('Validator endpoints', () => {
     );
   });
 
+  test('getProposerDutiesV2', async () => {
+    await consensusService.getProposerDutiesV2({ epoch: '7' });
+
+    expect(mockFetch).toBeCalledTimes(1);
+    expect(mockFetch).toBeCalledWith(
+      '/eth/v2/validator/duties/proposer/7',
+      undefined,
+    );
+  });
+
+  test('getPtcDuties', async () => {
+    await expect(consensusService.getPtcDuties()).rejects.toThrow();
+  });
+
   test('getSyncCommitteeDuties', async () => {
     await expect(consensusService.getSyncCommitteeDuties()).rejects.toThrow();
   });
 
   test('getAggregatedAttestationV2', async () => {
-    await expect(
-      consensusService.getAggregatedAttestationV2(),
-    ).rejects.toThrow();
+    await consensusService.getAggregatedAttestationV2({
+      slot: '1',
+      attestationDataRoot: '2',
+      committeeIndex: '3',
+    });
+
+    expect(mockFetch).toBeCalledTimes(1);
+    expect(mockFetch).toBeCalledWith(
+      '/eth/v2/validator/aggregate_attestation?slot=1&attestation_data_root=2&committee_index=3',
+      undefined,
+    );
   });
 
   test('produceBlockV3', async () => {
@@ -74,22 +96,56 @@ describe('Validator endpoints', () => {
     );
   });
 
-  test('getAggregatedAttestation', async () => {
-    await consensusService.getAggregatedAttestation({
-      slot: '1',
-      attestationDataRoot: '2',
+  test('producePayloadAttestationData', async () => {
+    const mockFetchText = jest
+      .spyOn(fetchService, 'fetchText')
+      .mockImplementation(async () => '{"version":"gloas","data":{}}');
+
+    const result = await consensusService.producePayloadAttestationData({
+      slot: '12',
     });
 
-    expect(mockFetch).toBeCalledTimes(1);
-    expect(mockFetch).toBeCalledWith(
-      '/eth/v1/validator/aggregate_attestation?slot=1&attestation_data_root=2',
+    expect(result).toEqual({ version: 'gloas', data: {} });
+    expect(mockFetchText).toBeCalledTimes(1);
+    expect(mockFetchText).toBeCalledWith(
+      '/eth/v1/validator/payload_attestation_data?slot=12',
       undefined,
     );
   });
 
-  test('publishAggregateAndProofs', async () => {
+  test('producePayloadAttestationData with no content', async () => {
+    jest.spyOn(fetchService, 'fetchText').mockImplementation(async () => '');
+
+    const result = await consensusService.producePayloadAttestationData({
+      slot: '12',
+    });
+
+    expect(result).toBeNull();
+  });
+
+  test('produceBlockV4', async () => {
+    await expect(consensusService.produceBlockV4()).rejects.toThrow();
+  });
+
+  test('getExecutionPayloadEnvelope', async () => {
     await expect(
-      consensusService.publishAggregateAndProofs(),
+      consensusService.getExecutionPayloadEnvelope(),
+    ).rejects.toThrow();
+  });
+
+  test('submitProposerPreferences', async () => {
+    await expect(
+      consensusService.submitProposerPreferences(),
+    ).rejects.toThrow();
+  });
+
+  test('submitBuilderPreferences', async () => {
+    await expect(consensusService.submitBuilderPreferences()).rejects.toThrow();
+  });
+
+  test('publishAggregateAndProofsV2', async () => {
+    await expect(
+      consensusService.publishAggregateAndProofsV2(),
     ).rejects.toThrow();
   });
 
