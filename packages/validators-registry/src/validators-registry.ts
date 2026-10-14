@@ -299,6 +299,9 @@ export class ValidatorsRegistry implements ValidatorsRegistryInterface {
    * Following `parent_root` costs one request per proposed block and skips the missed slots for free. The walk
    * normally ends on the parent: it takes another step only when a builder did not reveal its payload in time, which
    * is rare and does not last long.
+   *
+   * A block that fails to read is left alone and not turned into a registry error: a node that does not know the root
+   * it is asked about answers 404, and that `HttpException` reaches the caller as it is.
    */
   protected async findAppliedExecutionPayload(
     appliedBlockHash: string,
@@ -400,11 +403,15 @@ export class ValidatorsRegistry implements ValidatorsRegistryInterface {
   /**
    * The envelope the builder revealed for the block.
    *
-   * A 404 here means the node has no envelope for a block whose payload the state already has. The fetch layer walks
-   * the base urls it was given on every retry, so by this point every node the app knows has been asked. That makes
-   * the answer a state of the world and not a hiccup: the node either keeps no envelopes that old, or follows another
-   * branch of the chain. It is turned into the same error the walk itself raises, because a caller can do nothing
-   * more about it either way.
+   * A 404 here means the node has no envelope for a block whose payload the state already has: it either keeps no
+   * envelopes that old, or follows another branch of the chain. It is turned into the same error the walk itself
+   * raises, because a caller can do nothing more about it either way.
+   *
+   * How much that 404 is worth depends on the app. The fetch layer moves to the next base url on every retry, so with
+   * `retryPolicy.attempts` of `@lido-nestjs/fetch` at `baseUrls.length - 1` or more, every node the app knows has
+   * been asked by this point and the answer is a state of the world. The default is no retries at all, and then only
+   * the first url was asked while another node may well hold the envelope. The README asks for a retry policy for
+   * this reason.
    *
    * Any other error is left as it is: a timeout or a 500 says nothing about the payload.
    */

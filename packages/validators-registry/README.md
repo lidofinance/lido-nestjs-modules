@@ -166,11 +166,37 @@ The payload itself is then read from the envelope of the block it belongs to, th
 fork reads it off the block instead: the last Fulu block carries its payload, and no envelope was
 ever published for it.
 
+### Errors
+
 `ExecutionPayloadNotFoundError` is thrown when either step comes up empty: the walk found no block
 holding that payload, or the node had no envelope to give for the block that does. Both normally
 point at the node rather than at a depth set too low. It either follows another branch of the
-chain, or keeps no envelopes that old. Errors that say nothing about the payload, such as a timeout
-or a 500, are passed through as they are.
+chain, or keeps no envelopes that old.
+
+Everything else is passed through as it is, **including the `HttpException` that
+`@lido-nestjs/fetch` throws for an answer that is not 2xx**. A timeout or a 500 says nothing about
+the payload, so turning it into a registry error would hide a real problem. The blocks the walk
+reads are left alone the same way: a node that does not know the ancestor root it is asked about
+answers 404, and that `HttpException` reaches the caller unchanged. So code that catches
+`ExecutionPayloadNotFoundError` has to be ready for a raw `HttpException` as well.
+
+### Set a retry policy when you pass more than one node
+
+`@lido-nestjs/fetch` moves to the next entry of `baseUrls` on every **retry**, and its default is
+`attempts: 0` — no retries at all. With that default only the first url is ever asked, whatever
+else is in the list.
+
+Since Gloas that costs more than it used to. One node can be the only one missing the envelope for
+a block, and its 404 then becomes `ExecutionPayloadNotFoundError` as if the whole fleet had
+answered. Set `attempts` to at least `baseUrls.length - 1`, so that every node is asked before the
+registry gives up:
+
+```typescript
+FetchModule.forRoot({
+  baseUrls: ['http://node-1:4001', 'http://node-2:4001', 'http://node-3:4001'],
+  retryPolicy: { attempts: 2, delay: 1000 },
+});
+```
 
 ## Migrations
 

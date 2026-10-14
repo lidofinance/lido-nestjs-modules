@@ -10,6 +10,10 @@
  *
  * Raising the depth in the module options helps when the chain really did skip that many payloads in a row. Otherwise
  * both cases point at the node: it either follows another branch of the chain, or keeps no envelopes that old.
+ *
+ * With several base urls, how many of them were asked before this is raised depends on `retryPolicy.attempts` of
+ * `@lido-nestjs/fetch`, which is zero by default. Without a retry policy only the first url was asked, so this says
+ * nothing about the other nodes — see the README.
  */
 export class ExecutionPayloadNotFoundError extends Error {
   public constructor(
