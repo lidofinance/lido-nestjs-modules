@@ -71,6 +71,13 @@ describe('Node endpoints', () => {
     expect(mockFetch).toBeCalledWith('/eth/v1/node/version', undefined);
   });
 
+  test('getNodeVersionV2', async () => {
+    await consensusService.getNodeVersionV2();
+
+    expect(mockFetch).toBeCalledTimes(1);
+    expect(mockFetch).toBeCalledWith('/eth/v2/node/version', undefined);
+  });
+
   test('getSyncingStatus', async () => {
     await consensusService.getSyncingStatus();
 
@@ -79,9 +86,13 @@ describe('Node endpoints', () => {
   });
 
   test('getHealth', async () => {
-    await consensusService.getHealth();
+    const mockFetchText = jest
+      .spyOn(fetchService, 'fetchText')
+      .mockImplementation(async () => '');
 
-    expect(mockFetch).toBeCalledTimes(1);
-    expect(mockFetch).toBeCalledWith('/eth/v1/node/health', undefined);
+    await expect(consensusService.getHealth()).resolves.toBeNull();
+
+    expect(mockFetchText).toBeCalledTimes(1);
+    expect(mockFetchText).toBeCalledWith('/eth/v1/node/health', undefined);
   });
 });

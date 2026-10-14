@@ -38,12 +38,26 @@ export class ConsensusNodeService extends ConsensusBaseService {
     return await this.fetch(`/eth/v1/node/peer_count`, options);
   }
 
-  /** Requests that the beacon node identify information about its implementation in a format similar to a [HTTP User-Agent](https://tools.ietf.org/html/rfc7231#section-5.5.3) field. */
+  /**
+   * Requests that the beacon node identify information about its implementation in a format similar to a [HTTP User-Agent](https://tools.ietf.org/html/rfc7231#section-5.5.3) field.
+   * @deprecated Use getNodeVersionV2.
+   */
   public async getNodeVersion(
     args?: ConsensusMethodArgs<'getNodeVersion'>,
   ): ConsensusMethodResult<'getNodeVersion'> {
     const { options } = args || {};
     return await this.fetch(`/eth/v1/node/version`, options);
+  }
+
+  /**
+   * Versioned variant of getNodeVersion introduced in beacon-APIs v5; the response is a
+   * structured object identifying both beacon and (optional) execution clients.
+   */
+  public async getNodeVersionV2(
+    args?: ConsensusMethodArgs<'getNodeVersionV2'>,
+  ): ConsensusMethodResult<'getNodeVersionV2'> {
+    const { options } = args || {};
+    return await this.fetch(`/eth/v2/node/version`, options);
   }
 
   /** Requests the beacon node to describe if it's currently syncing or not, and if it is, what block it is up to. */
@@ -54,11 +68,15 @@ export class ConsensusNodeService extends ConsensusBaseService {
     return await this.fetch(`/eth/v1/node/syncing`, options);
   }
 
-  /** Returns node health status in http status codes. Useful for load balancers. */
+  /**
+   * Returns node health status in http status codes. Useful for load balancers.
+   * The answer has no body: the method resolves when the node is healthy and throws otherwise.
+   */
   public async getHealth(
     args?: ConsensusMethodArgs<'getHealth'>,
-  ): ConsensusMethodResult<'getHealth'> {
+  ): Promise<null> {
     const { options } = args || {};
-    return await this.fetch(`/eth/v1/node/health`, options);
+    await this.fetchOptional(`/eth/v1/node/health`, options);
+    return null;
   }
 }

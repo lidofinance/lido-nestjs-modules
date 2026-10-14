@@ -39,4 +39,11 @@ describe('Debug endpoints', () => {
     expect(mockFetch).toBeCalledTimes(1);
     expect(mockFetch).toBeCalledWith('/eth/v2/debug/beacon/heads', undefined);
   });
+
+  test('getDebugForkChoiceV2', async () => {
+    await consensusService.getDebugForkChoiceV2();
+
+    expect(mockFetch).toBeCalledTimes(1);
+    expect(mockFetch).toBeCalledWith('/eth/v2/debug/fork_choice', undefined);
+  });
 });

@@ -152,17 +152,20 @@ export class ConsensusBeaconService extends ConsensusBaseService {
 
   /**
    * Instructs the beacon node to broadcast a newly signed beacon block to the beacon network,
-   * to be included in the beacon chain.
+   * to be included in the beacon chain. Versioned variant introduced in beacon-APIs v3
+   * which mandates the `Eth-Consensus-Version` header on submission.
    */
-  public async publishBlock(): ConsensusMethodResult<'publishBlock'> {
+  public async publishBlockV2(): ConsensusMethodResult<'publishBlockV2'> {
     throw new Error('Method is not implemented');
   }
 
   /**
    * Instructs the beacon node to use the components of the `SignedBlindedBeaconBlock` to construct and publish a
    * `SignedBeaconBlock` by swapping out the `transactions_root` for the corresponding full list of `transactions`.
+   * Versioned variant introduced in beacon-APIs v3.
+   * @deprecated Blinded blocks do not exist from the Gloas fork on.
    */
-  public async publishBlindedBlock(): ConsensusMethodResult<'publishBlindedBlock'> {
+  public async publishBlindedBlockV2(): ConsensusMethodResult<'publishBlindedBlockV2'> {
     throw new Error('Method is not implemented');
   }
 
@@ -182,45 +185,168 @@ export class ConsensusBeaconService extends ConsensusBaseService {
     return await this.fetch(`/eth/v1/beacon/blocks/${blockId}/root`, options);
   }
 
-  /** Retrieves attestation included in requested block. */
-  public async getBlockAttestations(
-    args: ConsensusMethodArgs<'getBlockAttestations'>,
-  ): ConsensusMethodResult<'getBlockAttestations'> {
+  /** Retrieves attestations included in requested block. Versioned response variant. */
+  public async getBlockAttestationsV2(
+    args: ConsensusMethodArgs<'getBlockAttestationsV2'>,
+  ): ConsensusMethodResult<'getBlockAttestationsV2'> {
     const { blockId, options } = args;
     return await this.fetch(
-      `/eth/v1/beacon/blocks/${blockId}/attestations`,
+      `/eth/v2/beacon/blocks/${blockId}/attestations`,
       options,
     );
   }
 
-  /** Retrieves attestations known by the node but not necessarily incorporated into any block */
-  public async getPoolAttestations(
-    args?: ConsensusMethodArgs<'getPoolAttestations'>,
-  ): ConsensusMethodResult<'getPoolAttestations'> {
+  /** Retrieves attestations known by the node but not necessarily incorporated into any block. Versioned response variant. */
+  public async getPoolAttestationsV2(
+    args?: ConsensusMethodArgs<'getPoolAttestationsV2'>,
+  ): ConsensusMethodResult<'getPoolAttestationsV2'> {
     const { options, slot, committeeIndex } = args || {};
     const search = this.getSearchString({ slot, committeeIndex });
     return await this.fetch(
-      `/eth/v1/beacon/pool/attestations${search}`,
+      `/eth/v2/beacon/pool/attestations${search}`,
       options,
     );
   }
 
   /** Submits Attestation objects to the node. Each attestation in the request body is processed individually. */
-  public async submitPoolAttestations(): ConsensusMethodResult<'submitPoolAttestations'> {
+  public async submitPoolAttestationsV2(): ConsensusMethodResult<'submitPoolAttestationsV2'> {
     throw new Error('Method is not implemented');
   }
 
-  /** Retrieves attester slashings known by the node but not necessarily incorporated into any block */
-  public async getPoolAttesterSlashings(
-    args?: ConsensusMethodArgs<'getPoolAttesterSlashings'>,
-  ): ConsensusMethodResult<'getPoolAttesterSlashings'> {
+  /** Retrieves attester slashings known by the node but not necessarily incorporated into any block. Versioned response variant. */
+  public async getPoolAttesterSlashingsV2(
+    args?: ConsensusMethodArgs<'getPoolAttesterSlashingsV2'>,
+  ): ConsensusMethodResult<'getPoolAttesterSlashingsV2'> {
     const { options } = args || {};
-    return await this.fetch(`/eth/v1/beacon/pool/attester_slashings`, options);
+    return await this.fetch(`/eth/v2/beacon/pool/attester_slashings`, options);
   }
 
   /** Submits AttesterSlashing object to node's pool and if passes validation node MUST broadcast it to network. */
-  public async submitPoolAttesterSlashings(): ConsensusMethodResult<'submitPoolAttesterSlashings'> {
+  public async submitPoolAttesterSlashingsV2(): ConsensusMethodResult<'submitPoolAttesterSlashingsV2'> {
     throw new Error('Method is not implemented');
+  }
+
+  /** Retrieves payload attestations known by the node. Available from the Glamsterdam (Gloas) fork onwards. */
+  public async getPoolPayloadAttestations(
+    args?: ConsensusMethodArgs<'getPoolPayloadAttestations'>,
+  ): ConsensusMethodResult<'getPoolPayloadAttestations'> {
+    const { options, slot } = args || {};
+    const search = this.getSearchString({ slot });
+    return await this.fetch(
+      `/eth/v1/beacon/pool/payload_attestations${search}`,
+      options,
+    );
+  }
+
+  /** Submits SignedPayloadAttestationMessage objects to the node. Available from the Glamsterdam (Gloas) fork onwards. */
+  public async submitPayloadAttestationMessages(): ConsensusMethodResult<'submitPayloadAttestationMessages'> {
+    throw new Error('Method is not implemented');
+  }
+
+  /**
+   * Retrieves the SignedExecutionPayloadEnvelope for a given block id.
+   * Introduced in Glamsterdam (Gloas) fork together with ePBS (EIP-7732).
+   * A found envelope does not prove that the payload is canonical: a late payload can be orphaned.
+   * The payload of block N is canonical when the bid of the next block has
+   * `parent_block_hash` equal to the bid `block_hash` of block N.
+   */
+  public async getSignedExecutionPayloadEnvelope(
+    args: ConsensusMethodArgs<'getSignedExecutionPayloadEnvelope'>,
+  ): ConsensusMethodResult<'getSignedExecutionPayloadEnvelope'> {
+    const { blockId, options } = args;
+    return await this.fetch(
+      `/eth/v1/beacon/execution_payload_envelopes/${blockId}`,
+      options,
+    );
+  }
+
+  /** Publishes a SignedExecutionPayloadBid built by an ePBS builder. Introduced in Glamsterdam (Gloas). */
+  public async publishExecutionPayloadBid(): ConsensusMethodResult<'publishExecutionPayloadBid'> {
+    throw new Error('Method is not implemented');
+  }
+
+  /** Publishes a SignedExecutionPayloadEnvelope built by a builder. Introduced in Glamsterdam (Gloas). */
+  public async publishExecutionPayloadEnvelope(): ConsensusMethodResult<'publishExecutionPayloadEnvelope'> {
+    throw new Error('Method is not implemented');
+  }
+
+  /**
+   * Returns builders from the builder registry of the state, filtered by ids and statuses.
+   * Introduced in Glamsterdam (Gloas).
+   */
+  public async getStateBuilders(
+    args: ConsensusMethodArgs<'getStateBuilders'>,
+  ): ConsensusMethodResult<'getStateBuilders'> {
+    const { stateId, ids, statuses, options } = args;
+    return await this.fetch(`/eth/v1/beacon/states/${stateId}/builders`, {
+      ...options,
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...options?.headers,
+      },
+      body: JSON.stringify({ ids, statuses }),
+    });
+  }
+
+  /** Returns builder payments of the state that wait for the end of the epoch. Introduced in Glamsterdam (Gloas). */
+  public async getBuilderPendingPayments(
+    args: ConsensusMethodArgs<'getBuilderPendingPayments'>,
+  ): ConsensusMethodResult<'getBuilderPendingPayments'> {
+    const { stateId, options } = args;
+    return await this.fetch(
+      `/eth/v1/beacon/states/${stateId}/builder_pending_payments`,
+      options,
+    );
+  }
+
+  /** Returns builder payments of the state that wait to be withdrawn. Introduced in Glamsterdam (Gloas). */
+  public async getBuilderPendingWithdrawals(
+    args: ConsensusMethodArgs<'getBuilderPendingWithdrawals'>,
+  ): ConsensusMethodResult<'getBuilderPendingWithdrawals'> {
+    const { stateId, options } = args;
+    return await this.fetch(
+      `/eth/v1/beacon/states/${stateId}/builder_pending_withdrawals`,
+      options,
+    );
+  }
+
+  /** Returns the Payload Timeliness Committee for a slot of the state. Introduced in Glamsterdam (Gloas). */
+  public async getStatePtc(
+    args: ConsensusMethodArgs<'getStatePtc'>,
+  ): ConsensusMethodResult<'getStatePtc'> {
+    const { stateId, slot, options } = args;
+    const search = this.getSearchString({ slot });
+    return await this.fetch(
+      `/eth/v1/beacon/states/${stateId}/ptc${search}`,
+      options,
+    );
+  }
+
+  /** Returns signed proposer preferences known by the node. Introduced in Glamsterdam (Gloas). */
+  public async getProposerPreferences(
+    args?: ConsensusMethodArgs<'getProposerPreferences'>,
+  ): ConsensusMethodResult<'getProposerPreferences'> {
+    const { slot, dependentRoot, options } = args || {};
+    const search = this.getSearchString({ slot, dependentRoot });
+    return await this.fetch(
+      `/eth/v1/beacon/proposer_preferences${search}`,
+      options,
+    );
+  }
+
+  /**
+   * Returns the proposer lookahead window for the given state.
+   * Introduced in the Fulu fork (EIP-7917).
+   */
+  public async getProposerLookahead(
+    args: ConsensusMethodArgs<'getProposerLookahead'>,
+  ): ConsensusMethodResult<'getProposerLookahead'> {
+    const { stateId, options } = args;
+    return await this.fetch(
+      `/eth/v1/beacon/states/${stateId}/proposer_lookahead`,
+      options,
+    );
   }
 
   /** Retrieves proposer slashings known by the node but not necessarily incorporated into any block */
