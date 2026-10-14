@@ -1,6 +1,7 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable, Optional } from '@nestjs/common';
 import { ConsensusService } from '@lido-nestjs/consensus';
 import { ValidatorsRegistryInterface, BlockId } from './interfaces';
+import { ValidatorsRegistryModuleOptions } from './interfaces/module.interface';
 import {
   BlockHeader,
   Validator,
@@ -9,19 +10,50 @@ import {
   Slot,
 } from './types';
 import { FindOptions, FilterQuery, StorageServiceInterface } from './storage';
-import { parseAsTypeOrFail, calcEpochBySlot } from './utils';
-import { ConsensusDataInvalidError } from './errors';
+import {
+  parseAsTypeOrFail,
+  calcEpochBySlot,
+  AppliedExecutionPayload,
+  BeaconBlockBody,
+  BeaconBlockMessage,
+  getAppliedExecutionBlockHash,
+  getEnvelopePayload,
+  getInlineExecutionPayload,
+  getOwnExecutionBlockHash,
+} from './utils';
+import {
+  ConsensusDataInvalidError,
+  ExecutionPayloadNotFoundError,
+} from './errors';
 import { ConsensusValidatorEntity } from './storage/consensus-validator.entity';
 import { EntityManager } from '@mikro-orm/knex';
 import { processValidatorsStream } from './utils/validators.stream';
 import { IsolationLevel } from '@mikro-orm/core';
+import {
+  VALIDATORS_REGISTRY_DEFAULT_PAYLOAD_LOOKBACK_DEPTH,
+  VALIDATORS_REGISTRY_OPTIONS_TOKEN,
+} from './constants';
 
 @Injectable()
 export class ValidatorsRegistry implements ValidatorsRegistryInterface {
   public constructor(
     protected readonly consensusService: ConsensusService,
     protected readonly storageService: StorageServiceInterface,
+
+    @Optional()
+    @Inject(VALIDATORS_REGISTRY_OPTIONS_TOKEN)
+    protected readonly options: ValidatorsRegistryModuleOptions | null = null,
   ) {}
+
+  /**
+   * How many blocks back to walk when looking for the execution payload that the state already has.
+   */
+  public get payloadLookbackDepth(): number {
+    return (
+      this.options?.payloadLookbackDepth ??
+      VALIDATORS_REGISTRY_DEFAULT_PAYLOAD_LOOKBACK_DEPTH
+    );
+  }
 
   /**
    * @inheritDoc
@@ -186,36 +218,21 @@ export class ValidatorsRegistry implements ValidatorsRegistryInterface {
     });
 
     /* istanbul ignore next */
-    const beaconBlockBody = block?.data?.message?.body;
-    const executionPayload =
-      beaconBlockBody && 'execution_payload' in beaconBlockBody
-        ? beaconBlockBody.execution_payload
-        : null;
+    const blockMessage = block?.data?.message;
 
-    if (!executionPayload) {
-      throw new ConsensusDataInvalidError(
-        `No execution_payload data in a block`,
-      );
-    }
+    const executionPayload = await this.getAppliedExecutionPayload(
+      blockMessage,
+    );
 
     /* istanbul ignore next */
-    const slot = parseAsTypeOrFail(
-      Slot,
-      block?.data?.message?.slot,
-      (error) => {
-        throw new ConsensusDataInvalidError(`Got invalid slot`, error);
-      },
-    );
+    const slot = parseAsTypeOrFail(Slot, blockMessage?.slot, (error) => {
+      throw new ConsensusDataInvalidError(`Got invalid slot`, error);
+    });
 
     const epoch = calcEpochBySlot(slot);
 
     /* istanbul ignore next */
-    const slotStateRoot = block?.data?.message?.state_root;
-
-    /* istanbul ignore next */
-    const blockNumber = executionPayload.block_number;
-    const blockHash = executionPayload.block_hash;
-    const timestamp = executionPayload.timestamp;
+    const slotStateRoot = blockMessage?.state_root;
 
     /* istanbul ignore next */
     return parseAsTypeOrFail(
@@ -224,13 +241,155 @@ export class ValidatorsRegistry implements ValidatorsRegistryInterface {
         epoch,
         slot,
         slotStateRoot,
-        blockNumber,
-        blockHash,
-        timestamp,
+        ...executionPayload,
       },
       (error) => {
         throw new ConsensusDataInvalidError(`Got invalid ConsensusMeta`, error);
       },
     );
+  }
+
+  /**
+   * The execution payload the beacon state of the block already has.
+   *
+   * Up to Fulu the block carries its payload, and it is applied within the same slot, so the answer is right there.
+   *
+   * Since Gloas (EIP-7732) the block only commits to a bid, and the builder reveals the payload later in the slot.
+   * `process_parent_execution_payload` applies the payload of the parent while the block is being processed, so the
+   * state of the block has the payload of an ancestor and never its own. The bid names that payload by its hash, and
+   * the walk below finds the block it belongs to.
+   */
+  protected async getAppliedExecutionPayload(
+    blockMessage?: BeaconBlockMessage,
+  ): Promise<AppliedExecutionPayload> {
+    if (!blockMessage?.body) {
+      throw new ConsensusDataInvalidError(`No body data in a block`);
+    }
+
+    const body = blockMessage.body;
+    const inlinePayload = getInlineExecutionPayload(body);
+
+    if (inlinePayload) {
+      return {
+        blockNumber: inlinePayload.block_number,
+        blockHash: inlinePayload.block_hash,
+        timestamp: inlinePayload.timestamp,
+      };
+    }
+
+    const appliedBlockHash = getAppliedExecutionBlockHash(body);
+
+    if (!appliedBlockHash) {
+      throw new ConsensusDataInvalidError(
+        `No execution_payload and no signed_execution_payload_bid data in a block`,
+      );
+    }
+
+    return await this.findAppliedExecutionPayload(
+      appliedBlockHash,
+      blockMessage.parent_root,
+    );
+  }
+
+  /**
+   * Walk the ancestors back until the block whose payload the state has is found.
+   *
+   * Following `parent_root` costs one request per proposed block and skips the missed slots for free. The walk
+   * normally ends on the parent: it takes another step only when a builder did not reveal its payload in time, which
+   * is rare and does not last long.
+   */
+  protected async findAppliedExecutionPayload(
+    appliedBlockHash: string,
+    parentRoot?: string,
+  ): Promise<AppliedExecutionPayload> {
+    let blockRoot = parentRoot;
+
+    for (
+      let depth = 0;
+      depth < this.payloadLookbackDepth && blockRoot;
+      depth++
+    ) {
+      const block = await this.consensusService.getBlockV2({
+        blockId: blockRoot,
+      });
+
+      const blockMessage = block?.data?.message;
+
+      if (!blockMessage?.body) {
+        throw new ConsensusDataInvalidError(
+          `No body data in a block [${blockRoot}]`,
+        );
+      }
+
+      if (getOwnExecutionBlockHash(blockMessage.body) === appliedBlockHash) {
+        return await this.getExecutionPayloadOfBlock(
+          blockRoot,
+          blockMessage.body,
+          blockMessage.slot,
+          appliedBlockHash,
+        );
+      }
+
+      blockRoot = blockMessage.parent_root;
+    }
+
+    throw new ExecutionPayloadNotFoundError(
+      `Execution payload [${appliedBlockHash}] applied to the state is not found ` +
+        `within [${this.payloadLookbackDepth}] blocks back`,
+      appliedBlockHash,
+      this.payloadLookbackDepth,
+    );
+  }
+
+  /**
+   * The payload of the block the walk stopped at.
+   *
+   * The last block before the fork still carries its payload inline, and no envelope was ever published for it. Every
+   * block after the fork keeps its payload in an envelope, which the node has, because it applied that payload to the
+   * state before it answered about the block the walk started from.
+   */
+  protected async getExecutionPayloadOfBlock(
+    blockRoot: string,
+    body: BeaconBlockBody,
+    payloadSlot: string | undefined,
+    appliedBlockHash: string,
+  ): Promise<AppliedExecutionPayload> {
+    const inlinePayload = getInlineExecutionPayload(body);
+
+    if (inlinePayload) {
+      return {
+        blockNumber: inlinePayload.block_number,
+        blockHash: inlinePayload.block_hash,
+        timestamp: inlinePayload.timestamp,
+        payloadSlot,
+      };
+    }
+
+    const envelope =
+      await this.consensusService.getSignedExecutionPayloadEnvelope({
+        blockId: blockRoot,
+      });
+
+    const payload = getEnvelopePayload(envelope);
+
+    if (!payload) {
+      throw new ConsensusDataInvalidError(
+        `No execution payload in the envelope of a block [${blockRoot}]`,
+      );
+    }
+
+    if (payload.block_hash !== appliedBlockHash) {
+      throw new ConsensusDataInvalidError(
+        `Envelope of a block [${blockRoot}] holds execution payload ` +
+          `[${payload.block_hash}] instead of [${appliedBlockHash}]`,
+      );
+    }
+
+    return {
+      blockNumber: payload.block_number,
+      blockHash: payload.block_hash,
+      timestamp: payload.timestamp,
+      payloadSlot,
+    };
   }
 }

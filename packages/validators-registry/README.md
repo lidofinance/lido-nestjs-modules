@@ -15,40 +15,40 @@ Package exports `ValidatorsRegistry` that implements the following interface:
 
 ```typescript
 export interface ValidatorsRegistryInterface {
-    /**
-     * Update internal state of validators in the registry to the Consensus Layer (CL) state
-     * according to `blockId`.
-     *
-     * @param {BlockId} blockId - Values: 'head', 'genesis', 'finalized', <slot>, <hex encoded blockRoot with 0x prefix>
-     *
-     * If the registry internal state is newer or the same to the CL state - does nothing.
-     */
-    update(blockId: BlockId): Promise<ConsensusMeta>;
+  /**
+   * Update internal state of validators in the registry to the Consensus Layer (CL) state
+   * according to `blockId`.
+   *
+   * @param {BlockId} blockId - Values: 'head', 'genesis', 'finalized', <slot>, <hex encoded blockRoot with 0x prefix>
+   *
+   * If the registry internal state is newer or the same to the CL state - does nothing.
+   */
+  update(blockId: BlockId): Promise<ConsensusMeta>;
 
-    /**
-     * Get Metadata from registry internal state
-     */
-    getMeta(): Promise<ConsensusMeta | null>;
+  /**
+   * Get Metadata from registry internal state
+   */
+  getMeta(): Promise<ConsensusMeta | null>;
 
-    /**
-     * Get Validators and metadata from registry internal state
-     */
-    getValidators(
-        pubkeys?: string[],
-        where?: FilterQuery<ConsensusValidatorEntity>,
-        options?: FindOptions<ConsensusValidatorEntity>,
-    ): Promise<ConsensusValidatorsAndMetadata>;
+  /**
+   * Get Validators and metadata from registry internal state
+   */
+  getValidators(
+    pubkeys?: string[],
+    where?: FilterQuery<ConsensusValidatorEntity>,
+    options?: FindOptions<ConsensusValidatorEntity>,
+  ): Promise<ConsensusValidatorsAndMetadata>;
 }
 ```
 
-## Usage 
+## Usage
 
 ```typescript
 // my.module.ts
 import { Module } from '@nestjs/common';
 import {
-    StorageModule,
-    ValidatorsRegistryModule,
+  StorageModule,
+  ValidatorsRegistryModule,
 } from '@lido-nestjs/validators-registry';
 import { ConsensusModule } from '@lido-nestjs/consensus';
 import { FetchModule } from '@lido-nestjs/fetch';
@@ -56,27 +56,25 @@ import { MyService } from './my.service';
 import { MikroOrmModule } from '@mikro-orm/nestjs';
 
 @Module({
-    imports: [
-        MikroOrmModule.forRoot({
-            dbName: ':memory:',
-            type: 'sqlite',
-            entities: [...StorageModule.entities], // optional
-            migrations: {
-                /* migrations data */
-            },
-        }),
-        FetchModule.forRoot({
-            baseUrls: ['http://consensus-node:4001'],
-        }),
-        ConsensusModule.forRoot(),
-        ValidatorsRegistryModule.forFeature(),
-    ],
-    providers: [MyService],
-    exports: [MyService],
+  imports: [
+    MikroOrmModule.forRoot({
+      dbName: ':memory:',
+      type: 'sqlite',
+      entities: [...StorageModule.entities], // optional
+      migrations: {
+        /* migrations data */
+      },
+    }),
+    FetchModule.forRoot({
+      baseUrls: ['http://consensus-node:4001'],
+    }),
+    ConsensusModule.forRoot(),
+    ValidatorsRegistryModule.forFeature(),
+  ],
+  providers: [MyService],
+  exports: [MyService],
 })
 export class MyModule {}
-
-
 
 // my.service.ts
 import { Injectable } from '@nestjs/common';
@@ -84,19 +82,51 @@ import { ValidatorsRegistryInterface } from '@lido-nestjs/validators-registry';
 
 @Injectable()
 export class MyService {
-    public constructor(
-        private readonly validatorsRegistry: ValidatorsRegistryInterface,
-    ) {}
+  public constructor(
+    private readonly validatorsRegistry: ValidatorsRegistryInterface,
+  ) {}
 
-    public async myMethod() {
-        await this.validatorsRegistry.update('finalized');
+  public async myMethod() {
+    await this.validatorsRegistry.update('finalized');
 
-        const metaAndValidators = await this.validatorsRegistry.getValidators();
+    const metaAndValidators = await this.validatorsRegistry.getValidators();
 
-        return metaAndValidators;
-    }
+    return metaAndValidators;
+  }
 }
 ```
+
+## Options
+
+`forRoot`, `forFeature` and their async variants take the following options:
+
+| Option                 | Default | Description                                                                                                                                                            |
+| ---------------------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `payloadLookbackDepth` | `32`    | How many blocks back to walk when looking for the execution payload the beacon state already has. Only used since the Gloas fork, see below. Counts blocks, not slots. |
+
+```typescript
+ValidatorsRegistryModule.forFeature({ payloadLookbackDepth: 8 });
+```
+
+## The Gloas fork (EIP-7732)
+
+Up to Fulu a beacon block carries its execution payload, so `blockNumber`, `blockHash` and
+`timestamp` of `ConsensusMeta` were read straight from the block.
+
+Since Gloas the block only commits to a bid, and the builder reveals the payload later in the slot,
+in an envelope of its own. The payload is then applied to the state while the **next** block is
+being processed, so the state a `ConsensusMeta` describes never holds the payload of its own slot.
+The registry reports the payload that state really has, so that the validators and the execution
+layer block of a `ConsensusMeta` always belong together.
+
+That payload is normally the one of the parent block. It comes from further back when the builder
+of the parent did not reveal its payload in time, or when slots before the block were missed. The
+new `payloadSlot` field of `ConsensusMeta` tells which slot the payload belongs to. It stays empty
+up to Fulu, where the payload always belongs to the slot itself.
+
+Finding the payload means walking the ancestors back, and `payloadLookbackDepth` bounds that walk.
+The registry throws `ExecutionPayloadNotFoundError` when the walk finds nothing, which normally
+points at a node that answers from another branch of the chain rather than at a depth set too low.
 
 ## Migrations
 
@@ -104,3 +134,7 @@ Database migrations are placed in `./src/migrations/` folder.
 
 Please DO NOT edit migrations, if you want to change the migration,
 please make another one with the needed database schema transitions.
+
+`Migration20260915120100` only moves the primary key of `consensus_meta` around and uses syntax
+SQLite does not support. Leave it out when running the package migrations on SQLite:
+`Migration20221225154138` already creates the table with the key this migration ends up with.
