@@ -9,6 +9,15 @@ Part of [Lido NestJS Modules](https://github.com/lidofinance/lido-nestjs-modules
 yarn add @lido-nestjs/validators-registry
 ```
 
+**`@lido-nestjs/consensus` 2.0.0 or later is required.** Since the Gloas fork the module reads the
+execution payload of a block from `getSignedExecutionPayloadEnvelope`, and earlier versions of that
+package do not have that method.
+
+The app registers `ConsensusModule` itself, as the usage below shows, so the app and this module
+have to end up on one copy of `@lido-nestjs/consensus`. Nest looks a provider up by its class, so
+two copies in `node_modules` give two `ConsensusService` classes that are not the same thing, and
+Nest cannot resolve the dependencies of `ValidatorsRegistry`.
+
 ## Interface
 
 Package exports `ValidatorsRegistry` that implements the following interface:
@@ -149,7 +158,8 @@ slot but two: the first slot of the fork, and the slot whose builder was too lat
 | 104   | the payload of 103 was revealed     | 104    | 103           | 52            |
 
 Finding the payload means walking the ancestors back, and `payloadLookbackDepth` bounds that walk.
-The payload itself is then read from the envelope of the block it belongs to.
+The payload itself is then read from the envelope of the block it belongs to, through
+`getSignedExecutionPayloadEnvelope` of `@lido-nestjs/consensus` 2.0.0.
 
 `ExecutionPayloadNotFoundError` is thrown when either step comes up empty: the walk found no block
 holding that payload, or the node had no envelope to give for the block that does. Both normally
