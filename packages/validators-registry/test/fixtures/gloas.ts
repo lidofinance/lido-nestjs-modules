@@ -20,6 +20,7 @@ export const rootG1 = fill('a1');
 export const rootG2 = fill('a2');
 export const rootG3 = fill('a3');
 export const rootG4 = fill('a4');
+export const rootG5 = fill('a5');
 export const rootBeforeG0 = fill('af');
 
 export const stateRootG0 = fill('b0');
@@ -27,6 +28,7 @@ export const stateRootG1 = fill('b1');
 export const stateRootG2 = fill('b2');
 export const stateRootG3 = fill('b3');
 export const stateRootG4 = fill('b4');
+export const stateRootG5 = fill('b5');
 
 export const elHashE0 = fill('e0');
 export const elHashE1 = fill('e1');
@@ -39,6 +41,7 @@ export const slotG1 = '4800001';
 export const slotG2 = '4800002';
 export const slotG3 = '4800003';
 export const slotG4 = '4800004';
+export const slotG5 = '4800005';
 
 const commonBody = {
   randao_reveal: '0x00',
@@ -196,6 +199,15 @@ export const blockG4 = makeGloasBlock(
   fill('e5'),
 );
 
+/** The payload of G3 was revealed, so the chain adds an execution layer block again */
+export const blockG5 = makeGloasBlock(
+  slotG5,
+  rootG3,
+  stateRootG5,
+  elHashE3,
+  fill('e6'),
+);
+
 const makeEnvelope = (
   blockHash: string,
   blockNumber: string,
@@ -217,12 +229,14 @@ const makeEnvelope = (
 });
 
 export const envelopeG1 = makeEnvelope(elHashE1, '8316774', '1673803500');
+export const envelopeG3 = makeEnvelope(elHashE3, '8316775', '1673803524');
 
 export const headerG0 = makeHeader(rootG0, slotG0, rootBeforeG0);
 export const headerG1 = makeHeader(rootG1, slotG1, rootG0);
 export const headerG2 = makeHeader(rootG2, slotG2, rootG1);
 export const headerG3 = makeHeader(rootG3, slotG3, rootG2);
 export const headerG4 = makeHeader(rootG4, slotG4, rootG3);
+export const headerG5 = makeHeader(rootG5, slotG5, rootG3);
 
 export const gloasHeaders: Record<string, unknown> = {
   [slotG0]: headerG0,
@@ -230,6 +244,7 @@ export const gloasHeaders: Record<string, unknown> = {
   [slotG2]: headerG2,
   [slotG3]: headerG3,
   [slotG4]: headerG4,
+  [slotG5]: headerG5,
 };
 
 export const gloasBlocks: Record<string, unknown> = {
@@ -238,10 +253,12 @@ export const gloasBlocks: Record<string, unknown> = {
   [rootG2]: blockG2,
   [rootG3]: blockG3,
   [rootG4]: blockG4,
+  [rootG5]: blockG5,
 };
 
 export const gloasEnvelopes: Record<string, unknown> = {
   [rootG1]: envelopeG1,
+  [rootG3]: envelopeG3,
 };
 
 const stateValidatorsResponse = {
@@ -272,6 +289,7 @@ export const gloasStateValidators: Record<string, unknown> = {
   [stateRootG2]: stateValidatorsResponse,
   [stateRootG3]: stateValidatorsResponse,
   [stateRootG4]: stateValidatorsResponse,
+  [stateRootG5]: stateValidatorsResponse,
 };
 
 /** The block before the fork keeps the meta it always had, with no payload slot of its own */
@@ -315,4 +333,15 @@ export const metaG3: ConsensusMeta = {
   blockNumber: 8316774,
   blockHash: elHashE1,
   payloadSlot: Number(slotG1),
+};
+
+/** After a skipped payload the chain catches up: the next revealed payload is one block further on */
+export const metaG5: ConsensusMeta = {
+  epoch: Math.floor(Number(slotG5) / 32),
+  slot: Number(slotG5),
+  slotStateRoot: stateRootG5,
+  timestamp: 1673803524,
+  blockNumber: 8316775,
+  blockHash: elHashE3,
+  payloadSlot: Number(slotG3),
 };

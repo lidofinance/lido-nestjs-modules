@@ -14,8 +14,21 @@ export const ConsensusMeta = z.object(
     epoch: Epoch,
     slot: Slot,
     slotStateRoot: RootHex,
+    /**
+     * Timestamp of the execution payload, which is the time of `payloadSlot` and not of `slot`.
+     *
+     * The two are the same up to Fulu. Since Gloas (EIP-7732) this is at least one slot behind the slot it comes
+     * with. Take the time of `slot` from the slot number itself when that is what is needed.
+     */
     timestamp: BlockTimestamp,
     // execution layer data
+    /**
+     * Number of the execution layer block, which can be the same as in the meta before this one.
+     *
+     * Since Gloas (EIP-7732) a slot may add no execution layer block at all: that happens at the first slot of the
+     * fork, and every time a builder does not reveal its payload in time. `slot` always moves forward, this field
+     * does not.
+     */
     blockNumber: BlockNumber,
     blockHash: Hash32Hex,
     /**
