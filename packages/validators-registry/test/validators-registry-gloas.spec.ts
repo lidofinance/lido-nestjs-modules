@@ -2,6 +2,7 @@
 import { MikroOrmModule } from '@mikro-orm/nestjs';
 import { MikroORM } from '@mikro-orm/core';
 import { Test, TestingModule } from '@nestjs/testing';
+import { HttpException } from '@nestjs/common';
 import { ConsensusModule, ConsensusService } from '@lido-nestjs/consensus';
 import { FetchModule } from '@lido-nestjs/fetch';
 import { Readable } from 'stream';
@@ -17,6 +18,7 @@ import {
 import { migrations } from './helpers/migrations';
 import { noop } from './helpers/noop';
 import {
+  elHashE1,
   elHashE4,
   gloasBlocks,
   gloasEnvelopes,
@@ -214,6 +216,41 @@ describe('ValidatorsRegistry (Gloas)', () => {
         ),
       );
     }
+  });
+
+  test('update, node has no envelope for the block', async () => {
+    jest
+      .spyOn<any, any>(
+        consensusServiceMock,
+        'getSignedExecutionPayloadEnvelope',
+      )
+      .mockImplementationOnce(() => {
+        throw new HttpException('Execution payload envelope not found', 404);
+      });
+
+    await expect(validatorsRegistry.update(slotG2)).rejects.toStrictEqual(
+      new ExecutionPayloadNotFoundError(
+        `Node has no execution payload envelope for a block [${rootG1}], ` +
+          `which holds execution payload [${elHashE1}] applied to the state`,
+        elHashE1,
+      ),
+    );
+  });
+
+  test('update, envelope request fails for another reason', async () => {
+    const failure = new HttpException('Server error', 500);
+
+    jest
+      .spyOn<any, any>(
+        consensusServiceMock,
+        'getSignedExecutionPayloadEnvelope',
+      )
+      .mockImplementationOnce(() => {
+        throw failure;
+      });
+
+    // A timeout or a 500 says nothing about the payload, so it is left as it is
+    await expect(validatorsRegistry.update(slotG2)).rejects.toBe(failure);
   });
 
   test('update, envelope holds the payload of another block', async () => {
