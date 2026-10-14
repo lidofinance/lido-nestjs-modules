@@ -18,6 +18,7 @@ import {
 import { migrations } from './helpers/migrations';
 import { noop } from './helpers/noop';
 import {
+  elHashE0,
   elHashE1,
   elHashE4,
   gloasBlocks,
@@ -29,6 +30,7 @@ import {
   metaG2,
   metaG3,
   metaG5,
+  rootG0,
   rootG1,
   rootG2,
   slotG0,
@@ -42,6 +44,8 @@ import {
 describe('ValidatorsRegistry (Gloas)', () => {
   let moduleRef: TestingModule | null = null;
   let validatorsRegistry: ValidatorsRegistryInterface;
+
+  const clone = (answer: unknown): any => JSON.parse(JSON.stringify(answer));
 
   const consensusServiceMock = {
     getBlockV2: (args: { blockId: string }) => gloasBlocks[args.blockId],
@@ -102,6 +106,45 @@ describe('ValidatorsRegistry (Gloas)', () => {
       metaG1,
     );
     await expect(validatorsRegistry.getMeta()).resolves.toStrictEqual(metaG1);
+  });
+
+  test('update, walk reaches the block before the fork in more than one step', async () => {
+    // The builder of G1 was too late as well, so the state of G2 still has the inline payload of
+    // G0: the walk steps over G1 and ends before the fork, two blocks back
+    const blockG2OnE0 = clone(gloasBlocks[rootG2]);
+    blockG2OnE0.data.message.body.signed_execution_payload_bid.message.parent_block_hash =
+      elHashE0;
+
+    const getBlock = jest
+      .spyOn<any, any>(consensusServiceMock, 'getBlockV2')
+      .mockImplementationOnce(() => blockG2OnE0);
+
+    const envelopes = jest.spyOn<any, any>(
+      consensusServiceMock,
+      'getSignedExecutionPayloadEnvelope',
+    );
+
+    // The slot data of G2 with the execution layer data of G0
+    const meta = {
+      ...metaG2,
+      timestamp: metaG0.timestamp,
+      blockNumber: metaG0.blockNumber,
+      blockHash: metaG0.blockHash,
+      payloadSlot: Number(slotG0),
+    };
+
+    await expect(validatorsRegistry.update(slotG2)).resolves.toStrictEqual(
+      meta,
+    );
+    await expect(validatorsRegistry.getMeta()).resolves.toStrictEqual(meta);
+
+    // The walk went G2 -> G1 -> G0 and did not stop on the parent
+    expect(
+      getBlock.mock.calls.map(([args]: any) => args.blockId),
+    ).toStrictEqual([rootG2, rootG1, rootG0]);
+
+    // A block before the fork carries its payload, so no envelope is asked for
+    expect(envelopes).not.toHaveBeenCalled();
   });
 
   test('update, payload of the parent was revealed', async () => {
@@ -303,7 +346,6 @@ describe('ValidatorsRegistry (Gloas)', () => {
     // three hashes the walk puts together here are the same payload written three ways
     const upper = (hex: string) => `0x${hex.slice(2).toUpperCase()}`;
     const mixed = (hex: string) => upper(hex.slice(0, 34)) + hex.slice(34);
-    const clone = (answer: unknown): any => JSON.parse(JSON.stringify(answer));
 
     const blockG2 = clone(gloasBlocks[rootG2]);
     blockG2.data.message.body.signed_execution_payload_bid.message.parent_block_hash =
