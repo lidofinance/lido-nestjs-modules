@@ -128,10 +128,11 @@ being processed, so the state a `ConsensusMeta` describes never holds the payloa
 The registry reports the payload that state really has, so that the validators and the execution
 layer block of a `ConsensusMeta` always belong together.
 
-That payload is normally the one of the parent block. It comes from further back when the builder
-of the parent did not reveal its payload in time, or when slots before the block were missed. The
-new `payloadSlot` field of `ConsensusMeta` tells which slot the payload belongs to. It stays empty
-up to Fulu, where the payload always belongs to the slot itself.
+That payload is normally the one of the parent block. Missed slots leave the parent further back,
+and a builder that did not reveal its payload in time takes the payload further back than the
+parent: both leave the execution layer data older than the slot it is reported with. The new
+`payloadSlot` field of `ConsensusMeta` tells which slot the payload belongs to. It stays empty up
+to Fulu, where the payload always belongs to the slot itself.
 
 ### What this means for code that reads `ConsensusMeta`
 
@@ -146,8 +147,10 @@ the same execution layer block, because a slot may add no execution layer block 
 reads "a new slot" as "a new execution layer block" breaks on this. `slot` always moves forward,
 `blockNumber` does not.
 
-Here is how a short run around the fork looks. The chain adds an execution layer block at every
-slot but two: the first slot of the fork, and the slot whose builder was too late.
+Here is how a short run around the fork looks. `blockNumber` stands still twice, for two different
+reasons: at the fork, because from there on the state of a block no longer holds the payload of its
+own slot, and after the slot whose builder was too late, which added no execution layer block at
+all.
 
 | Block | What happened                       | `slot` | `payloadSlot` | `blockNumber` |
 | ----- | ----------------------------------- | ------ | ------------- | ------------- |
@@ -159,7 +162,9 @@ slot but two: the first slot of the fork, and the slot whose builder was too lat
 
 Finding the payload means walking the ancestors back, and `payloadLookbackDepth` bounds that walk.
 The payload itself is then read from the envelope of the block it belongs to, through
-`getSignedExecutionPayloadEnvelope` of `@lido-nestjs/consensus` 2.0.0.
+`getSignedExecutionPayloadEnvelope` of `@lido-nestjs/consensus` 2.0.0. A walk that ends before the
+fork reads it off the block instead: the last Fulu block carries its payload, and no envelope was
+ever published for it.
 
 `ExecutionPayloadNotFoundError` is thrown when either step comes up empty: the walk found no block
 holding that payload, or the node had no envelope to give for the block that does. Both normally
@@ -174,6 +179,7 @@ Database migrations are placed in `./src/migrations/` folder.
 Please DO NOT edit migrations, if you want to change the migration,
 please make another one with the needed database schema transitions.
 
-`Migration20260915120100` only moves the primary key of `consensus_meta` around and uses syntax
-SQLite does not support. Leave it out when running the package migrations on SQLite:
-`Migration20221225154138` already creates the table with the key this migration ends up with.
+`Migration20240221083613` and `Migration20260915120100` only move the primary key of
+`consensus_meta` around and use syntax SQLite does not support. Leave both out when running the
+package migrations on SQLite: `Migration20221225154138` already creates the table with the key they
+end up with.
