@@ -117,6 +117,9 @@ export class MyService {
 ValidatorsRegistryModule.forFeature({ payloadLookbackDepth: 8 });
 ```
 
+`payloadLookbackDepth` has to be a positive integer. Anything else throws while the module is being
+created, so the application stops at startup instead of on the first `update` after the fork.
+
 ## The Gloas fork (EIP-7732)
 
 Up to Fulu a beacon block carries its execution payload, so `blockNumber`, `blockHash` and

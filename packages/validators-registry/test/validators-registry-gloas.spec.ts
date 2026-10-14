@@ -394,4 +394,53 @@ describe('ValidatorsRegistry (Gloas)', () => {
       VALIDATORS_REGISTRY_DEFAULT_PAYLOAD_LOOKBACK_DEPTH,
     );
   });
+
+  describe('payloadLookbackDepth is checked when the registry is created', () => {
+    const create = (payloadLookbackDepth: unknown) =>
+      new ValidatorsRegistry(
+        consensusServiceMock as any,
+        {} as any,
+        {
+          payloadLookbackDepth,
+        } as any,
+      );
+
+    test.each([
+      ['zero, which would leave the walk no step', 0],
+      ['a negative depth', -1],
+      ['a fraction', 1.5],
+      ['not a number', '8'],
+      ['NaN', NaN],
+      ['Infinity', Infinity],
+    ])('rejects %s', (_, depth) => {
+      expect(() => create(depth)).toThrow(
+        `payloadLookbackDepth must be a positive integer, got [${depth}]`,
+      );
+    });
+
+    test.each([
+      ['the smallest depth that can work', 1],
+      ['a depth above the default', 64],
+    ])('accepts %s', (_, depth) => {
+      expect(create(depth).payloadLookbackDepth).toBe(depth);
+    });
+
+    test.each([
+      ['undefined', undefined],
+      ['null', null],
+    ])('takes %s as not set and falls back to the default', (_, depth) => {
+      expect(create(depth).payloadLookbackDepth).toBe(
+        VALIDATORS_REGISTRY_DEFAULT_PAYLOAD_LOOKBACK_DEPTH,
+      );
+    });
+
+    test('stops the module from starting', async () => {
+      await expect(setup(0)).rejects.toThrow(
+        'payloadLookbackDepth must be a positive integer',
+      );
+
+      // the failed module is not the one afterEach closes
+      moduleRef = null;
+    });
+  });
 });

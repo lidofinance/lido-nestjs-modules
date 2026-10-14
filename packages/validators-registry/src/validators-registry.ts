@@ -45,7 +45,15 @@ export class ValidatorsRegistry implements ValidatorsRegistryInterface {
     @Optional()
     @Inject(VALIDATORS_REGISTRY_OPTIONS_TOKEN)
     protected readonly options: ValidatorsRegistryModuleOptions | null = null,
-  ) {}
+  ) {
+    const depth = options?.payloadLookbackDepth;
+
+    if (depth != null && (!Number.isSafeInteger(depth) || depth < 1)) {
+      throw new Error(
+        `payloadLookbackDepth must be a positive integer, got [${depth}]`,
+      );
+    }
+  }
 
   /**
    * How many blocks back to walk when looking for the execution payload that the state already has.
