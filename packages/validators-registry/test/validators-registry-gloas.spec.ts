@@ -298,6 +298,41 @@ describe('ValidatorsRegistry (Gloas)', () => {
     );
   });
 
+  test('update, answers name one payload in three cases of hex', async () => {
+    // Nothing makes a node answer in one case, and the fetch layer moves to the next base url on every retry, so the
+    // three hashes the walk puts together here are the same payload written three ways
+    const upper = (hex: string) => `0x${hex.slice(2).toUpperCase()}`;
+    const mixed = (hex: string) => upper(hex.slice(0, 34)) + hex.slice(34);
+    const clone = (answer: unknown): any => JSON.parse(JSON.stringify(answer));
+
+    const blockG2 = clone(gloasBlocks[rootG2]);
+    blockG2.data.message.body.signed_execution_payload_bid.message.parent_block_hash =
+      mixed(elHashE1);
+
+    const blockG1 = clone(gloasBlocks[rootG1]);
+    blockG1.data.message.body.signed_execution_payload_bid.message.block_hash =
+      upper(elHashE1);
+
+    const envelope = clone(gloasEnvelopes[rootG1]);
+    envelope.data.message.payload.block_hash = upper(elHashE1);
+
+    jest
+      .spyOn<any, any>(consensusServiceMock, 'getBlockV2')
+      .mockImplementationOnce(() => blockG2)
+      .mockImplementationOnce(() => blockG1);
+
+    jest
+      .spyOn<any, any>(
+        consensusServiceMock,
+        'getSignedExecutionPayloadEnvelope',
+      )
+      .mockImplementationOnce(() => envelope);
+
+    await expect(validatorsRegistry.update(slotG2)).resolves.toStrictEqual(
+      metaG2,
+    );
+  });
+
   test('payloadLookbackDepth falls back to the default', () => {
     const registry = moduleRef?.get<ValidatorsRegistry>(
       ValidatorsRegistryInterface,
