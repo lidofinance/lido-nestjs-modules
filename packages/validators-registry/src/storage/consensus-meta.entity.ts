@@ -22,6 +22,7 @@ export class ConsensusMetaEntity implements ConsensusMeta {
     this.blockNumber = meta.blockNumber;
     this.blockHash = meta.blockHash;
     this.timestamp = meta.timestamp;
+    this.payloadSlot = meta.payloadSlot;
   }
 
   // only one meta will exist in table
@@ -42,7 +43,7 @@ export class ConsensusMetaEntity implements ConsensusMeta {
   @Property({ type: t.string, length: 66 })
   public slotStateRoot: string;
 
-  @PrimaryKey({ type: t.integer })
+  @Property({ type: t.integer })
   public blockNumber: number;
 
   @Property({ type: t.string, length: 66 })
@@ -50,4 +51,12 @@ export class ConsensusMetaEntity implements ConsensusMeta {
 
   @Property({ type: t.integer })
   public timestamp!: number;
+
+  /**
+   * Slot whose execution payload the `blockNumber`, `blockHash` and `timestamp` fields describe.
+   *
+   * Empty up to Fulu, where a block carries its own payload and this is always the `slot` field itself.
+   */
+  @Property({ type: t.integer, nullable: true })
+  public payloadSlot?: number;
 }
