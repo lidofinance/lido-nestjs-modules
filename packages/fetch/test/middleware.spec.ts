@@ -1,7 +1,10 @@
 jest.mock('node-fetch');
 
 import { Test } from '@nestjs/testing';
-import { FetchModuleOptions } from '../src/interfaces/fetch.interface';
+import {
+  FetchMiddlewareContext,
+  FetchModuleOptions,
+} from '../src/interfaces/fetch.interface';
 import { FetchModule, FetchService } from '../src';
 import fetch from 'node-fetch';
 
@@ -59,5 +62,20 @@ describe('Middleware', () => {
     expect(mockFetch).toBeCalledTimes(2);
     expect(mockFetch.mock.calls[0][0]).toBe('1');
     expect(mockFetch.mock.calls[1][0]).toBe('2');
+  });
+
+  test('Context', async () => {
+    const seen: FetchMiddlewareContext[] = [];
+
+    await initModule([
+      async (next, ctx: FetchMiddlewareContext) => {
+        seen.push(ctx);
+        return await next();
+      },
+    ]);
+
+    await fetchService.fetchJson('/v1/keys', { method: 'GET' });
+
+    expect(seen).toEqual([{ url: '/v1/keys', options: { method: 'GET' } }]);
   });
 });
