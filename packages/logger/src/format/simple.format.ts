@@ -1,5 +1,6 @@
 import * as winston from 'winston';
 import { cleanSecrets } from './secrets.format';
+import { omitErrorField } from './error-field.format';
 import { LoggerSimpleFormatOptions } from '../interfaces';
 
 const colorizer = winston.format.colorize();
@@ -21,10 +22,16 @@ const getMeta = (
 export const simple = (
   options: LoggerSimpleFormatOptions = {},
 ): winston.Logform.Format => {
-  const { secrets, regex, fieldColors = {} } = options;
+  const {
+    secrets,
+    regex,
+    fieldColors = {},
+    includeErrorField = false,
+  } = options;
   winston.addColors(fieldColors);
 
   return winston.format.combine(
+    ...(includeErrorField ? [] : [omitErrorField()]),
     winston.format.colorize({ all: true }),
     cleanSecrets({ secrets, regex }),
     winston.format.simple(),

@@ -48,10 +48,10 @@ export abstract class AbstractRegistryService {
     public options?: RegistryOptions,
   ) {
     this.eventEmitter = new EventEmitter();
-    this.cronJob = new CronJob(
-      options?.subscribeInterval || '*/10 * * * * *',
-      () => this.cronHandler(),
-    );
+    this.cronJob = CronJob.from({
+      cronTime: options?.subscribeInterval || '*/10 * * * * *',
+      onTick: () => this.cronHandler(),
+    });
   }
 
   eventEmitter: EventEmitter;

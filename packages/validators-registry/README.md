@@ -18,6 +18,19 @@ have to end up on one copy of `@lido-nestjs/consensus`. Nest looks a provider up
 two copies in `node_modules` give two `ConsensusService` classes that are not the same thing, and
 Nest cannot resolve the dependencies of `ValidatorsRegistry`.
 
+**NestJS 11 with MikroORM 5.** `@mikro-orm/nestjs` 5.x declares `@nestjs/*` peers only up to ^10.
+Yarn prints a peer warning and works. npm 7+ fails with `ERESOLVE`; add this to the app's
+`package.json` (or install with `--legacy-peer-deps`):
+
+```json
+"overrides": {
+  "@mikro-orm/nestjs": {
+    "@nestjs/common": "$@nestjs/common",
+    "@nestjs/core": "$@nestjs/core"
+  }
+}
+```
+
 ## Interface
 
 Package exports `ValidatorsRegistry` that implements the following interface:
