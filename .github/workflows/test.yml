@@ -3,13 +3,18 @@ on: pull_request
 jobs:
   test-components:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: ['22', '24']
+    name: test-components (node ${{ matrix.node-version }})
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v5
       - name: Setup Node
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v5
         with:
-          node-version: '22'
+          node-version: ${{ matrix.node-version }}
           cache: 'yarn'
       - name: Install dependencies
         run: yarn install --immutable
@@ -22,6 +27,7 @@ jobs:
       - name: Run tests
         run: yarn test
       - name: Run e2e tests
+        if: matrix.node-version == '24'
         run: yarn test:e2e
         env:
           EL_RPC_URL: ${{ secrets.EL_RPC_URL }}
