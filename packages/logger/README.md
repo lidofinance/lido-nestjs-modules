@@ -99,6 +99,33 @@ const myTransport = new winston.transports.Console({
 });
 ```
 
+### Error field
+
+When you log an `Error`, nest-winston also adds it to the log as the `error` field. Preconfigured transports remove this field by default. To keep it, pass `includeErrorField: true` to the transport options:
+
+```ts
+import { Module } from '@nestjs/common';
+import { LoggerModule, jsonTransport } from '@lido-nestjs/logger';
+
+@Module({
+  imports: [
+    LoggerModule.forRoot({
+      level: 'debug',
+      transports: [jsonTransport({ includeErrorField: true })],
+    }),
+  ],
+})
+export class AppModule {}
+```
+
+In this case you will see the `error` field in the logs:
+
+```ts
+logger.error(new Error('some message')); // { error: { message: 'some message' }, message: 'some message', ... }
+```
+
+If you build a custom transport, put the `omitErrorField` formatter first in your format chain to remove the field.
+
 ### Meta fields
 
 Meta fields can be useful for adding additional fields to logs, such as `blockNumber` in Ethereum bots. To add meta fields, pass a `defaultMeta` to logger options:
