@@ -24,6 +24,6 @@ export class RegistryMetaStorageService {
   /** saves meta */
   async save(registryMeta: RegistryMeta) {
     const metaData = new RegistryMeta(registryMeta);
-    return await this.repository.persistAndFlush(metaData);
+    return await this.repository.getEntityManager().persistAndFlush(metaData);
   }
 }

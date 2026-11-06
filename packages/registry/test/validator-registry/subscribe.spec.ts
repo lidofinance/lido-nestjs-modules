@@ -14,6 +14,7 @@ import {
 } from '../../src/';
 import { keys, meta, operators } from '../fixtures/db.fixture';
 import { MikroORM } from '@mikro-orm/core';
+import { SqliteDriver } from '@mikro-orm/sqlite';
 
 const wait = (ms: number) => new Promise((res) => setTimeout(res, ms));
 
@@ -39,7 +40,7 @@ describe('Subscribe with custom timer', () => {
     const imports = [
       MikroOrmModule.forRoot({
         dbName: ':memory:',
-        type: 'sqlite',
+        driver: SqliteDriver,
         allowGlobalContext: true,
         entities: ['./packages/registry/**/*.entity.ts'],
       }),
@@ -138,7 +139,7 @@ describe('Subscribe without custom timer', () => {
     const imports = [
       MikroOrmModule.forRoot({
         dbName: ':memory:',
-        type: 'sqlite',
+        driver: SqliteDriver,
         allowGlobalContext: true,
         entities: ['./packages/registry/**/*.entity.ts'],
       }),

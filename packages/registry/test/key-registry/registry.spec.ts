@@ -12,6 +12,7 @@ import {
   RegistryStorageService,
 } from '../../src';
 import { MikroORM } from '@mikro-orm/core';
+import { SqliteDriver } from '@mikro-orm/sqlite';
 
 describe('Key', () => {
   const provider = new JsonRpcBatchProvider(process.env.EL_RPC_URL);
@@ -31,7 +32,7 @@ describe('Key', () => {
     const imports = [
       MikroOrmModule.forRoot({
         dbName: ':memory:',
-        type: 'sqlite',
+        driver: SqliteDriver,
         allowGlobalContext: true,
         entities: ['./packages/registry/**/*.entity.ts'],
       }),

@@ -10,7 +10,7 @@ import { ConsensusMetaRepository } from './consensus-meta.repository';
 
 @Entity({
   tableName: 'consensus_meta',
-  customRepository: () => ConsensusMetaRepository,
+  repository: () => ConsensusMetaRepository,
 })
 export class ConsensusMetaEntity implements ConsensusMeta {
   [EntityRepositoryType]?: ConsensusMetaRepository;

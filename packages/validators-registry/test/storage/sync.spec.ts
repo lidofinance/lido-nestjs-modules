@@ -9,6 +9,7 @@ import {
 import { MikroORM } from '@mikro-orm/core';
 import { migrations } from '../helpers/migrations';
 import { noop } from '../helpers/noop';
+import { SqliteDriver } from '@mikro-orm/sqlite';
 
 describe('StorageModule - Sync module initializing', () => {
   let moduleRef: TestingModule | null = null;
@@ -41,7 +42,7 @@ describe('StorageModule - Sync module initializing', () => {
     await createTestModules([
       MikroOrmModule.forRoot({
         dbName: ':memory:',
-        type: 'sqlite',
+        driver: SqliteDriver,
         allowGlobalContext: true,
         entities: [...StorageModule.entities],
         migrations: {
@@ -57,7 +58,7 @@ describe('StorageModule - Sync module initializing', () => {
     await createTestModules([
       MikroOrmModule.forRoot({
         dbName: ':memory:',
-        type: 'sqlite',
+        driver: SqliteDriver,
         allowGlobalContext: true,
         entities: [...StorageModule.entities],
         migrations: {

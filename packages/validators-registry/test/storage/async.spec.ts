@@ -11,6 +11,7 @@ import {
 import { MikroORM } from '@mikro-orm/core';
 import { migrations } from '../helpers/migrations';
 import { noop } from '../helpers/noop';
+import { SqliteDriver } from '@mikro-orm/sqlite';
 
 @Injectable()
 class TestService {}
@@ -66,7 +67,7 @@ describe('StorageModule - Async module initializing', () => {
       TestModule.forRoot(),
       MikroOrmModule.forRoot({
         dbName: ':memory:',
-        type: 'sqlite',
+        driver: SqliteDriver,
         allowGlobalContext: true,
         entities: [...StorageModule.entities],
         migrations: {
@@ -90,7 +91,7 @@ describe('StorageModule - Async module initializing', () => {
       TestModule.forRoot(),
       MikroOrmModule.forRoot({
         dbName: ':memory:',
-        type: 'sqlite',
+        driver: SqliteDriver,
         allowGlobalContext: true,
         entities: [...StorageModule.entities],
         migrations: {

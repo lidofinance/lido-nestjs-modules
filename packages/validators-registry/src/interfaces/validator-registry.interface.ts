@@ -1,11 +1,23 @@
 import { createInterface } from '@lido-nestjs/di';
-import { ConsensusValidatorsAndMetadata, ConsensusMeta } from '../types';
+import {
+  ConsensusValidatorsAndMetadata,
+  ConsensusMeta,
+  ValidatorStatus,
+} from '../types';
 import { BlockId } from './block-id';
 import { FilterQuery, FindOptions } from '@mikro-orm/core';
 import { ConsensusValidatorEntity } from '../storage/consensus-validator.entity';
 
 export const ValidatorsRegistryInterface =
   createInterface<ValidatorsRegistryInterface>('ValidatorsRegistryInterface');
+
+export interface ValidatorsRegistryUpdateOptions {
+  /**
+   * Keep only validators with these statuses. The Consensus Layer filters them,
+   * so the registry downloads and stores only that part of the validator set.
+   */
+  status?: ValidatorStatus[];
+}
 
 export interface ValidatorsRegistryInterface {
   /**
@@ -14,9 +26,14 @@ export interface ValidatorsRegistryInterface {
    *
    * @param {BlockId} blockId - Values: 'head', 'genesis', 'finalized', <slot>, <hex encoded blockRoot with 0x prefix>
    *
+   * @param {ValidatorsRegistryUpdateOptions} options - `status` keeps only validators with these statuses
+   *
    * If the registry internal state is newer or the same to the CL state - does nothing.
    */
-  update(blockId: BlockId): Promise<ConsensusMeta>;
+  update(
+    blockId: BlockId,
+    options?: ValidatorsRegistryUpdateOptions,
+  ): Promise<ConsensusMeta>;
 
   /**
    * Update internal state of validators in the registry to the Consensus Layer (CL) state
@@ -24,9 +41,14 @@ export interface ValidatorsRegistryInterface {
    *
    * @param {BlockId} blockId - Values: 'head', 'genesis', 'finalized', <slot>, <hex encoded blockRoot with 0x prefix>
    *
+   * @param {ValidatorsRegistryUpdateOptions} options - `status` keeps only validators with these statuses
+   *
    * If the registry internal state is newer or the same to the CL state - does nothing.
    */
-  updateStream(blockId: BlockId): Promise<ConsensusMeta>;
+  updateStream(
+    blockId: BlockId,
+    options?: ValidatorsRegistryUpdateOptions,
+  ): Promise<ConsensusMeta>;
 
   /**
    * Get Metadata from registry internal state

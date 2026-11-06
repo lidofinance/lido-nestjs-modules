@@ -10,6 +10,7 @@ import {
   RegistryStorageService,
 } from '../../src';
 import { MikroORM } from '@mikro-orm/core';
+import { SqliteDriver } from '@mikro-orm/sqlite';
 
 describe('Async module initializing', () => {
   const provider = getDefaultProvider('mainnet');
@@ -36,7 +37,7 @@ describe('Async module initializing', () => {
     await testModules([
       MikroOrmModule.forRoot({
         dbName: ':memory:',
-        type: 'sqlite',
+        driver: SqliteDriver,
         allowGlobalContext: true,
         entities: ['./packages/registry/**/*.entity.ts'],
       }),
@@ -53,7 +54,7 @@ describe('Async module initializing', () => {
     await testModules([
       MikroOrmModule.forRoot({
         dbName: ':memory:',
-        type: 'sqlite',
+        driver: SqliteDriver,
         allowGlobalContext: true,
         entities: ['./packages/registry/**/*.entity.ts'],
       }),
