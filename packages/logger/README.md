@@ -82,7 +82,17 @@ const secrets = [PRIVATE_KEY];
 export class AppModule {}
 ```
 
-Secrets will be replaced with text `<removed>`.
+`regex` takes regular expressions for values that are not known in advance, for example `[/(0x)?[0-9a-fA-F]{40}/]`.
+
+Masking is done by [`@lidofinance/satanizer`](https://github.com/lidofinance/warehouse/tree/main/packages/core/satanizer): every match is replaced with `*` of the same length, in keys and values, including `message` and `stack`. Its limits apply to every log entry:
+
+- strings longer than 10 000 characters are cut and end with `[Truncated]`;
+- objects and arrays keep the first 1 000 keys or items;
+- objects deeper than 10 levels, counting the log entry itself, are replaced with `[MaxDepth]`;
+- a value that references itself is replaced with `[Cycle]`;
+- other objects are copied by their own fields, so a `Date`, a `Map` or a `Set` is logged as `{}`.
+
+Flags of a regular expression are dropped, put what you need into the pattern itself.
 
 If you want to use this formatter in your custom transport, import the `cleanSecrets` from `@lido-nestjs/logger`:
 

@@ -3053,18 +3053,17 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@lido-nestjs/logger@workspace:packages/logger"
   dependencies:
+    "@lidofinance/satanizer": ^0.64.0
     "@nestjs/common": ^11.2.8
     "@nestjs/core": ^11.2.8
     "@nestjs/testing": ^11.2.8
-    "@types/traverse": ^0.6.32
     nest-winston: ^1.10.2
     reflect-metadata: ^0.1.13
     rxjs: ^7.5.2
-    traverse: ^0.6.7
     winston: ^3.4.0
   peerDependencies:
-    "@nestjs/common": ^11.2.8
-    "@nestjs/core": ^11.2.8
+    "@nestjs/common": ^8.2.5 || ^9.0.0 || ^10.0.0 || ^11.2.8
+    "@nestjs/core": ^8.2.5 || ^9.0.0 || ^10.0.0 || ^11.2.8
     reflect-metadata: ^0.1.13
     rxjs: ^7.5.2
     tslib: ^2.3.1
@@ -3187,6 +3186,13 @@ __metadata:
     tslib: ^2.3.1
   languageName: unknown
   linkType: soft
+
+"@lidofinance/satanizer@npm:^0.64.0":
+  version: 0.64.0
+  resolution: "@lidofinance/satanizer@npm:0.64.0"
+  checksum: ccb85ec8a07bf6a7e1ae18f31cf98aaa3afcdb1ab716c8e391a4ad5647d934680b5790dd318ae94124de7ed4cd33521c0031ef83db307c51697d179cac539341
+  languageName: node
+  linkType: hard
 
 "@lidofinance/yarn-workspaces-list@npm:0.1.1":
   version: 0.1.1
@@ -5061,13 +5067,6 @@ __metadata:
   version: 2.0.3
   resolution: "@types/toposort@npm:2.0.3"
   checksum: 018a372a899fd417d67ed85cb98bd3f15915020b865257b9e795e443bcfa0df79c6c44693ba88cbdd9e54ca872cecb91bf46764ec03c5b63968b2234804d14d2
-  languageName: node
-  linkType: hard
-
-"@types/traverse@npm:^0.6.32":
-  version: 0.6.32
-  resolution: "@types/traverse@npm:0.6.32"
-  checksum: 0d27f4758e1da79463c42cdd91de018095048e5c3963ad108b97044d5f43ea48b071da87062fdd4ff46407461802cc47367dd90b8f4a03a3dcf2ff94840d4909
   languageName: node
   linkType: hard
 
@@ -17094,7 +17093,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"traverse@npm:^0.6.7, traverse@npm:~0.6.6":
+"traverse@npm:~0.6.6":
   version: 0.6.7
   resolution: "traverse@npm:0.6.7"
   checksum: 21018085ab72f717991597e12e2b52446962ed59df591502e4d7e1a709bc0a989f7c3d451aa7d882666ad0634f1546d696c5edecda1f2fc228777df7bb529a1e
