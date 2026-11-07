@@ -302,3 +302,152 @@ describe('cleanSecrets format', () => {
     expect(cleanSecrets().transform(info)).toEqual(info);
   });
 });
+
+describe('Secret URLs', () => {
+  // Fake keys in the shapes RPC providers hand out
+  const endpoints = [
+    [
+      'alchemy',
+      'https://eth-mainnet.g.alchemy.com/v2/AlchFAKEk3yQ9xZ2mN7pL4wR8tY1uV',
+      'AlchFAKEk3yQ9xZ2mN7pL4wR8tY1uV',
+    ],
+    [
+      'infura',
+      'https://mainnet.infura.io/v3/9f1e2d3c4b5a69788776655443322110',
+      '9f1e2d3c4b5a69788776655443322110',
+    ],
+    [
+      'drpc query',
+      'https://lb.drpc.org/ogrpc?network=ethereum&dkey=DrpcFAKEdkeyAbCdEfGhIjKlMnOp',
+      'DrpcFAKEdkeyAbCdEfGhIjKlMnOp',
+    ],
+    [
+      'drpc path',
+      'https://lb.drpc.live/ethereum/DrpcFAKEpathKeyQrStUvWxYz012',
+      'DrpcFAKEpathKeyQrStUvWxYz012',
+    ],
+    [
+      'chainstack',
+      'https://ethereum-mainnet.core.chainstack.com/c0ffeec0ffeec0ffeec0ffeec0ffee12',
+      'c0ffeec0ffeec0ffeec0ffeec0ffee12',
+    ],
+    [
+      'quicknode',
+      'https://fake-name.quiknode.pro/qnFAKEtokenaabbccddeeff00112233/',
+      'qnFAKEtokenaabbccddeeff00112233',
+    ],
+    [
+      'ankr',
+      'https://rpc.ankr.com/eth/ankrFAKE0123456789abcdef0123456789abcdef',
+      'ankrFAKE0123456789abcdef0123456789abcdef',
+    ],
+    [
+      'blast',
+      'https://eth-mainnet.blastapi.io/5a5a5a5a-FAKE-4b4b-8c8c-0d0d0d0d0d0d',
+      '5a5a5a5a-FAKE-4b4b-8c8c-0d0d0d0d0d0d',
+    ],
+  ];
+
+  const transform = (secrets: string[], info: Record<string, unknown>) =>
+    JSON.stringify(
+      cleanSecrets({ secrets }).transform({
+        level: 'error',
+        message: '',
+        ...info,
+      }),
+    );
+
+  test.each(endpoints)(
+    'Masks the %s key logged without the rest of the URL',
+    (_, endpoint, key) => {
+      const url = new URL(endpoint);
+      const logged = transform([endpoint], {
+        message: `POST ${url.pathname}${url.search} HTTP/1.1`,
+        encoded: encodeURIComponent(endpoint),
+        key,
+      });
+
+      expect(logged).not.toContain(key);
+      expect(logged).toContain(masked(key));
+    },
+  );
+
+  test.each(endpoints)(
+    'Keeps the %s host readable and masks the key',
+    (_, endpoint, key) => {
+      const logged = transform([endpoint], {
+        message: `request to ${endpoint} failed`,
+      });
+
+      expect(logged).toContain(
+        `request to ${endpoint.replace(key, masked(key))} failed`,
+      );
+    },
+  );
+
+  test.each([
+    ['without a key-like part', 'http://cl-node:5052/eth'],
+    ['with a short password', 'https://user:Pass1@rpc.example.com/'],
+    ['written not as parsed', 'HTTPS://rpc.example.com/AbCdEf0123456789XyZ'],
+  ])('Masks a URL %s whole', (_, endpoint) => {
+    const logged = transform([endpoint], { message: `GET ${endpoint}` });
+
+    expect(logged).toContain(`GET ${masked(endpoint)}`);
+  });
+
+  test('Masks a key in a URL-encoded URL', () => {
+    const endpoint = 'https://rpc.example.com/AbCd:Ef0123456789XyZ';
+    const logged = transform([endpoint], {
+      message: encodeURIComponent(endpoint),
+    });
+
+    expect(logged).not.toContain('AbCd%3AEf0123456789XyZ');
+  });
+
+  test('Masks a key passed as the username', () => {
+    const endpoint = 'https://AbCdEf0123456789XyZ@rpc.example.com/';
+    const logged = transform([endpoint], { message: endpoint });
+
+    expect(logged).toContain(
+      `https://${masked('AbCdEf0123456789XyZ')}@rpc.example.com/`,
+    );
+  });
+
+  test('Masks basic auth credentials in an Authorization header', () => {
+    const endpoint =
+      'https://user-name:csFAKEpassw0rdXyZ012@ethereum-mainnet.core.chainstack.com/';
+    const header = `Basic ${Buffer.from(
+      'user-name:csFAKEpassw0rdXyZ012',
+    ).toString('base64')}`;
+    const logged = transform([endpoint], {
+      headers: { authorization: header },
+      password: 'csFAKEpassw0rdXyZ012',
+    });
+
+    expect(logged).not.toContain(header.slice(6));
+    expect(logged).not.toContain('csFAKEpassw0rdXyZ012');
+  });
+
+  test('Keeps short and plain path segments readable', () => {
+    const logged = transform(
+      [
+        'http://cl-node:5052/eth',
+        'https://rpc.example.com/ethereum-mainnet/v1',
+      ],
+      {
+        message: 'GET /eth/v1/beacon/genesis from ethereum-mainnet',
+      },
+    );
+
+    expect(logged).toContain(
+      'GET /eth/v1/beacon/genesis from ethereum-mainnet',
+    );
+  });
+
+  test('Takes parts from http and ws URLs only', () => {
+    const secret = 'token:AbCdEf0123456789XyZ';
+    const logged = transform([secret], { message: 'AbCdEf0123456789XyZ' });
+
+    expect(logged).toContain('AbCdEf0123456789XyZ');
+  });
+});
