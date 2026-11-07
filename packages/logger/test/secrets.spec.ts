@@ -404,6 +404,15 @@ describe('Secret URLs', () => {
     expect(logged).not.toContain('AbCd%3AEf0123456789XyZ');
   });
 
+  test('Masks a key with a malformed escape as written', () => {
+    const endpoint = 'https://rpc.example.com/AbCdEf0123456789%ZZ';
+    const logged = transform([endpoint], { message: endpoint });
+
+    expect(logged).toContain(
+      `https://rpc.example.com/${masked('AbCdEf0123456789%ZZ')}`,
+    );
+  });
+
   test('Masks a key passed as the username', () => {
     const endpoint = 'https://AbCdEf0123456789XyZ@rpc.example.com/';
     const logged = transform([endpoint], { message: endpoint });
