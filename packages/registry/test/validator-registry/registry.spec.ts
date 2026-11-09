@@ -12,6 +12,7 @@ import {
   ValidatorRegistryService,
 } from '../../src';
 import { MikroORM } from '@mikro-orm/core';
+import { SqliteDriver } from '@mikro-orm/sqlite';
 
 describe('Validator', () => {
   const provider = new JsonRpcBatchProvider(process.env.EL_RPC_URL);
@@ -31,7 +32,7 @@ describe('Validator', () => {
     const imports = [
       MikroOrmModule.forRoot({
         dbName: ':memory:',
-        type: 'sqlite',
+        driver: SqliteDriver,
         allowGlobalContext: true,
         entities: ['./packages/registry/**/*.entity.ts'],
       }),

@@ -27,7 +27,10 @@ describe('Meta', () => {
         RegistryMetaStorageService,
         {
           provide: RegistryMetaRepository,
-          useValue: mockRegistryMetaRepository,
+          useValue: {
+            ...mockRegistryMetaRepository,
+            getEntityManager: () => mockRegistryMetaRepository,
+          },
         },
       ],
     }).compile();

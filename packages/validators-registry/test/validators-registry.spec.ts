@@ -6,6 +6,7 @@ import {
   ValidatorsRegistryInterface,
   StorageModule,
   Validator,
+  ValidatorStatus,
   ValidatorStatusType,
   ConsensusDataInvalidError,
 } from '../src';
@@ -28,6 +29,7 @@ import {
 } from './fixtures/consensus';
 import { noop } from './helpers/noop';
 import { Readable } from 'stream';
+import { SqliteDriver } from '@mikro-orm/sqlite';
 
 describe('StorageModule', () => {
   let moduleRef: TestingModule | null = null;
@@ -52,7 +54,7 @@ describe('StorageModule', () => {
       }),
       MikroOrmModule.forRoot({
         dbName: ':memory:',
-        type: 'sqlite',
+        driver: SqliteDriver,
         allowGlobalContext: true,
         entities: [...StorageModule.entities],
         migrations: {
@@ -134,6 +136,22 @@ describe('StorageModule', () => {
     expect(metaAndValidators).toEqual({
       validators: expectedValidators,
       meta: consensusMetaA,
+    });
+  });
+
+  test('update asks the CL only for the requested statuses', async () => {
+    const getStateValidators = jest.spyOn(
+      consensusServiceMock,
+      'getStateValidators',
+    );
+
+    await validatorsRegistry.update(slotA, {
+      status: [ValidatorStatus.ACTIVE_ONGOING],
+    });
+
+    expect(getStateValidators).toBeCalledWith({
+      stateId: expect.any(String),
+      status: ['active_ongoing'],
     });
   });
 
@@ -338,7 +356,7 @@ describe('updateStream', () => {
       }),
       MikroOrmModule.forRoot({
         dbName: ':memory:',
-        type: 'sqlite',
+        driver: SqliteDriver,
         allowGlobalContext: true,
         entities: [...StorageModule.entities],
         migrations: {
@@ -414,6 +432,22 @@ describe('updateStream', () => {
     expect(metaAndValidators).toEqual({
       validators: expectedValidators,
       meta: consensusMetaA,
+    });
+  });
+
+  test('updateStream asks the CL only for the requested statuses', async () => {
+    const getStateValidatorsStream = jest.spyOn(
+      consensusServiceMock,
+      'getStateValidatorsStream',
+    );
+
+    await validatorsRegistry.updateStream(slotA, {
+      status: [ValidatorStatus.ACTIVE_ONGOING, ValidatorStatus.PENDING_QUEUED],
+    });
+
+    expect(getStateValidatorsStream).toBeCalledWith({
+      stateId: expect.any(String),
+      status: ['active_ongoing', 'pending_queued'],
     });
   });
 

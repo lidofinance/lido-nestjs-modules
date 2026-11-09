@@ -222,7 +222,7 @@ describe('LidoKeyValidator', () => {
   });
 
   test('[single-thread] should throw error for unsupported chain', async () => {
-    const keyValidator = await getLidoKeyValidator(false, 38292);
+    const keyValidator = await getLidoKeyValidator(false, 38292 as CHAINS);
 
     await expect(
       async () => await keyValidator.validateKeys([validUsedKey]),
@@ -230,7 +230,7 @@ describe('LidoKeyValidator', () => {
   });
 
   test('[multi-thread] should throw error for unsupported chain', async () => {
-    const keyValidator = await getLidoKeyValidator(true, 38292);
+    const keyValidator = await getLidoKeyValidator(true, 38292 as CHAINS);
 
     await expect(
       async () => await keyValidator.validateKeys([validUsedKey]),

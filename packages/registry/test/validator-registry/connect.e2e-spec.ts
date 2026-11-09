@@ -19,6 +19,7 @@ import {
 
 import { meta, operators } from '../fixtures/connect.fixture';
 import { MikroORM } from '@mikro-orm/core';
+import { SqliteDriver } from '@mikro-orm/sqlite';
 
 describe('Registry', () => {
   let registryService: ValidatorRegistryService;
@@ -28,7 +29,7 @@ describe('Registry', () => {
     const imports = [
       MikroOrmModule.forRoot({
         dbName: ':memory:',
-        type: 'sqlite',
+        driver: SqliteDriver,
         allowGlobalContext: true,
         entities: ['./packages/registry/**/*.entity.ts'],
       }),

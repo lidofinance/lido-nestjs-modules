@@ -14,6 +14,7 @@ import { migrations } from './helpers/migrations';
 import { ConsensusModule } from '@lido-nestjs/consensus';
 import { FetchModule } from '@lido-nestjs/fetch';
 import { noop } from './helpers/noop';
+import { SqliteDriver } from '@mikro-orm/sqlite';
 
 @Injectable()
 class TestService {}
@@ -70,7 +71,7 @@ describe('StorageModule - Async module initializing', () => {
       ConsensusModule.forRoot({ imports: [FetchModule.forFeature()] }),
       MikroOrmModule.forRoot({
         dbName: ':memory:',
-        type: 'sqlite',
+        driver: SqliteDriver,
         allowGlobalContext: true,
         entities: [...StorageModule.entities],
         migrations: {
@@ -95,7 +96,7 @@ describe('StorageModule - Async module initializing', () => {
       ConsensusModule.forRoot({ imports: [FetchModule.forFeature()] }),
       MikroOrmModule.forRoot({
         dbName: ':memory:',
-        type: 'sqlite',
+        driver: SqliteDriver,
         allowGlobalContext: true,
         entities: [...StorageModule.entities],
         migrations: {

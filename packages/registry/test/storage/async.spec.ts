@@ -4,6 +4,7 @@ import { ModuleMetadata } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { RegistryStorageModule, RegistryStorageService } from '../../src';
 import { MikroORM } from '@mikro-orm/core';
+import { SqliteDriver } from '@mikro-orm/sqlite';
 
 @Injectable()
 class TestService {}
@@ -39,7 +40,7 @@ describe('Async module initializing', () => {
       TestModule.forRoot(),
       MikroOrmModule.forRoot({
         dbName: ':memory:',
-        type: 'sqlite',
+        driver: SqliteDriver,
         allowGlobalContext: true,
         entities: ['./packages/registry/**/*.entity.ts'],
       }),
@@ -57,7 +58,7 @@ describe('Async module initializing', () => {
       TestModule.forRoot(),
       MikroOrmModule.forRoot({
         dbName: ':memory:',
-        type: 'sqlite',
+        driver: SqliteDriver,
         allowGlobalContext: true,
         entities: ['./packages/registry/**/*.entity.ts'],
       }),

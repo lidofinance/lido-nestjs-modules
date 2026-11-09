@@ -12,7 +12,7 @@ import { ConsensusValidatorRepository } from './consensus-validator.repository';
 
 @Entity({
   tableName: 'consensus_validator',
-  customRepository: () => ConsensusValidatorRepository,
+  repository: () => ConsensusValidatorRepository,
 })
 export class ConsensusValidatorEntity implements Validator {
   [EntityRepositoryType]?: ConsensusValidatorRepository;

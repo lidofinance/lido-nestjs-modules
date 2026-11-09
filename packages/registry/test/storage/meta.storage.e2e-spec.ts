@@ -7,6 +7,7 @@ import {
   RegistryMetaStorageService,
 } from '../../src';
 import { MikroORM } from '@mikro-orm/core';
+import { SqliteDriver } from '@mikro-orm/sqlite';
 
 describe('Meta', () => {
   let storageService: RegistryMetaStorageService;
@@ -16,7 +17,7 @@ describe('Meta', () => {
     const imports = [
       MikroOrmModule.forRoot({
         dbName: ':memory:',
-        type: 'sqlite',
+        driver: SqliteDriver,
         allowGlobalContext: true,
         entities: ['./packages/registry/**/*.entity.ts'],
       }),

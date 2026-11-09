@@ -38,7 +38,13 @@ describe('Keys', () => {
     const moduleRef = await Test.createTestingModule({
       providers: [
         RegistryKeyStorageService,
-        { provide: RegistryKeyRepository, useValue: mockRegistryKeyRepository },
+        {
+          provide: RegistryKeyRepository,
+          useValue: {
+            ...mockRegistryKeyRepository,
+            getEntityManager: () => mockRegistryKeyRepository,
+          },
+        },
       ],
     }).compile();
 

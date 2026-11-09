@@ -135,7 +135,7 @@ export class StorageService
 
     await this.entityManager
       .getRepository(ConsensusMetaEntity)
-      .upsert(metaEntity);
+      .replace(metaEntity);
   }
 
   public async getValidators(

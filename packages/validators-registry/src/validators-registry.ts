@@ -1,6 +1,10 @@
 import { Inject, Injectable, Optional } from '@nestjs/common';
 import { ConsensusService } from '@lido-nestjs/consensus';
-import { ValidatorsRegistryInterface, BlockId } from './interfaces';
+import {
+  ValidatorsRegistryInterface,
+  ValidatorsRegistryUpdateOptions,
+  BlockId,
+} from './interfaces';
 import { ValidatorsRegistryModuleOptions } from './interfaces/module.interface';
 import {
   BlockHeader,
@@ -8,6 +12,7 @@ import {
   ConsensusMeta,
   ConsensusValidatorsAndMetadata,
   Slot,
+  ValidatorStatus,
 } from './types';
 import { FindOptions, FilterQuery, StorageServiceInterface } from './storage';
 import {
@@ -35,6 +40,14 @@ import {
   VALIDATORS_REGISTRY_DEFAULT_PAYLOAD_LOOKBACK_DEPTH,
   VALIDATORS_REGISTRY_OPTIONS_TOKEN,
 } from './constants';
+
+type ConsensusValidatorStatus = NonNullable<
+  Parameters<ConsensusService['getStateValidators']>[0]['status']
+>[number];
+
+// the enum values are the beacon API strings, but TypeScript does not match an enum to a literal union
+const toConsensusStatus = (status?: ValidatorStatus[]) =>
+  status as ConsensusValidatorStatus[] | undefined;
 
 @Injectable()
 export class ValidatorsRegistry implements ValidatorsRegistryInterface {
@@ -93,7 +106,10 @@ export class ValidatorsRegistry implements ValidatorsRegistryInterface {
   /**
    * @inheritDoc
    */
-  public async update(blockId: BlockId): Promise<ConsensusMeta> {
+  public async update(
+    blockId: BlockId,
+    options?: ValidatorsRegistryUpdateOptions,
+  ): Promise<ConsensusMeta> {
     const previousMeta = await this.storageService.getConsensusMeta();
     const blockHeader = await this.getSlotHeaderFromConsensus(blockId);
 
@@ -107,6 +123,7 @@ export class ValidatorsRegistry implements ValidatorsRegistryInterface {
 
     const validators = await this.getValidatorsFromConsensus(
       consensusMeta.slotStateRoot,
+      options?.status,
     );
 
     await this.storageService.updateValidatorsAndMeta(
@@ -117,7 +134,10 @@ export class ValidatorsRegistry implements ValidatorsRegistryInterface {
     return consensusMeta;
   }
 
-  public async updateStream(blockId: BlockId): Promise<ConsensusMeta> {
+  public async updateStream(
+    blockId: BlockId,
+    options?: ValidatorsRegistryUpdateOptions,
+  ): Promise<ConsensusMeta> {
     const previousMeta = await this.storageService.getConsensusMeta();
     const blockHeader = await this.getSlotHeaderFromConsensus(blockId);
 
@@ -135,6 +155,7 @@ export class ValidatorsRegistry implements ValidatorsRegistryInterface {
       async () => {
         const validators = await this.getValidatorsFromConsensusStream(
           consensusMeta.slotStateRoot,
+          options?.status,
         );
 
         await this.storageService.deleteValidators();
@@ -153,10 +174,12 @@ export class ValidatorsRegistry implements ValidatorsRegistryInterface {
 
   protected async getValidatorsFromConsensusStream(
     slotRoot: string,
+    status?: ValidatorStatus[],
   ): Promise<NodeJS.ReadableStream> {
     const validatorsData: NodeJS.ReadableStream =
       await this.consensusService.getStateValidatorsStream({
         stateId: slotRoot,
+        status: toConsensusStatus(status),
       });
 
     return validatorsData;
@@ -164,9 +187,11 @@ export class ValidatorsRegistry implements ValidatorsRegistryInterface {
 
   protected async getValidatorsFromConsensus(
     slotRoot: string,
+    status?: ValidatorStatus[],
   ): Promise<Validator[]> {
     const validatorsData = await this.consensusService.getStateValidators({
       stateId: slotRoot,
+      status: toConsensusStatus(status),
     });
 
     const validators = validatorsData?.data;

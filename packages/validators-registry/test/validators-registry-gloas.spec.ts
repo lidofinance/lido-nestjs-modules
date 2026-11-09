@@ -40,6 +40,7 @@ import {
   slotG4,
   slotG5,
 } from './fixtures/gloas';
+import { SqliteDriver } from '@mikro-orm/sqlite';
 
 describe('ValidatorsRegistry (Gloas)', () => {
   let moduleRef: TestingModule | null = null;
@@ -64,7 +65,7 @@ describe('ValidatorsRegistry (Gloas)', () => {
         ConsensusModule.forRoot({ imports: [FetchModule] }),
         MikroOrmModule.forRoot({
           dbName: ':memory:',
-          type: 'sqlite',
+          driver: SqliteDriver,
           allowGlobalContext: true,
           entities: [...StorageModule.entities],
           migrations: { migrationsList: migrations },

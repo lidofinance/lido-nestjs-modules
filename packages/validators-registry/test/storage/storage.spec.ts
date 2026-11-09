@@ -19,6 +19,7 @@ import {
 } from '../fixtures/validators.fixture';
 import { migrations } from '../helpers/migrations';
 import { noop } from '../helpers/noop';
+import { SqliteDriver } from '@mikro-orm/sqlite';
 
 describe('Storage', () => {
   let storageService: StorageServiceInterface;
@@ -28,7 +29,7 @@ describe('Storage', () => {
     const imports = [
       MikroOrmModule.forRoot({
         dbName: ':memory:',
-        type: 'sqlite',
+        driver: SqliteDriver,
         allowGlobalContext: true,
         entities: [...StorageModule.entities],
         migrations: {

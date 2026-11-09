@@ -15,6 +15,7 @@ import { blockA, headerA } from './fixtures/consensus';
 import { noop } from './helpers/noop';
 import { createStateValidators } from './helpers/create-validators';
 import { withTimer } from '@lido-nestjs/utils';
+import { SqliteDriver } from '@mikro-orm/sqlite';
 
 describe('StorageModule - performance tests', () => {
   jest.setTimeout(1000000);
@@ -43,7 +44,7 @@ describe('StorageModule - performance tests', () => {
       }),
       MikroOrmModule.forRoot({
         dbName: ':memory:',
-        type: 'sqlite',
+        driver: SqliteDriver,
         allowGlobalContext: true,
         entities: [...StorageModule.entities],
         migrations: {

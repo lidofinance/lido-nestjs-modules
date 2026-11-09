@@ -6,7 +6,7 @@ import {
 } from '@mikro-orm/core';
 import { RegistryOperatorRepository } from './operator.repository';
 
-@Entity({ customRepository: () => RegistryOperatorRepository })
+@Entity({ repository: () => RegistryOperatorRepository })
 export class RegistryOperator {
   [EntityRepositoryType]?: RegistryOperatorRepository;
 

@@ -42,7 +42,10 @@ describe('Operators', () => {
         RegistryOperatorStorageService,
         {
           provide: RegistryOperatorRepository,
-          useValue: mockRegistryOperatorRepository,
+          useValue: {
+            ...mockRegistryOperatorRepository,
+            getEntityManager: () => mockRegistryOperatorRepository,
+          },
         },
       ],
     }).compile();

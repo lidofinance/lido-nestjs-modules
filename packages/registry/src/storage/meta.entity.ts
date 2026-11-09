@@ -6,7 +6,7 @@ import {
 } from '@mikro-orm/core';
 import { RegistryMetaRepository } from './meta.repository';
 
-@Entity({ customRepository: () => RegistryMetaRepository })
+@Entity({ repository: () => RegistryMetaRepository })
 export class RegistryMeta {
   [EntityRepositoryType]?: RegistryMetaRepository;
 

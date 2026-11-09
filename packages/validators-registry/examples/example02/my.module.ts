@@ -7,12 +7,13 @@ import { ConsensusModule } from '@lido-nestjs/consensus';
 import { FetchModule } from '@lido-nestjs/fetch';
 import { MyService } from './my.service';
 import { MikroOrmModule } from '@mikro-orm/nestjs';
+import { SqliteDriver } from '@mikro-orm/sqlite';
 
 @Module({
   imports: [
     MikroOrmModule.forRoot({
       dbName: ':memory:',
-      type: 'sqlite',
+      driver: SqliteDriver,
       entities: [...StorageModule.entities], // optional
       migrations: {
         /* migrations data */
