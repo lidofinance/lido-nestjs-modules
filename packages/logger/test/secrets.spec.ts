@@ -1,6 +1,7 @@
 import { Test } from '@nestjs/testing';
 import {
   cleanSecrets,
+  secretsMask,
   simpleTransport,
   jsonTransport,
   LoggerModule,
@@ -313,10 +314,21 @@ describe('cleanSecrets format', () => {
     expect(result).toMatchObject({ level: 'error', message: 'some ******' });
   });
 
+  test('Exports the same mask for use outside the logger', () => {
+    const endpoint = 'https://rpc.example.com/v2/AbCdEf0123456789XyZ';
+    const mask = secretsMask({ secrets: [endpoint], regex: [/0x[0-9a-f]{4}/] });
+
+    expect(mask({ url: endpoint, data: ['0xabcd'] })).toEqual({
+      url: `https://rpc.example.com/v2/${masked('AbCdEf0123456789XyZ')}`,
+      data: ['******'],
+    });
+  });
+
   test('Masks nothing without secrets', () => {
     const info = { level: 'info', message: 'some secret' };
 
     expect(cleanSecrets().transform(info)).toEqual(info);
+    expect(secretsMask()(info)).toEqual(info);
   });
 });
 

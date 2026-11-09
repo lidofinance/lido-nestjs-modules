@@ -9,13 +9,21 @@ const LEVEL = Symbol.for('level');
 
 type SymbolKeyed = Record<symbol, unknown>;
 
+/**
+ * The mask `cleanSecrets` applies, for values that leave the app past the logger, such as Sentry
+ * events.
+ */
+export const secretsMask = ({
+  secrets = [],
+  regex = [],
+}: LoggerCleanSecretsOptions = {}): (<T>(input: T) => T) =>
+  // An empty secret matches at every position of every string and masks nothing
+  satanizer([...secrets.filter(Boolean).flatMap(secretPatterns), ...regex]);
+
 export const cleanSecrets = (
   options: LoggerCleanSecretsOptions = {},
 ): winston.Logform.Format => {
-  const { secrets = [], regex = [] } = options;
-  // An empty secret matches at every position of every string and masks nothing
-  const strings = secrets.filter(Boolean);
-  const mask = satanizer([...strings.flatMap(secretPatterns), ...regex]);
+  const mask = secretsMask(options);
 
   return winston.format((info) => {
     // One mask call masks a limited number of values, and a large payload would use them up before

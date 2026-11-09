@@ -117,6 +117,16 @@ const myTransport = new winston.transports.Console({
 });
 ```
 
+The same mask is exported as `secretsMask` for values that leave the app past the logger, such as Sentry events:
+
+```ts
+import { secretsMask } from '@lido-nestjs/logger';
+
+const mask = secretsMask({ secrets: ['some-secret'] });
+
+Sentry.init({ beforeSend: (event) => mask(event) });
+```
+
 ### Error field
 
 When you log an `Error`, nest-winston also adds it to the log as the `error` field. Preconfigured transports remove this field by default. To keep it, pass `includeErrorField: true` to the transport options:
