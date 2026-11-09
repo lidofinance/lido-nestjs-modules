@@ -31,8 +31,8 @@ const parseUrl = (secret: string): URL | undefined => {
 /**
  * Strings to mask for one secret. For an endpoint URL these are its key parts, so the host stays
  * readable. Clients also log the parts alone: a request path, a query value, an Authorization
- * header built from the userinfo. A URL with no key-like part, or with a short password, is
- * masked whole, as is any other secret.
+ * header built from the userinfo. A URL with no key-like part, with a long part that does not
+ * look random or with a short password is masked whole, as is any other secret.
  */
 export const secretPatterns = (secret: string): string[] => {
   const url = parseUrl(secret);
@@ -51,16 +51,28 @@ export const secretPatterns = (secret: string): string[] => {
   const keys = raw
     .flatMap((value) => {
       const plain = decode(value);
-      return [value, plain, encodeURIComponent(plain)];
+      return [
+        value,
+        plain,
+        encodeURIComponent(value),
+        encodeURIComponent(plain),
+      ];
     })
     .filter(isKeyLike);
 
+  // A long part that does not look random may still be a key
+  const unsure = raw
+    .map(decode)
+    .some((value) => value.length >= MIN_KEY_LENGTH && !isKeyLike(value));
   const password = decode(url.password);
-  if (password) {
+  const whole =
+    keys.length === 0 || unsure || (password !== '' && !isKeyLike(password));
+
+  // Basic auth sends the userinfo even when only the username is set
+  if (url.username || url.password) {
     const userinfo = `${decode(url.username)}:${password}`;
     keys.push(Buffer.from(userinfo).toString('base64'));
   }
 
-  const whole = keys.length === 0 || (password !== '' && !isKeyLike(password));
   return [...new Set(whole ? [secret, ...keys] : keys)];
 };

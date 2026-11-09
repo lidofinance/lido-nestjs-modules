@@ -18,7 +18,10 @@ export const cleanSecrets = (
   const mask = satanizer([...strings.flatMap(secretPatterns), ...regex]);
 
   return winston.format((info) => {
-    const masked = mask(info);
+    // One mask call masks a limited number of values, and a large payload would use them up before
+    // the level and the message. The level is a plain name and is kept, like its symbol.
+    const { level, message, ...rest } = info;
+    const masked = { level, message: mask(message), ...mask(rest) };
     const source = info as unknown as SymbolKeyed;
     const target = masked as unknown as SymbolKeyed;
 

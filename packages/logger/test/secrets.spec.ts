@@ -277,7 +277,7 @@ describe('cleanSecrets format', () => {
   const LEVEL = Symbol.for('level');
   const SPLAT = Symbol.for('splat');
 
-  test('Keeps symbol keys and masks all of them but the level', () => {
+  test('Keeps symbol keys and masks everything but the level', () => {
     const format = cleanSecrets({ secrets: ['error', 'secret'] });
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const info: any = {
@@ -290,10 +290,27 @@ describe('cleanSecrets format', () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const result: any = format.transform(info);
 
-    expect(result.level).toBe('*****');
+    expect(result.level).toBe('error');
     expect(result.message).toBe('some ******');
     expect(result[LEVEL]).toBe('error');
     expect(result[SPLAT]).toEqual([{ token: '******' }]);
+  });
+
+  test('Keeps the level and the message after a large payload', () => {
+    const format = cleanSecrets({ secrets: ['secret'] });
+    const items = Array.from({ length: 900 }, (_, item) =>
+      Object.fromEntries(
+        Array.from({ length: 20 }, (_, field) => [`f${field}`, item]),
+      ),
+    );
+    // winston puts the extra arguments before the level and the message
+    const result = format.transform({
+      stack: [{ items }],
+      level: 'error',
+      message: 'some secret',
+    });
+
+    expect(result).toMatchObject({ level: 'error', message: 'some ******' });
   });
 
   test('Masks nothing without secrets', () => {
@@ -389,19 +406,26 @@ describe('Secret URLs', () => {
     ['without a key-like part', 'http://cl-node:5052/eth'],
     ['with a short password', 'https://user:Pass1@rpc.example.com/'],
     ['written not as parsed', 'HTTPS://rpc.example.com/AbCdEf0123456789XyZ'],
+    [
+      'with a long part that does not look random',
+      'https://rpc.example.com/AbCdEf0123456789XyZ/abcdefghijklmnopq',
+    ],
+    ['with a short username only', 'https://user@rpc.example.com/'],
   ])('Masks a URL %s whole', (_, endpoint) => {
     const logged = transform([endpoint], { message: `GET ${endpoint}` });
 
     expect(logged).toContain(`GET ${masked(endpoint)}`);
   });
 
-  test('Masks a key in a URL-encoded URL', () => {
-    const endpoint = 'https://rpc.example.com/AbCd:Ef0123456789XyZ';
-    const logged = transform([endpoint], {
-      message: encodeURIComponent(endpoint),
-    });
+  test.each([
+    ['https://rpc.example.com/AbCd:Ef0123456789XyZ'],
+    ['https://rpc.example.com/AbCdEf0123456789%2FXyZ'],
+  ])('Masks the key of %s in a URL-encoded URL', (endpoint) => {
+    const host = encodeURIComponent('https://rpc.example.com/');
+    const encoded = encodeURIComponent(endpoint);
+    const logged = transform([endpoint], { message: encoded });
 
-    expect(logged).not.toContain('AbCd%3AEf0123456789XyZ');
+    expect(logged).toContain(host + masked(encoded.slice(host.length)));
   });
 
   test('Masks a key with a malformed escape as written', () => {
@@ -415,11 +439,18 @@ describe('Secret URLs', () => {
 
   test('Masks a key passed as the username', () => {
     const endpoint = 'https://AbCdEf0123456789XyZ@rpc.example.com/';
-    const logged = transform([endpoint], { message: endpoint });
+    const header = `Basic ${Buffer.from('AbCdEf0123456789XyZ:').toString(
+      'base64',
+    )}`;
+    const logged = transform([endpoint], {
+      message: endpoint,
+      headers: { authorization: header },
+    });
 
     expect(logged).toContain(
       `https://${masked('AbCdEf0123456789XyZ')}@rpc.example.com/`,
     );
+    expect(logged).not.toContain(header.slice(6));
   });
 
   test('Masks basic auth credentials in an Authorization header', () => {
