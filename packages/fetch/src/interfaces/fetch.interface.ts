@@ -1,5 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { RequestInit as RequestInitSource, Response } from 'node-fetch';
+import {
+  RequestInfo as RequestInfoSource,
+  RequestInit as RequestInitSource,
+  Response,
+} from 'node-fetch';
 import { ModuleMetadata } from '@nestjs/common';
 import { MiddlewareCallback } from '@lido-nestjs/middleware';
 export { RequestInfo } from 'node-fetch';
@@ -12,6 +16,12 @@ export interface FetchModuleOptions {
 
 export interface RequestInit extends RequestInitSource {
   retryPolicy?: RequestRetryPolicy;
+}
+
+/** The call a middleware wraps. Without it a middleware cannot tell which request it is in. */
+export interface FetchMiddlewareContext {
+  url: RequestInfoSource;
+  options?: RequestInit;
 }
 
 export interface RequestRetryPolicy {

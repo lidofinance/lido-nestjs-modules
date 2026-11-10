@@ -55,7 +55,12 @@ export class FetchService {
     url: RequestInfo,
     options?: RequestInit,
   ): Promise<Response> {
-    return await this.middlewareService.go(() => this.request(url, options));
+    // The context is what lets a middleware name the request it is wrapping — a metric label, a
+    // log line. Retries happen inside request(), so a middleware still sees one logical call.
+    return await this.middlewareService.go(() => this.request(url, options), {
+      url,
+      options,
+    });
   }
 
   protected async request(
