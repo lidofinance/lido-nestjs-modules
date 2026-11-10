@@ -1,54 +1,43 @@
 import * as winston from 'winston';
-import traverse from 'traverse';
+import { satanizer } from '@lidofinance/satanizer';
 import { LoggerCleanSecretsOptions } from '../interfaces';
+import { secretPatterns } from './secret-patterns';
 
-export const SECRET_REPLACER = '<removed>';
+// winston keeps the level, the extra arguments and the final message under symbol keys,
+// and the masking walk copies string keys only
+const LEVEL = Symbol.for('level');
 
-export const regExpEscape = (str: string): string => {
-  return str.replace(/[-[\]{}()*+?./\\^$|\s,]/g, '\\$&');
-};
+type SymbolKeyed = Record<symbol, unknown>;
 
-export const cleanSecrets = winston.format(
-  (info, opts: LoggerCleanSecretsOptions) => {
-    const secrets = opts.secrets ?? [];
-    const regex = opts.regex ?? [];
+/**
+ * The mask `cleanSecrets` applies, for values that leave the app past the logger, such as Sentry
+ * events.
+ */
+export const secretsMask = ({
+  secrets = [],
+  regex = [],
+}: LoggerCleanSecretsOptions = {}): (<T>(input: T) => T) =>
+  // An empty secret matches at every position of every string and masks nothing
+  satanizer([...secrets.filter(Boolean).flatMap(secretPatterns), ...regex]);
 
-    return replace(secrets, regex, info);
-  },
-);
+export const cleanSecrets = (
+  options: LoggerCleanSecretsOptions = {},
+): winston.Logform.Format => {
+  const mask = secretsMask(options);
 
-const replace = <T extends unknown>(
-  secrets: string[],
-  regex: RegExp[],
-  message: T,
-  traversal = true,
-): T => {
-  if (typeof message === 'string') {
-    const withCleanedSecrets = secrets.reduce((result, secret) => {
-      const re = new RegExp(regExpEscape(secret), 'g');
-      return secret ? result.replace(re, SECRET_REPLACER) : result;
-    }, message);
+  return winston.format((info) => {
+    // One mask call masks a limited number of values, and a large payload would use them up before
+    // the level and the message. The level is a plain name and is kept, like its symbol.
+    const { level, message, ...rest } = info;
+    const masked = { level, message: mask(message), ...mask(rest) };
+    const source = info as unknown as SymbolKeyed;
+    const target = masked as unknown as SymbolKeyed;
 
-    const withCleanedRegexes = regex.reduce((result, regex) => {
-      const re = new RegExp(regex, 'g');
-      return result.replace(re, SECRET_REPLACER);
-    }, withCleanedSecrets);
+    for (const key of Object.getOwnPropertySymbols(info)) {
+      // Transports route by the raw level, a pattern must not rewrite it
+      target[key] = key === LEVEL ? source[key] : mask(source[key]);
+    }
 
-    return withCleanedRegexes as T;
-  }
-
-  // Arrays are handled here as well
-  if (typeof message === 'object' && message !== null && traversal === true) {
-    return traverse(message).map(function (node) {
-      if (this.level >= 10) {
-        this.update('Maximum secret sanitizing depth reached.');
-        this.stop();
-        return;
-      }
-      // IMPORTANT: Specify no traversing on recursive reads
-      this.update(replace(secrets, regex, node, false));
-    }) as T;
-  }
-
-  return message;
+    return masked;
+  })();
 };

@@ -82,7 +82,25 @@ const secrets = [PRIVATE_KEY];
 export class AppModule {}
 ```
 
-Secrets will be replaced with text `<removed>`.
+`regex` takes regular expressions for values that are not known in advance, for example `[/(0x)?[0-9a-fA-F]{40}/]`.
+
+A secret that is an `http`, `https`, `ws` or `wss` URL is masked by its key parts, so the host stays readable: `https://eth-mainnet.g.alchemy.com/v2/****`. The parts are also masked when clients log them without the rest of the URL, in a request path or an `Authorization` header:
+
+- path segments, query values, the username and the password of 16 characters or longer that contain a digit or a capital letter;
+- `username:password` in base64, as it goes into basic auth, also when only the username is set.
+
+The URL is masked whole if it has no such part, if it has a part of 16 characters or longer that does not look random, if its password is shorter, or if it is written other than `new URL(secret).href`.
+
+Masking is done by [`@lidofinance/satanizer`](https://github.com/lidofinance/warehouse/tree/main/packages/core/satanizer): every match is replaced with `*` of the same length, in keys and values, including `message` and `stack`. The `level` is kept as is. Its limits apply to every log entry:
+
+- strings longer than 10 000 characters are cut and end with `[Truncated]`;
+- objects and arrays keep the first 1 000 keys or items;
+- after 10 000 values in total every next value is replaced with `[Truncated]`; the `message` has a separate budget, so a large payload does not cut it;
+- objects deeper than 10 levels, counting the log entry itself, are replaced with `[MaxDepth]`;
+- a value that references itself is replaced with `[Cycle]`;
+- other objects are copied by their own fields, so a `Date`, a `Map` or a `Set` is logged as `{}`.
+
+Flags of a regular expression are dropped, put what you need into the pattern itself.
 
 If you want to use this formatter in your custom transport, import the `cleanSecrets` from `@lido-nestjs/logger`:
 
@@ -97,6 +115,16 @@ const myFormatter = winston.format.combine(
 const myTransport = new winston.transports.Console({
   format: myFormatter,
 });
+```
+
+The same mask is exported as `secretsMask` for values that leave the app past the logger, such as Sentry events:
+
+```ts
+import { secretsMask } from '@lido-nestjs/logger';
+
+const mask = secretsMask({ secrets: ['some-secret'] });
+
+Sentry.init({ beforeSend: (event) => mask(event) });
 ```
 
 ### Error field
