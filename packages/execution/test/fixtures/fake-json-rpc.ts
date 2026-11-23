@@ -45,6 +45,65 @@ const block = {
   uncles: [],
 };
 
+const blockReceiptsBlockHash =
+  '0xdc2d938e4cd0a149681e9e04352953ef5ab399d59bcd5b0357f6c0797470a524';
+
+const blockReceipts = [
+  {
+    blockHash: blockReceiptsBlockHash,
+    blockNumber: '0x2710',
+    contractAddress: null,
+    cumulativeGasUsed: '0x1a949',
+    effectiveGasPrice: '0x1dfd14000',
+    from: '0x1110f5b97703d14ac3de91bdcd12cd4566ae48d5',
+    gasUsed: '0x1a949',
+    logs: [
+      {
+        address: '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2',
+        topics: [
+          '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef',
+          '0x000000000000000000000000000000d40b595b94918a28b27d1e2c66f43a51d3',
+          '0x000000000000000000000000a791e2880efc6f0f47ece0f957f83a936b2199f9',
+        ],
+        data: '0x00000000000000000000000000000000000000000000000000b1a2bc2ec50000',
+        blockNumber: '0x2710',
+        transactionHash:
+          '0x5b73e239c55d790e3c9c3bbb84092652db01bb8dbf49ccc9e4a318470419d9a0',
+        transactionIndex: '0x0',
+        blockHash: blockReceiptsBlockHash,
+        logIndex: '0x0',
+        removed: false,
+      },
+    ],
+    logsBloom:
+      '0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000',
+    status: '0x1',
+    to: '0x000000d40b595b94918a28b27d1e2c66f43a51d3',
+    transactionHash:
+      '0x5b73e239c55d790e3c9c3bbb84092652db01bb8dbf49ccc9e4a318470419d9a0',
+    transactionIndex: '0x0',
+    type: '0x2',
+  },
+  {
+    blockHash: blockReceiptsBlockHash,
+    blockNumber: '0x2710',
+    contractAddress: null,
+    cumulativeGasUsed: '0x1fb51',
+    effectiveGasPrice: '0x1dfd14000',
+    from: '0xe667c544b38ca7305d95c985ff7a4571aca88d0c',
+    gasUsed: '0x5208',
+    logs: [],
+    logsBloom:
+      '0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000',
+    status: '0x0',
+    to: '0xe10d810190ae3654cefb0061fed0f91e36fdde86',
+    transactionHash:
+      '0x9c1f0c9e8e7bd8e28bfc1a7a6ff1e4dd4e1bc3b1d0e4f4e0b0a4b0c1d2e3f405',
+    transactionIndex: '0x1',
+    type: '0x0',
+  },
+];
+
 export const fixtures = {
   address: '0x4329419C7aF27A622C7004b9d3C8B90d3be8c54f',
   block: {
@@ -63,6 +122,17 @@ export const fixtures = {
   },
   eth_getBlockByNumber: {
     default: block,
+  },
+  eth_getBlockReceipts: {
+    blockHash: blockReceiptsBlockHash,
+    blockNumber: 0x2710,
+    // a valid 32-byte hash whose leading zeros must survive the request
+    blockHashWithLeadingZeros:
+      '0x00ab1c939c5c04c94779678275d8ce96ae0e4d996fd322319a0e0c17771d5848',
+    // the node returns null for this one, as for any block it does not know
+    unknownBlockHash:
+      '0x1111111111111111111111111111111111111111111111111111111111111111',
+    receipts: blockReceipts,
   },
 };
 
@@ -274,6 +344,16 @@ export const fakeJsonRpc =
               },
             },
           ],
+        };
+      case 'eth_getBlockReceipts':
+        return {
+          jsonrpc: '2.0',
+          id: request.id,
+          result:
+            request.params?.[0] ===
+            fixtures.eth_getBlockReceipts.unknownBlockHash
+              ? null
+              : fixtures.eth_getBlockReceipts.receipts,
         };
       default:
         return { jsonrpc: '2.0', id: request.id, result: {} };
@@ -605,6 +685,33 @@ export const makeFakeFetchImplWithLowConfirmations = (
       return fakeJsonRpc(
         chainId ? BigNumber.from(chainId).toHexString() : undefined,
       )(request);
+    });
+  };
+};
+
+/**
+ * Creates a fake fetch impl whose node answers the given method with
+ * the JSON-RPC "method not found" error (-32601), as nodes without it do.
+ */
+export const makeFakeFetchImplThatDoesNotSupportMethod = (method: string) => {
+  return async (
+    _connection: string | ConnectionInfo,
+    json?: string,
+  ): Promise<unknown> => {
+    const requests = json ? JSON.parse(json) : {};
+
+    return requests.map((request: JsonRpcRequest) => {
+      if (request.method === method) {
+        return {
+          jsonrpc: '2.0',
+          id: request.id,
+          error: {
+            code: -32601,
+            message: `the method ${method} does not exist/is not available`,
+          },
+        };
+      }
+      return fakeJsonRpc()(request);
     });
   };
 };

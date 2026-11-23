@@ -18,6 +18,8 @@ import {
   makeFetchImplWithSpecificNetwork,
   makeFakeFetchImplWithPartialBatchResponse,
   makeFakeFetchImplThatHangs,
+  makeFakeFetchImplThatDoesNotSupportMethod,
+  fakeFetchImplThatCantDo,
 } from './fixtures/fake-json-rpc';
 import { nullTransport, LoggerModule } from '@lido-nestjs/logger';
 import { ConnectionInfo } from '@ethersproject/web';
@@ -684,6 +686,90 @@ describe('Execution module. ', () => {
       expect(traceCalls.length).toEqual(2);
       expect(traceCalls[0]).toHaveProperty('result');
       expect(traceCalls[1]).toHaveProperty('result');
+    });
+
+    describe('getBlockReceipts', () => {
+      const sentBlockReceiptsRequests = (fetch: jest.SpyInstance) =>
+        fetch.mock.calls
+          .flatMap(([, json]) => JSON.parse(json) as { method: string }[])
+          .filter((request) => request.method === 'eth_getBlockReceipts');
+
+      test('should return block receipts', async () => {
+        await createMocks(2);
+
+        const receipts = await mockedProvider.getBlockReceipts(
+          fixtures.eth_getBlockReceipts.blockHash,
+        );
+
+        expect(receipts).toHaveLength(2);
+        expect(receipts?.[0].transactionHash).toBe(
+          fixtures.eth_getBlockReceipts.receipts[0].transactionHash,
+        );
+        expect(receipts?.[0].blockNumber).toBe(
+          fixtures.eth_getBlockReceipts.blockNumber,
+        );
+        expect(receipts?.[0].gasUsed.toHexString()).toBe('0x01a949');
+        expect(receipts?.[0].from).toBe(
+          '0x1110F5B97703D14AC3dE91bdcd12Cd4566ae48D5',
+        );
+        expect(
+          sentBlockReceiptsRequests(mockedFallbackProviderFetch[0]),
+        ).toEqual([
+          expect.objectContaining({
+            params: [fixtures.eth_getBlockReceipts.blockHash],
+          }),
+        ]);
+      });
+
+      test('should return null when the node does not know the block', async () => {
+        await createMocks(2);
+
+        const receipts = await mockedProvider.getBlockReceipts(
+          fixtures.eth_getBlockReceipts.unknownBlockHash,
+        );
+
+        expect(receipts).toBeNull();
+      });
+
+      test('should fall back to the next provider when the first one does not support eth_getBlockReceipts', async () => {
+        await createMocks(2);
+
+        mockedFallbackProviderFetch[0].mockImplementation(
+          makeFakeFetchImplThatDoesNotSupportMethod('eth_getBlockReceipts'),
+        );
+
+        const receipts = await mockedProvider.getBlockReceipts(
+          fixtures.eth_getBlockReceipts.blockHash,
+        );
+
+        expect(receipts).toHaveLength(2);
+        expect(
+          sentBlockReceiptsRequests(mockedFallbackProviderFetch[0]).length,
+        ).toBeGreaterThan(0);
+        expect(
+          sentBlockReceiptsRequests(mockedFallbackProviderFetch[1]),
+        ).toHaveLength(1);
+      });
+
+      test('should fall back to the next provider when the first one fails on the network', async () => {
+        await createMocks(2);
+
+        mockedFallbackProviderFetch[0].mockImplementation(
+          fakeFetchImplThatCantDo(['eth_getBlockReceipts']),
+        );
+
+        const receipts = await mockedProvider.getBlockReceipts(
+          fixtures.eth_getBlockReceipts.blockHash,
+        );
+
+        expect(receipts).toHaveLength(2);
+        expect(
+          sentBlockReceiptsRequests(mockedFallbackProviderFetch[0]).length,
+        ).toBeGreaterThan(0);
+        expect(
+          sentBlockReceiptsRequests(mockedFallbackProviderFetch[1]),
+        ).toHaveLength(1);
+      });
     });
 
     test('should return fee history if exists', async () => {
