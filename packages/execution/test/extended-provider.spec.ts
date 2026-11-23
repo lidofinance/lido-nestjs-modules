@@ -7,7 +7,9 @@ import {
   fixtures,
   makeFetchImplWithSpecificFeeHistory,
   makeFakeFetchImplThatHangs,
+  makeFakeFetchImplThatDoesNotSupportMethod,
 } from './fixtures/fake-json-rpc';
+import { BigNumber } from '@ethersproject/bignumber';
 import { range } from './utils';
 import { nullTransport, LoggerModule } from '@lido-nestjs/logger';
 import { JsonRpcRequest, JsonRpcResponse, FetchError } from '../src';
@@ -344,6 +346,146 @@ describe('Execution module. ', () => {
       expect(feeHistory).toHaveProperty('oldestBlock');
       expect(feeHistory).toHaveProperty('reward');
       expect(feeHistory.reward.length).toBe(0);
+    });
+
+    describe('getBlockReceipts', () => {
+      const sentBlockReceiptsRequests = (): JsonRpcRequest[] =>
+        mockedProviderFetch.mock.calls
+          .flatMap(([, json]) => JSON.parse(json) as JsonRpcRequest[])
+          .filter((request) => request.method === 'eth_getBlockReceipts');
+
+      test('should return formatted block receipts by block hash', async () => {
+        await createMocks(2, 2);
+
+        const receipts = await mockedProvider.getBlockReceipts(
+          fixtures.eth_getBlockReceipts.blockHash,
+        );
+
+        expect(receipts).not.toBeNull();
+        expect(receipts).toHaveLength(2);
+
+        const [first, second] = receipts ?? [];
+        const raw = fixtures.eth_getBlockReceipts.receipts;
+
+        expect(first.transactionHash).toBe(raw[0].transactionHash);
+        expect(first.blockHash).toBe(fixtures.eth_getBlockReceipts.blockHash);
+        expect(first.blockNumber).toBe(
+          fixtures.eth_getBlockReceipts.blockNumber,
+        );
+        expect(first.transactionIndex).toBe(0);
+        expect(first.status).toBe(1);
+        expect(first.type).toBe(2);
+        expect(first.byzantium).toBe(true);
+        expect(first).not.toHaveProperty('confirmations');
+        expect(first.contractAddress).toBeNull();
+        expect(BigNumber.isBigNumber(first.gasUsed)).toBe(true);
+        expect(first.gasUsed.toHexString()).toBe('0x01a949');
+        expect(BigNumber.isBigNumber(first.cumulativeGasUsed)).toBe(true);
+        expect(first.effectiveGasPrice.toHexString()).toBe('0x01dfd14000');
+        expect(first.from).toBe('0x1110F5B97703D14AC3dE91bdcd12Cd4566ae48D5');
+        expect(first.to).toBe('0x000000d40B595B94918a28b27d1e2C66F43A51d3');
+
+        expect(first.logs).toHaveLength(1);
+        expect(first.logs[0].address).toBe(
+          '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2',
+        );
+        expect(first.logs[0].logIndex).toBe(0);
+        expect(first.logs[0].blockNumber).toBe(
+          fixtures.eth_getBlockReceipts.blockNumber,
+        );
+        expect(first.logs[0].transactionIndex).toBe(0);
+        expect(first.logs[0].topics).toEqual(raw[0].logs[0].topics);
+
+        expect(second.transactionIndex).toBe(1);
+        expect(second.status).toBe(0);
+        expect(second.type).toBe(0);
+        expect(second.gasUsed.toNumber()).toBe(21000);
+        expect(second.from).toBe('0xe667C544b38Ca7305d95c985fF7A4571aCA88d0c');
+        expect(second.to).toBe('0xE10d810190aE3654ceFB0061FEd0F91E36fdDE86');
+        expect(second.logs).toEqual([]);
+      });
+
+      test('should send eth_getBlockReceipts with the block hash unchanged', async () => {
+        await createMocks(1, 1);
+
+        await mockedProvider.getBlockReceipts(
+          fixtures.eth_getBlockReceipts.blockHash,
+        );
+
+        const requests = sentBlockReceiptsRequests();
+        expect(requests).toHaveLength(1);
+        expect(requests[0].params).toEqual([
+          fixtures.eth_getBlockReceipts.blockHash,
+        ]);
+      });
+
+      test('should keep leading zeros of the block hash', async () => {
+        await createMocks(1, 1);
+
+        await mockedProvider.getBlockReceipts(
+          fixtures.eth_getBlockReceipts.blockHashWithLeadingZeros,
+        );
+
+        const requests = sentBlockReceiptsRequests();
+        expect(requests).toHaveLength(1);
+        expect(requests[0].params).toEqual([
+          fixtures.eth_getBlockReceipts.blockHashWithLeadingZeros,
+        ]);
+      });
+
+      test('should accept a block number and send it as a hex quantity', async () => {
+        await createMocks(1, 1);
+
+        const receipts = await mockedProvider.getBlockReceipts(
+          fixtures.eth_getBlockReceipts.blockNumber,
+        );
+
+        expect(receipts).toHaveLength(2);
+        const requests = sentBlockReceiptsRequests();
+        expect(requests).toHaveLength(1);
+        expect(requests[0].params).toEqual(['0x2710']);
+      });
+
+      test.each(['latest', 'finalized'])(
+        'should accept the block tag %s',
+        async (blockTag) => {
+          await createMocks(1, 1);
+
+          const receipts = await mockedProvider.getBlockReceipts(blockTag);
+
+          expect(receipts).toHaveLength(2);
+          const requests = sentBlockReceiptsRequests();
+          expect(requests).toHaveLength(1);
+          expect(requests[0].params).toEqual([blockTag]);
+        },
+      );
+
+      test('should return null when the node does not know the block', async () => {
+        await createMocks(1, 1);
+
+        const receipts = await mockedProvider.getBlockReceipts(
+          fixtures.eth_getBlockReceipts.unknownBlockHash,
+        );
+
+        expect(receipts).toBeNull();
+      });
+
+      test('should reject with the JSON-RPC error when the node does not support eth_getBlockReceipts', async () => {
+        await createMocks(1, 1);
+
+        mockedProviderFetch.mockImplementation(
+          makeFakeFetchImplThatDoesNotSupportMethod('eth_getBlockReceipts'),
+        );
+
+        const result = mockedProvider.getBlockReceipts(
+          fixtures.eth_getBlockReceipts.blockHash,
+        );
+
+        await expect(result).rejects.toThrow(
+          'the method eth_getBlockReceipts does not exist/is not available',
+        );
+        await expect(result).rejects.toMatchObject({ code: -32601 });
+      });
     });
 
     test('should throw exception on JsonRpc error when node reached rpc batching limit', async () => {

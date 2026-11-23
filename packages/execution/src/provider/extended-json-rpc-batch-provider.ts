@@ -24,6 +24,7 @@ import { FeeHistory, getFeeHistory } from '../ethers/fee-history';
 import { ErrorCode } from '../error/codes/error-codes';
 import { TraceConfig, TraceResult } from '../interfaces/debug-traces';
 import { getDebugTraceBlockByHash } from '../ethers/debug-trace-block-by-hash';
+import { BlockReceipt, getBlockReceipts } from '../ethers/block-receipts';
 import { getConnectionFQDN } from '../common/networks';
 import { sanitizeErrorData } from '../common/sanitize-error';
 import { RequestTimeoutError } from '../error/request-timeout.error';
@@ -359,6 +360,12 @@ export class ExtendedJsonRpcBatchProvider extends JsonRpcProvider {
     return getDebugTraceBlockByHash.call(this, blockHash, traceConfig);
   }
 
+  public async getBlockReceipts(
+    blockHashOrBlockTag: string | number,
+  ): Promise<BlockReceipt[] | null> {
+    return getBlockReceipts.call(this, blockHashOrBlockTag);
+  }
+
   public prepareRequest(method: string, params: any): [string, Array<any>] {
     switch (method) {
       case 'getFeeHistory':
@@ -371,6 +378,8 @@ export class ExtendedJsonRpcBatchProvider extends JsonRpcProvider {
           'debug_traceBlockByHash',
           [params.blockHash, params.traceConfig],
         ];
+      case 'getBlockReceipts':
+        return ['eth_getBlockReceipts', [params.blockTag]];
       default:
         return super.prepareRequest(method, params);
     }

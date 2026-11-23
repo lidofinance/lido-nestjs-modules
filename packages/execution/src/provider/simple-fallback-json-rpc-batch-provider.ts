@@ -38,6 +38,7 @@ import {
 } from '../interfaces/wait-for-transaction';
 import { TraceConfig, TraceResult } from '../interfaces/debug-traces';
 import { getDebugTraceBlockByHash } from '../ethers/debug-trace-block-by-hash';
+import { BlockReceipt, getBlockReceipts } from '../ethers/block-receipts';
 import { LazyEventEmitter } from '../common/lazy-event-emitter';
 import {
   FallbackProviderEvents,
@@ -252,6 +253,12 @@ export class SimpleFallbackJsonRpcBatchProvider extends BaseProvider {
     traceConfig: Partial<TraceConfig>,
   ): Promise<TraceResult[]> {
     return getDebugTraceBlockByHash.call(this, blockHash, traceConfig);
+  }
+
+  public async getBlockReceipts(
+    blockHashOrBlockTag: string | number,
+  ): Promise<BlockReceipt[] | null> {
+    return getBlockReceipts.call(this, blockHashOrBlockTag);
   }
 
   protected get provider(): FallbackProvider {

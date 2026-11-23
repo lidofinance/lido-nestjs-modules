@@ -9,6 +9,7 @@ export * from './interfaces/module.options';
 export * from './interfaces/non-empty-array';
 export * from './interfaces/wait-for-transaction';
 export * from './ethers/fee-history';
+export * from './ethers/block-receipts';
 export * from './ethers/block-tag';
 export * from './error';
 export * from './events';
