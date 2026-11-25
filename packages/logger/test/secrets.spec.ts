@@ -583,5 +583,32 @@ describe('Secret URLs', () => {
         'GET http://el-node:8545/ and http://cl-other:5052/eth',
       );
     });
+
+    test('Masks a cut secret when another secret has the same start', () => {
+      const message = 'api_key_BBBB...[truncated]';
+      const expected = '************...[truncated]';
+
+      expect(
+        transform(['api_key_AAAAAAAAAAAA', 'api_key_BBBBBBBBBBBB'], {
+          message,
+        }),
+      ).toContain(expected);
+      expect(
+        transform(['api_key_BBBBBBBBBBBB', 'api_key_AAAAAAAAAAAA'], {
+          message,
+        }),
+      ).toContain(expected);
+    });
+
+    test('Masks a cut URL key in the encoded and the decoded spelling', () => {
+      const secrets = ['https://rpc.example.com/AAAAAAAAAAAA%2FBBBB'];
+
+      expect(
+        transform(secrets, { message: 'AAAAAAAAAAAA%2FBB...[truncated]' }),
+      ).toContain('*****************...[truncated]');
+      expect(
+        transform(secrets, { message: 'AAAAAAAAAAAA/BB...[truncated]' }),
+      ).toContain('***************...[truncated]');
+    });
   });
 });
