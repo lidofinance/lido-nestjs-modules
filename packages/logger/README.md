@@ -91,6 +91,8 @@ A secret that is an `http`, `https`, `ws` or `wss` URL is masked by its key part
 
 The URL is masked whole if it has no such part, if it has a part of 16 characters or longer that does not look random, if its password is shorter, or if it is written other than `new URL(secret).href`.
 
+Text may reach the logger already cut, and the cut may fall inside a secret: `@lido-nestjs/execution` cuts an RPC error to 1 000 characters, and the mask itself cuts long strings (see below). So the first 8 or more characters of a secret, of a key part or of the base64 credentials are masked too, with the characters right after them while these characters occur in the secret. For a URL masked whole they are counted from the `//` after the scheme. A shorter piece stays readable. Other text that starts with the same 8 characters is masked as well, for example a URL to the same host as a URL masked whole.
+
 Masking is done by [`@lidofinance/satanizer`](https://github.com/lidofinance/warehouse/tree/main/packages/core/satanizer): every match is replaced with `*` of the same length, in keys and values, including `message` and `stack`. The `level` is kept as is. Its limits apply to every log entry:
 
 - strings longer than 10 000 characters are cut and end with `[Truncated]`;

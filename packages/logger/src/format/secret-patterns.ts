@@ -76,3 +76,32 @@ export const secretPatterns = (secret: string): string[] => {
 
   return [...new Set(whole ? [secret, ...keys] : keys)];
 };
+
+// Text can reach the mask already cut inside a secret. `sanitizeError` of `@lido-nestjs/execution`
+// cuts a long RPC error, and ethers puts the endpoint URL after the request body. That function
+// cannot mask first: `util.inspect` cuts each string while it walks the error, so the full text
+// never exists in memory. Satanizer also cuts a long string before it matches. A piece shorter than
+// 8 characters leaves most of a key hidden, and a shorter head would match unrelated text.
+const MIN_PIECE_LENGTH = 8;
+
+// The scheme is not secret, and `https://` alone would match every URL
+const SCHEME = /^[a-z][a-z0-9+.-]*:(?=\/\/)/i;
+
+// `-` is escaped too, for use inside a character class
+const escapeRegExp = (value: string): string =>
+  value.replace(/[.*+?^${}()|[\]\\-]/g, '\\$&');
+
+/**
+ * Matches what a cut leaves of a pattern string: its first `MIN_PIECE_LENGTH` characters, then any
+ * run of characters that occur later in it. The run may go past the cut.
+ */
+export const piecePatterns = (pattern: string): RegExp[] => {
+  const value = pattern.replace(SCHEME, '');
+  if (value.length <= MIN_PIECE_LENGTH) return [];
+
+  const head = escapeRegExp(value.slice(0, MIN_PIECE_LENGTH));
+  const tail = escapeRegExp(
+    [...new Set(value.slice(MIN_PIECE_LENGTH))].join(''),
+  );
+  return [new RegExp(`${head}[${tail}]*`)];
+};

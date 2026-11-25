@@ -1,4 +1,5 @@
 import { Test } from '@nestjs/testing';
+import { MAX_STRING_LENGTH } from '@lidofinance/satanizer';
 import {
   cleanSecrets,
   secretsMask,
@@ -501,5 +502,86 @@ describe('Secret URLs', () => {
     const logged = transform([secret], { message: 'AbCdEf0123456789XyZ' });
 
     expect(logged).toContain('AbCdEf0123456789XyZ');
+  });
+
+  describe('Cut secrets', () => {
+    const CUT_MARK = '...[truncated, total length: 1200]';
+    const MIN_PIECE = 8;
+
+    const pieces = (secret: string) =>
+      Array.from({ length: secret.length - MIN_PIECE }, (_, index) =>
+        secret.slice(0, MIN_PIECE + index),
+      );
+
+    test.each(endpoints)(
+      'Masks every piece of the %s key left by a cut',
+      (_, endpoint, key) => {
+        const start = endpoint.indexOf(key);
+
+        for (const piece of pieces(key)) {
+          const logged = transform([endpoint], {
+            message: `${endpoint.slice(0, start)}${piece}${CUT_MARK}`,
+          });
+
+          expect(logged).toContain(
+            `${endpoint.slice(0, start)}${masked(piece)}${CUT_MARK}`,
+          );
+        }
+      },
+    );
+
+    test('Masks a key cut by the string length limit of the mask', () => {
+      const [, endpoint, key] = endpoints[0];
+      const start = endpoint.indexOf(key);
+      const piece = key.slice(0, 12);
+      const padding = 'x'.repeat(MAX_STRING_LENGTH - start - piece.length);
+      const logged = transform([endpoint], { message: padding + endpoint });
+
+      expect(logged).toContain(
+        `${endpoint.slice(0, start)}${masked(piece)}[Truncated]`,
+      );
+    });
+
+    test('Masks every piece of a secret that is not a URL', () => {
+      const secret = 'AbCdEf01^-]\\XyZ0123456789';
+
+      for (const piece of pieces(secret)) {
+        // util.inspect marks a cut string this way
+        const logged = transform([secret], {
+          message: `value '${piece}'... 20 more characters`,
+        });
+
+        expect(logged).toContain(
+          `value '${masked(piece)}'... 20 more characters`,
+        );
+      }
+    });
+
+    test.each([
+      ['without a key-like part', 'http://cl-node:5052/eth'],
+      ['with a short password', 'https://user:Pass1word@rpc.example.com/'],
+    ])('Masks every piece after the scheme of a URL %s', (_, endpoint) => {
+      const scheme = new URL(endpoint).protocol;
+
+      for (const piece of pieces(endpoint.slice(scheme.length))) {
+        const logged = transform([endpoint], {
+          message: `GET ${scheme}${piece}${CUT_MARK}`,
+        });
+
+        // The dots of the cut mark occur in the URL, so the mask covers them
+        expect(logged).toContain(`GET ${scheme}${masked(piece)}`);
+        expect(logged).not.toContain(piece);
+      }
+    });
+
+    test('Keeps URLs to other hosts readable', () => {
+      const logged = transform(['http://cl-node:5052/eth'], {
+        message: 'GET http://el-node:8545/ and http://cl-other:5052/eth',
+      });
+
+      expect(logged).toContain(
+        'GET http://el-node:8545/ and http://cl-other:5052/eth',
+      );
+    });
   });
 });

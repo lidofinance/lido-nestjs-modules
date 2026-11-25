@@ -1,7 +1,7 @@
 import * as winston from 'winston';
 import { satanizer } from '@lidofinance/satanizer';
 import { LoggerCleanSecretsOptions } from '../interfaces';
-import { secretPatterns } from './secret-patterns';
+import { piecePatterns, secretPatterns } from './secret-patterns';
 
 // winston keeps the level, the extra arguments and the final message under symbol keys,
 // and the masking walk copies string keys only
@@ -16,9 +16,11 @@ type SymbolKeyed = Record<symbol, unknown>;
 export const secretsMask = ({
   secrets = [],
   regex = [],
-}: LoggerCleanSecretsOptions = {}): (<T>(input: T) => T) =>
+}: LoggerCleanSecretsOptions = {}): (<T>(input: T) => T) => {
   // An empty secret matches at every position of every string and masks nothing
-  satanizer([...secrets.filter(Boolean).flatMap(secretPatterns), ...regex]);
+  const patterns = secrets.filter(Boolean).flatMap(secretPatterns);
+  return satanizer([...patterns, ...patterns.flatMap(piecePatterns), ...regex]);
+};
 
 export const cleanSecrets = (
   options: LoggerCleanSecretsOptions = {},
