@@ -27,6 +27,7 @@ import { getDebugTraceBlockByHash } from '../ethers/debug-trace-block-by-hash';
 import { BlockReceipt, getBlockReceipts } from '../ethers/block-receipts';
 import { getConnectionFQDN } from '../common/networks';
 import { sanitizeErrorData } from '../common/sanitize-error';
+import { redactConnectionSecrets } from '../common/redact-url';
 import { RequestTimeoutError } from '../error/request-timeout.error';
 import { LazyEventEmitter } from '../common/lazy-event-emitter';
 import {
@@ -221,7 +222,17 @@ export class ExtendedJsonRpcBatchProvider extends JsonRpcProvider {
 
       this._concurrencyLimiter(() => {
         return this._fetchMiddlewareService.go(
-          () => this.fetchJson(this.connection, JSON.stringify(batchRequest)),
+          async () => {
+            try {
+              return await this.fetchJson(
+                this.connection,
+                JSON.stringify(batchRequest),
+              );
+            } catch (error) {
+              // ethers puts the endpoint URL (with its key) into the error
+              throw redactConnectionSecrets(error, this.connection);
+            }
+          },
           {
             provider: this,
             domain: this._domain,
